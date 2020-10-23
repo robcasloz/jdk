@@ -76,7 +76,7 @@ public:
   virtual const Type *bottom_type() const;
   virtual const TypePtr *adr_type() const { return TypePtr::BOTTOM; }
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual void  calling_convention( BasicType* sig_bt, VMRegPair *parm_reg, uint length ) const;
   virtual const RegMask &in_RegMask(uint) const;
   virtual Node *match( const ProjNode *proj, const Matcher *m );
@@ -125,7 +125,7 @@ public:
   virtual bool  is_CFG() const { return true; }
   virtual uint hash() const { return NO_HASH; }  // CFG nodes do not hash
   virtual bool depends_only_on_test() const { return false; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual uint ideal_reg() const { return NotAMachineReg; }
   virtual uint match_edge(uint idx) const;
@@ -146,7 +146,7 @@ class RethrowNode : public Node {
   virtual bool  is_CFG() const { return true; }
   virtual uint hash() const { return NO_HASH; }  // CFG nodes do not hash
   virtual bool depends_only_on_test() const { return false; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual uint match_edge(uint idx) const;
   virtual uint ideal_reg() const { return NotAMachineReg; }
@@ -473,7 +473,7 @@ public:
   virtual const Type*    Value(PhaseGVN* phase) const;
   virtual const Type    *bottom_type() const { return Type::CONTROL; }
   virtual const TypePtr *adr_type() const { return _adr_type; }
-  virtual Node          *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node          *Ideal(PhaseGVN *phase);
   virtual Node*          Identity(PhaseGVN* phase);
   virtual uint           ideal_reg() const { return 0; }
   virtual const RegMask &in_RegMask(uint) const;
@@ -599,7 +599,7 @@ public:
 
   virtual const Type *bottom_type() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase) { return this; }
   virtual bool        cmp( const Node &n ) const;
   virtual uint        size_of() const = 0;
@@ -967,7 +967,7 @@ public:
     set_req(AllocateNode::ALength,        count_val);
   }
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   // Dig the length operand out of a array allocation site.
   Node* Ideal_length() {
@@ -1096,7 +1096,7 @@ public:
   }
   virtual bool        guaranteed_safepoint()  { return false; }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   // Expansion modifies the JVMState, so we need to clone it
   virtual void  clone_jvms(Compile* C) {
     if (jvms() != NULL) {
@@ -1128,7 +1128,7 @@ public:
     init_flags(Flag_is_macro);
     C->add_macro_node(this);
   }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   // unlock is never a safepoint
   virtual bool        guaranteed_safepoint()  { return false; }
 #ifdef ASSERT

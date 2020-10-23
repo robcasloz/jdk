@@ -108,7 +108,7 @@ static bool commute(Node *add, bool con_left, bool con_right) {
 
 //------------------------------Idealize---------------------------------------
 // If we get here, we assume we are associative!
-Node *AddNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AddNode::Ideal(PhaseGVN *phase) {
   const Type *t1 = phase->type( in(1) );
   const Type *t2 = phase->type( in(2) );
   bool con_left  = t1->singleton();
@@ -238,7 +238,7 @@ const Type *AddNode::add_of_identity( const Type *t1, const Type *t2 ) const {
 
 //=============================================================================
 //------------------------------Idealize---------------------------------------
-Node *AddINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AddINode::Ideal(PhaseGVN *phase) {
   Node* in1 = in(1);
   Node* in2 = in(2);
   int op1 = in1->Opcode();
@@ -321,7 +321,7 @@ Node *AddINode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  return AddNode::Ideal(phase, can_reshape);
+  return AddNode::Ideal(phase);
 }
 
 
@@ -369,7 +369,7 @@ const Type *AddINode::add_ring( const Type *t0, const Type *t1 ) const {
 
 //=============================================================================
 //------------------------------Idealize---------------------------------------
-Node *AddLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AddLNode::Ideal(PhaseGVN *phase) {
   Node* in1 = in(1);
   Node* in2 = in(2);
   int op1 = in1->Opcode();
@@ -438,7 +438,7 @@ Node *AddLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return new AddLNode(shift,in2->in(2));
   }
 
-  return AddNode::Ideal(phase, can_reshape);
+  return AddNode::Ideal(phase);
 }
 
 
@@ -510,9 +510,9 @@ const Type *AddFNode::add_ring( const Type *t0, const Type *t1 ) const {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *AddFNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AddFNode::Ideal(PhaseGVN *phase) {
   if( IdealizedNumerics && !phase->C->method()->is_strict() ) {
-    return AddNode::Ideal(phase, can_reshape); // commutative and associative transforms
+    return AddNode::Ideal(phase); // commutative and associative transforms
   }
 
   // Floating point additions are not associative because of boundary conditions (infinity)
@@ -547,9 +547,9 @@ const Type *AddDNode::add_ring( const Type *t0, const Type *t1 ) const {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *AddDNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AddDNode::Ideal(PhaseGVN *phase) {
   if( IdealizedNumerics && !phase->C->method()->is_strict() ) {
-    return AddNode::Ideal(phase, can_reshape); // commutative and associative transforms
+    return AddNode::Ideal(phase); // commutative and associative transforms
   }
 
   // Floating point additions are not associative because of boundary conditions (infinity)
@@ -567,7 +567,7 @@ Node* AddPNode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Idealize---------------------------------------
-Node *AddPNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AddPNode::Ideal(PhaseGVN *phase) {
   // Bail out if dead inputs
   if( phase->type( in(Address) ) == Type::TOP ) return NULL;
 
@@ -764,7 +764,7 @@ Node* rotate_shift(PhaseGVN* phase, Node* lshift, Node* rshift, int mask) {
   return NULL;
 }
 
-Node* OrINode::Ideal(PhaseGVN* phase, bool can_reshape) {
+Node* OrINode::Ideal(PhaseGVN* phase) {
   int lopcode = in(1)->Opcode();
   int ropcode = in(2)->Opcode();
   if (Matcher::match_rule_supported(Op_RotateLeft) &&
@@ -830,7 +830,7 @@ Node* OrLNode::Identity(PhaseGVN* phase) {
   return AddNode::Identity(phase);
 }
 
-Node* OrLNode::Ideal(PhaseGVN* phase, bool can_reshape) {
+Node* OrLNode::Ideal(PhaseGVN* phase) {
   int lopcode = in(1)->Opcode();
   int ropcode = in(2)->Opcode();
   if (Matcher::match_rule_supported(Op_RotateLeft) &&
@@ -1016,7 +1016,7 @@ static bool can_overflow(const TypeInt* t, jint c) {
 //------------------------------Idealize---------------------------------------
 // MINs show up in range-check loop limit calculations.  Look for
 // "MIN2(x+c0,MIN2(y,x+c1))".  Pick the smaller constant: "MIN2(x+c0,y)"
-Node *MinINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *MinINode::Ideal(PhaseGVN *phase) {
   Node *progress = NULL;
   // Force a right-spline graph
   Node *l = in(1);

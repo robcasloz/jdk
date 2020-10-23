@@ -440,14 +440,14 @@ bool RegionNode::try_clean_mem_phi(PhaseGVN *phase) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Must preserve
 // the CFG, but we can still strip out dead paths.
-Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if( !can_reshape && !in(0) ) return NULL;     // Already degraded to a Copy
+Node *RegionNode::Ideal(PhaseGVN *phase) {
+  if (!phase->can_reshape() && !in(0)) return NULL; // Already degraded to a Copy
   assert(!in(0) || !in(0)->is_Root(), "not a specially hidden merge");
 
   // Check for RegionNode with no Phi users and both inputs come from either
   // arm of the same IF.  If found, then the control-flow split is useless.
   bool has_phis = false;
-  if (can_reshape) {            // Need DU info to check for Phi users
+  if (phase->can_reshape()) { // Need DU info to check for Phi users
     has_phis = (has_phi() != NULL);       // Cache result
     if (has_phis && try_clean_mem_phi(phase)) {
       has_phis = false;
@@ -509,7 +509,7 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
       cnt++;                    // One more value merging
 
-    } else if (can_reshape) {   // Else found dead path with DU info
+    } else if (phase->can_reshape()) { // Else found dead path with DU info
       PhaseIterGVN *igvn = phase->is_IterGVN();
       del_req(i);               // Yank path from self
       del_it = i;
@@ -538,7 +538,7 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  if (can_reshape && cnt == 1) {
+  if (phase->can_reshape() && cnt == 1) {
     // Is it dead loop?
     // If it is LoopNopde it had 2 (+1 itself) inputs and
     // one of them was cut. The loop is dead if it was EntryContol.
@@ -590,10 +590,10 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   if( cnt <= 1 ) {              // Only 1 path in?
     set_req(0, NULL);           // Null control input for region copy
-    if( cnt == 0 && !can_reshape) { // Parse phase - leave the node as it is.
+    if (cnt == 0 && !phase->can_reshape()) { // Parse phase - leave the node as it is.
       // No inputs or all inputs are NULL.
       return NULL;
-    } else if (can_reshape) {   // Optimization phase - remove the node
+    } else if (phase->can_reshape()) { // Optimization phase - remove the node
       PhaseIterGVN *igvn = phase->is_IterGVN();
       // Strip mined (inner) loop is going away, remove outer loop.
       if (is_CountedLoop() &&
@@ -672,13 +672,13 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
 
   // If a Region flows into a Region, merge into one big happy merge.
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     Node *m = merge_region(this, phase);
     if (m != NULL)  return m;
   }
 
   // Check if this region is the root of a clipping idiom on floats
-  if( ConvertFloat2IntClipping && can_reshape && req() == 4 ) {
+  if (ConvertFloat2IntClipping && phase->can_reshape() && req() == 4) {
     // Check that only one use is a Phi and that it simplifies to two constants +
     PhiNode* phi = has_unique_phi();
     if (phi != NULL) {          // One Phi user
@@ -738,7 +738,7 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     modified |= optimize_trichotomy(phase->is_IterGVN());
   }
 
@@ -1884,7 +1884,7 @@ bool PhiNode::wait_for_region_igvn(PhaseGVN* phase) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Must preserve
 // the CFG, but we can still strip out dead paths.
-Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *PhiNode::Ideal(PhaseGVN *phase) {
   Node *r = in(0);              // RegionNode
   assert(r != NULL && r->is_Region(), "this phi must have a region");
   assert(r->in(0) == NULL || !r->in(0)->is_Root(), "not a specially hidden merge");
@@ -1897,7 +1897,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node *top = phase->C->top();
   bool new_phi = (outcnt() == 0); // transforming new Phi
   // No change for igvn if new phi is not hooked
-  if (new_phi && can_reshape)
+  if (new_phi && phase->can_reshape())
     return NULL;
 
   // The are 2 situations when only one valid phi's input is left
@@ -1913,11 +1913,11 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (rc == NULL || phase->type(rc) == Type::TOP) {
       if (n != top) {           // Not already top?
         PhaseIterGVN *igvn = phase->is_IterGVN();
-        if (can_reshape && igvn != NULL) {
+        if (phase->can_reshape()) {
           igvn->_worklist.push(r);
         }
         // Nuke it down
-        if (can_reshape) {
+        if (phase->can_reshape()) {
           set_req_X(j, top, igvn);
         } else {
           set_req(j, top);
@@ -1927,7 +1927,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  if (can_reshape && outcnt() == 0) {
+  if (phase->can_reshape() && outcnt() == 0) {
     // set_req() above may kill outputs if Phi is referenced
     // only by itself on the dead (top) control path.
     return top;
@@ -1935,7 +1935,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   bool uncasted = false;
   Node* uin = unique_input(phase, false);
-  if (uin == NULL && can_reshape &&
+  if (uin == NULL && phase->can_reshape() &&
       // If there is a chance that the region can be optimized out do
       // not add a cast node that we can't remove yet.
       !wait_for_region_igvn(phase)) {
@@ -1943,7 +1943,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     uin = unique_input(phase, true);
   }
   if (uin == top) {             // Simplest case: no alive inputs.
-    if (can_reshape)            // IGVN transformation
+    if (phase->can_reshape())   // IGVN transformation
       return top;
     else
       return NULL;              // Identity will return TOP
@@ -1954,7 +1954,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (outcnt() > 0 && r->in(0) != NULL) {
       if (is_data_loop(r->as_Region(), uin, phase)) {
         // Break this data loop to avoid creation of a dead loop.
-        if (can_reshape) {
+        if (phase->can_reshape()) {
           return top;
         } else {
           // We can't return top if we are in Parse phase - cut inputs only
@@ -1968,7 +1968,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (uncasted) {
       // Add cast nodes between the phi to be removed and its unique input.
       // Wait until after parsing for the type information to propagate from the casts.
-      assert(can_reshape, "Invalid during parsing");
+      assert(phase->can_reshape(), "Invalid during parsing");
       const Type* phi_type = bottom_type();
       assert(phi_type->isa_int() || phi_type->isa_ptr(), "bad phi type");
       // Add casts to carry the control dependency of the Phi that is
@@ -2052,7 +2052,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       opt = is_absolute(phase, this, true_path);
 
     // Check for conditional add
-    if( opt == NULL && can_reshape )
+    if (opt == NULL && phase->can_reshape())
       opt = is_cond_add(phase, this, true_path);
 
     // These 4 optimizations could subsume the phi:
@@ -2060,7 +2060,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if( opt != NULL ) {
       if( opt == unsafe_id || is_unsafe_data_reference(opt) ) {
         // Found dead loop.
-        if( can_reshape )
+        if (phase->can_reshape())
           return top;
         // We can't return top if we are in Parse phase - cut inputs only
         // to stop further optimizations for this phi. Identity will return TOP.
@@ -2075,14 +2075,14 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   }
 
   // Check for merging identical values and split flow paths
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     opt = split_flow_path(phase, this);
     // This optimization only modifies phi - don't need to check for dead loop.
     assert(opt == NULL || phase->eqv(opt, this), "do not elide phi");
     if (opt != NULL)  return opt;
   }
 
-  if (in(1) != NULL && in(1)->Opcode() == Op_AddP && can_reshape) {
+  if (in(1) != NULL && in(1)->Opcode() == Op_AddP && phase->can_reshape()) {
     // Try to undo Phi of AddP:
     // (Phi (AddP base address offset) (AddP base2 address2 offset2))
     // becomes:
@@ -2179,7 +2179,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   // (Do not attempt this optimization unless parsing is complete.
   // It would make the parser's memory-merge logic sick.)
   // (MergeMemNode is not dead_loop_safe - need to check for dead loop.)
-  if (progress == NULL && can_reshape && type() == Type::MEMORY) {
+  if (progress == NULL && phase->can_reshape() && type() == Type::MEMORY) {
     // see if this phi should be sliced
     uint merge_width = 0;
     bool saw_self = false;
@@ -2329,7 +2329,8 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 #ifdef _LP64
   // Push DecodeN/DecodeNKlass down through phi.
   // The rest of phi graph will transform by split EncodeP node though phis up.
-  if ((UseCompressedOops || UseCompressedClassPointers) && can_reshape && progress == NULL) {
+  if ((UseCompressedOops || UseCompressedClassPointers) &&
+      phase->can_reshape() && progress == NULL) {
     bool may_push = true;
     bool has_decodeN = false;
     bool is_decodeN = false;
@@ -2389,7 +2390,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 #endif
 
   // Phi (VB ... VB) => VB (Phi ...) (Phi ...)
-  if (EnableVectorReboxing && can_reshape && progress == NULL) {
+  if (EnableVectorReboxing && phase->can_reshape() && progress == NULL) {
     PhaseIterGVN* igvn = phase->is_IterGVN();
 
     bool all_inputs_are_equiv_vboxes = true;
@@ -2563,8 +2564,8 @@ const Type* PCTableNode::Value(PhaseGVN* phase) const {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node *PCTableNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node *PCTableNode::Ideal(PhaseGVN *phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //=============================================================================
@@ -2709,8 +2710,8 @@ const Type* NeverBranchNode::Value(PhaseGVN* phase) const {
 
 //------------------------------Ideal------------------------------------------
 // Check for no longer being part of a loop
-Node *NeverBranchNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (can_reshape && !in(0)->is_Loop()) {
+Node *NeverBranchNode::Ideal(PhaseGVN *phase) {
+  if (phase->can_reshape() && !in(0)->is_Loop()) {
     // Dead code elimination can sometimes delete this projection so
     // if it's not there, there's nothing to do.
     Node* fallthru = proj_out_or_null(0);

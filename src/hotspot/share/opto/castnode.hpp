@@ -46,7 +46,7 @@ class ConstraintCastNode: public TypeNode {
   }
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual int Opcode() const;
   virtual uint ideal_reg() const = 0;
   virtual bool depends_only_on_test() const { return !_carry_dependency; }
@@ -77,7 +77,7 @@ class CastIINode: public ConstraintCastNode {
   virtual uint ideal_reg() const { return Op_RegI; }
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   const bool has_range_check() {
 #ifdef _LP64
     return _range_check_dependency;
@@ -128,7 +128,7 @@ class CastX2PNode : public Node {
   CastX2PNode( Node *n ) : Node(NULL, n) {}
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase);
   virtual uint ideal_reg() const { return Op_RegP; }
   virtual const Type *bottom_type() const { return TypeRawPtr::BOTTOM; }
@@ -142,7 +142,7 @@ class CastP2XNode : public Node {
   CastP2XNode( Node *ctrl, Node *n ) : Node(ctrl, n) {}
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase);
   virtual uint ideal_reg() const { return Op_RegX; }
   virtual const Type *bottom_type() const { return TypeX_X; }

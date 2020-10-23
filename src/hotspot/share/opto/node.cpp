@@ -1161,7 +1161,7 @@ const Type* Node::Value(PhaseGVN* phase) const {
 // graph uses the 'this' Node it must be the root.  If you want a Node with
 // the same Opcode as the 'this' pointer use 'clone'.
 //
-Node *Node::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *Node::Ideal(PhaseGVN *phase) {
   return NULL;                  // Default to being Ideal already
 }
 
@@ -1441,12 +1441,12 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
 }
 
 //------------------------------remove_dead_region-----------------------------
-bool Node::remove_dead_region(PhaseGVN *phase, bool can_reshape) {
+bool Node::remove_dead_region(PhaseGVN *phase) {
   Node *n = in(0);
   if( !n ) return false;
   // Lost control into this guy?  I.e., it became unreachable?
   // Aggressively kill all unreachable code.
-  if (can_reshape && n->is_top()) {
+  if (phase->can_reshape() && n->is_top()) {
     kill_dead_code(this, phase->is_IterGVN());
     return false; // Node is dead.
   }

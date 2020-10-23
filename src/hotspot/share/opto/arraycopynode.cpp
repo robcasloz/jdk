@@ -171,7 +171,7 @@ void ArrayCopyNode::store(BarrierSetC2* bs, PhaseGVN *phase, Node*& ctl, MergeMe
 }
 
 
-Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int count) {
+Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, int count) {
   if (!is_clonebasic()) {
     return NULL;
   }
@@ -225,7 +225,7 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
     store(bs, phase, ctl, mem, next_dest, adr_type, v, type, bt);
   }
 
-  if (!finish_transform(phase, can_reshape, ctl, mem)) {
+  if (!finish_transform(phase, ctl, mem)) {
     // Return NodeSentinel to indicate that the transform failed
     return NodeSentinel;
   }
@@ -233,7 +233,7 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
   return mem;
 }
 
-bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
+bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase,
                                        Node*& adr_src,
                                        Node*& base_src,
                                        Node*& adr_dest,
@@ -345,7 +345,7 @@ const TypePtr* ArrayCopyNode::get_address_type(PhaseGVN* phase, const TypePtr* a
   return atp->add_offset(Type::OffsetBot);
 }
 
-void ArrayCopyNode::array_copy_test_overlap(PhaseGVN *phase, bool can_reshape, bool disjoint_bases, int count, Node*& forward_ctl, Node*& backward_ctl) {
+void ArrayCopyNode::array_copy_test_overlap(PhaseGVN *phase, bool disjoint_bases, int count, Node*& forward_ctl, Node*& backward_ctl) {
   Node* ctl = in(TypeFunc::Control);
   if (!disjoint_bases && count > 1) {
     Node* src_offset = in(ArrayCopyNode::SrcPos);
@@ -365,7 +365,6 @@ void ArrayCopyNode::array_copy_test_overlap(PhaseGVN *phase, bool can_reshape, b
 }
 
 Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
-                                        bool can_reshape,
                                         Node*& forward_ctl,
                                         MergeMemNode* mm,
                                         const TypePtr* atp_src,
@@ -392,7 +391,7 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
         v = load(bs, phase, forward_ctl, mm, next_src, atp_src, value_type, copy_type);
         store(bs, phase, forward_ctl, mm, next_dest, atp_dest, v, value_type, copy_type);
       }
-    } else if(can_reshape) {
+    } else if (phase->can_reshape()) {
       PhaseIterGVN* igvn = phase->is_IterGVN();
       igvn->_worklist.push(adr_src);
       igvn->_worklist.push(adr_dest);
@@ -403,7 +402,6 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
 }
 
 Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
-                                         bool can_reshape,
                                          Node*& backward_ctl,
                                          MergeMemNode* mm,
                                          const TypePtr* atp_src,
@@ -432,7 +430,7 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
       }
       Node* v = load(bs, phase, backward_ctl, mm, adr_src, atp_src, value_type, copy_type);
       store(bs, phase, backward_ctl, mm, adr_dest, atp_dest, v, value_type, copy_type);
-    } else if(can_reshape) {
+    } else if (phase->can_reshape()) {
       PhaseIterGVN* igvn = phase->is_IterGVN();
       igvn->_worklist.push(adr_src);
       igvn->_worklist.push(adr_dest);
@@ -442,9 +440,8 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
   return phase->C->top();
 }
 
-bool ArrayCopyNode::finish_transform(PhaseGVN *phase, bool can_reshape,
-                                     Node* ctl, Node *mem) {
-  if (can_reshape) {
+bool ArrayCopyNode::finish_transform(PhaseGVN *phase, Node* ctl, Node *mem) {
+  if (phase->can_reshape()) {
     PhaseIterGVN* igvn = phase->is_IterGVN();
     igvn->set_delay_transform(false);
     if (is_clonebasic()) {
@@ -484,7 +481,7 @@ bool ArrayCopyNode::finish_transform(PhaseGVN *phase, bool can_reshape,
       // eventually removed.
 
       set_req(0, phase->C->top());
-      remove_dead_region(phase, can_reshape);
+      remove_dead_region(phase);
     }
   } else {
     if (in(TypeFunc::Control) != ctl) {
@@ -498,10 +495,10 @@ bool ArrayCopyNode::finish_transform(PhaseGVN *phase, bool can_reshape,
 }
 
 
-Node *ArrayCopyNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (remove_dead_region(phase, can_reshape))  return this;
+Node *ArrayCopyNode::Ideal(PhaseGVN *phase) {
+  if (remove_dead_region(phase)) return this;
 
-  if (StressArrayCopyMacroNode && !can_reshape) {
+  if (StressArrayCopyMacroNode && !phase->can_reshape()) {
     phase->record_for_igvn(this);
     return NULL;
   }
@@ -541,7 +538,7 @@ Node *ArrayCopyNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return NULL;
   }
 
-  Node* mem = try_clone_instance(phase, can_reshape, count);
+  Node* mem = try_clone_instance(phase, count);
   if (mem != NULL) {
     return (mem == NodeSentinel) ? NULL : mem;
   }
@@ -554,7 +551,7 @@ Node *ArrayCopyNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   const Type* value_type = NULL;
   bool disjoint_bases = false;
 
-  if (!prepare_array_copy(phase, can_reshape,
+  if (!prepare_array_copy(phase,
                           adr_src, base_src, adr_dest, base_dest,
                           copy_type, value_type, disjoint_bases)) {
     return NULL;
@@ -570,22 +567,22 @@ Node *ArrayCopyNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     in_mem = MergeMemNode::make(in_mem);
   }
 
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     assert(!phase->is_IterGVN()->delay_transform(), "cannot delay transforms");
     phase->is_IterGVN()->set_delay_transform(true);
   }
 
   Node* backward_ctl = phase->C->top();
   Node* forward_ctl = phase->C->top();
-  array_copy_test_overlap(phase, can_reshape, disjoint_bases, count, forward_ctl, backward_ctl);
+  array_copy_test_overlap(phase, disjoint_bases, count, forward_ctl, backward_ctl);
 
-  Node* forward_mem = array_copy_forward(phase, can_reshape, forward_ctl,
+  Node* forward_mem = array_copy_forward(phase, forward_ctl,
                                          in_mem->as_MergeMem(),
                                          atp_src, atp_dest,
                                          adr_src, base_src, adr_dest, base_dest,
                                          copy_type, value_type, count);
 
-  Node* backward_mem = array_copy_backward(phase, can_reshape, backward_ctl,
+  Node* backward_mem = array_copy_backward(phase, backward_ctl,
                                            in_mem->as_MergeMem(),
                                            atp_src, atp_dest,
                                            adr_src, base_src, adr_dest, base_dest,
@@ -618,12 +615,12 @@ Node *ArrayCopyNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     mem = backward_mem;
   }
 
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     assert(phase->is_IterGVN()->delay_transform(), "should be delaying transforms");
     phase->is_IterGVN()->set_delay_transform(false);
   }
 
-  if (!finish_transform(phase, can_reshape, ctl, mem)) {
+  if (!finish_transform(phase, ctl, mem)) {
     return NULL;
   }
 

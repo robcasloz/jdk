@@ -43,7 +43,7 @@ public:
   virtual const Node *is_block_proj() const { return this; }
   virtual const Type *bottom_type() const { return Type::BOTTOM; }
   virtual Node* Identity(PhaseGVN* phase) { return this; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const { return Type::BOTTOM; }
 };
 
@@ -56,7 +56,7 @@ public:
   HaltNode(Node* ctrl, Node* frameptr, const char* halt_reason, bool reachable = true);
   virtual int Opcode() const;
   virtual bool  pinned() const { return true; };
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual const Type *bottom_type() const;
   virtual bool  is_CFG() const { return true; }

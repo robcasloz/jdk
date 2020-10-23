@@ -144,7 +144,7 @@ class ProfileBooleanNode : public Node {
   void consume() { _consumed = true;  }
 
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type *bottom_type() const { return TypeInt::BOOL; }
 };

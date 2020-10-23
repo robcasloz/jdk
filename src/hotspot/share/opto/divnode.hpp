@@ -45,7 +45,7 @@ public:
   DivINode( Node *c, Node *dividend, Node *divisor ) : Node(c, dividend, divisor ) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual const Type *bottom_type() const { return TypeInt::INT; }
   virtual uint ideal_reg() const { return Op_RegI; }
@@ -58,7 +58,7 @@ public:
   DivLNode( Node *c, Node *dividend, Node *divisor ) : Node(c, dividend, divisor ) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual const Type *bottom_type() const { return TypeLong::LONG; }
   virtual uint ideal_reg() const { return Op_RegL; }
@@ -71,7 +71,7 @@ public:
   DivFNode( Node *c, Node *dividend, Node *divisor ) : Node(c, dividend, divisor) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual const Type *bottom_type() const { return Type::FLOAT; }
   virtual uint ideal_reg() const { return Op_RegF; }
@@ -84,7 +84,7 @@ public:
   DivDNode( Node *c, Node *dividend, Node *divisor ) : Node(c,dividend, divisor) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual const Type *bottom_type() const { return Type::DOUBLE; }
   virtual uint ideal_reg() const { return Op_RegD; }
@@ -97,7 +97,7 @@ public:
   ModINode( Node *c, Node *in1, Node *in2 ) : Node(c,in1, in2) {}
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *bottom_type() const { return TypeInt::INT; }
   virtual uint ideal_reg() const { return Op_RegI; }
 };
@@ -109,7 +109,7 @@ public:
   ModLNode( Node *c, Node *in1, Node *in2 ) : Node(c,in1, in2) {}
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *bottom_type() const { return TypeLong::LONG; }
   virtual uint ideal_reg() const { return Op_RegL; }
 };
@@ -148,7 +148,7 @@ public:
   };
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase) { return this; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) { return NULL; }
+  virtual Node *Ideal(PhaseGVN *phase) { return NULL; }
   virtual const Type* Value(PhaseGVN* phase)  const { return bottom_type(); }
   virtual uint hash() const { return Node::hash(); }
   virtual bool is_CFG() const  { return false; }

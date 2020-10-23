@@ -138,7 +138,7 @@ public:
   virtual void verify_gc_barriers(Compile* compile, CompilePhase phase) const;
 #endif
 
-  virtual Node* ideal_node(PhaseGVN* phase, Node* n, bool can_reshape) const;
+  virtual Node* ideal_node(PhaseGVN* phase, Node* n) const;
   virtual bool final_graph_reshaping(Compile* compile, Node* n, uint opcode) const;
 
   virtual bool escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseGVN* gvn, Unique_Node_List* delayed_worklist, Node* n, uint opcode) const;

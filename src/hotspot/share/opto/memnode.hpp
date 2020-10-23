@@ -111,7 +111,7 @@ public:
   virtual const class TypePtr *adr_type() const;  // returns bottom_type of address
 
   // Shared code for Ideal methods:
-  Node *Ideal_common(PhaseGVN *phase, bool can_reshape);  // Return -1 for short-circuit NULL.
+  Node *Ideal_common(PhaseGVN *phase);  // Return -1 for short-circuit NULL.
 
   // Helper function for adr_type() implementations.
   static const TypePtr* calculate_adr_type(const Type* t, const TypePtr* cross_check = NULL);
@@ -242,7 +242,7 @@ public:
   // zero out the control input.
   // If the offset is constant and the base is an object allocation,
   // try to hook me up to the exact initializing store.
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   // Split instance field load through Phi.
   Node* split_through_phi(PhaseGVN *phase);
@@ -320,7 +320,7 @@ public:
     : LoadNode(c, mem, adr, at, ti, mo, control_dependency) {}
   virtual int Opcode() const;
   virtual uint ideal_reg() const { return Op_RegI; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual int store_Opcode() const { return Op_StoreB; }
   virtual BasicType memory_type() const { return T_BYTE; }
@@ -334,7 +334,7 @@ public:
     : LoadNode(c, mem, adr, at, ti, mo, control_dependency) {}
   virtual int Opcode() const;
   virtual uint ideal_reg() const { return Op_RegI; }
-  virtual Node* Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual int store_Opcode() const { return Op_StoreB; }
   virtual BasicType memory_type() const { return T_BYTE; }
@@ -348,7 +348,7 @@ public:
     : LoadNode(c, mem, adr, at, ti, mo, control_dependency) {}
   virtual int Opcode() const;
   virtual uint ideal_reg() const { return Op_RegI; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual int store_Opcode() const { return Op_StoreC; }
   virtual BasicType memory_type() const { return T_CHAR; }
@@ -362,7 +362,7 @@ public:
     : LoadNode(c, mem, adr, at, ti, mo, control_dependency) {}
   virtual int Opcode() const;
   virtual uint ideal_reg() const { return Op_RegI; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual int store_Opcode() const { return Op_StoreC; }
   virtual BasicType memory_type() const { return T_SHORT; }
@@ -389,7 +389,7 @@ public:
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 };
 
 //------------------------------LoadLNode--------------------------------------
@@ -614,7 +614,7 @@ public:
 
   // If the store is to Field memory and the pointer is non-null, we can
   // zero out the control input.
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   // Compute a new Type for this node.  Basically we just do the pre-check,
   // then call the virtual add() to set the type.
@@ -644,7 +644,7 @@ public:
   StoreBNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, MemOrd mo)
     : StoreNode(c, mem, adr, at, val, mo) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual BasicType memory_type() const { return T_BYTE; }
 };
 
@@ -655,7 +655,7 @@ public:
   StoreCNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, MemOrd mo)
     : StoreNode(c, mem, adr, at, val, mo) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual BasicType memory_type() const { return T_CHAR; }
 };
 
@@ -786,7 +786,7 @@ public:
   }
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual BasicType memory_type() const { return T_VOID; } // unspecific
   int oop_alias_idx() const { return _oop_alias_idx; }
@@ -1135,7 +1135,7 @@ public:
   // array memory addressed by the bottom_type of its base address.
   virtual const class TypePtr *adr_type() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint match_edge(uint idx) const;
   bool is_large() const { return _is_large; }
 
@@ -1199,7 +1199,7 @@ public:
   virtual int Opcode() const = 0;
   virtual const class TypePtr *adr_type() const { return _adr_type; }
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint match_edge(uint idx) const { return 0; }
   virtual const Type *bottom_type() const { return TypeTuple::MEMBAR; }
   virtual Node *match( const ProjNode *proj, const Matcher *m );
@@ -1389,11 +1389,11 @@ public:
 
   // See if this store can be captured; return offset where it initializes.
   // Return 0 if the store cannot be moved (any sort of problem).
-  intptr_t can_capture_store(StoreNode* st, PhaseGVN* phase, bool can_reshape);
+  intptr_t can_capture_store(StoreNode* st, PhaseGVN* phase);
 
   // Capture another store; reformat it to write my internal raw memory.
   // Return the captured copy, else NULL if there is some sort of problem.
-  Node* capture_store(StoreNode* st, intptr_t start, PhaseGVN* phase, bool can_reshape);
+  Node* capture_store(StoreNode* st, intptr_t start, PhaseGVN* phase);
 
   // Find captured store which corresponds to the range [start..start+size).
   // Return my own memory projection (meaning the initial zero bits)
@@ -1440,7 +1440,7 @@ public:
 
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint ideal_reg() const { return NotAMachineReg; }
   virtual uint match_edge(uint idx) const { return 0; }
   virtual const RegMask &out_RegMask() const;

@@ -47,7 +47,7 @@ public:
   typedef TypeInt TypeClass;
 
   OverflowINode(Node* in1, Node* in2) : OverflowNode(in1, in2) {}
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
 
   virtual bool will_overflow(jint v1, jint v2) const = 0;
@@ -60,7 +60,7 @@ public:
   typedef TypeLong TypeClass;
 
   OverflowLNode(Node* in1, Node* in2) : OverflowNode(in1, in2) {}
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
 
   virtual bool will_overflow(jlong v1, jlong v2) const = 0;

@@ -981,7 +981,7 @@ public:
   // The invariants on this call are subtle.  If in doubt, read the
   // treatise in node.cpp above the default implemention AND TEST WITH
   // +VerifyIterativeGVN!
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   // Some nodes have specific Ideal subgraph transformations only if they are
   // unique users of specific nodes. Such nodes should be put on IGVN worklist
@@ -995,7 +995,7 @@ public:
   bool dominates(Node* sub, Node_List &nlist);
 
 protected:
-  bool remove_dead_region(PhaseGVN *phase, bool can_reshape);
+  bool remove_dead_region(PhaseGVN *phase);
 public:
 
   // See if there is valid pipeline info

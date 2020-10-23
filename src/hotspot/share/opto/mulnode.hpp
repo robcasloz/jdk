@@ -51,7 +51,7 @@ public:
 
   // We also canonicalize the Node, moving constants to the right input,
   // and flatten expressions (so that 1+x+2 becomes x+3).
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   // Compute a new Type for this node.  Basically we just do the pre-check,
   // then call the virtual add() to set the type.
@@ -83,7 +83,7 @@ class MulINode : public MulNode {
 public:
   MulINode( Node *in1, Node *in2 ) : MulNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *mul_ring( const Type *, const Type * ) const;
   const Type *mul_id() const { return TypeInt::ONE; }
   const Type *add_id() const { return TypeInt::ZERO; }
@@ -99,7 +99,7 @@ class MulLNode : public MulNode {
 public:
   MulLNode( Node *in1, Node *in2 ) : MulNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *mul_ring( const Type *, const Type * ) const;
   const Type *mul_id() const { return TypeLong::ONE; }
   const Type *add_id() const { return TypeLong::ZERO; }
@@ -158,7 +158,7 @@ class AndINode : public MulINode {
 public:
   AndINode( Node *in1, Node *in2 ) : MulINode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type *mul_ring( const Type *, const Type * ) const;
   const Type *mul_id() const { return TypeInt::MINUS_1; }
@@ -175,7 +175,7 @@ class AndLNode : public MulLNode {
 public:
   AndLNode( Node *in1, Node *in2 ) : MulLNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type *mul_ring( const Type *, const Type * ) const;
   const Type *mul_id() const { return TypeLong::MINUS_1; }
@@ -192,7 +192,7 @@ public:
   LShiftINode( Node *in1, Node *in2 ) : Node(0,in1,in2) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   const Type *bottom_type() const { return TypeInt::INT; }
   virtual uint ideal_reg() const { return Op_RegI; }
@@ -205,7 +205,7 @@ public:
   LShiftLNode( Node *in1, Node *in2 ) : Node(0,in1,in2) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   const Type *bottom_type() const { return TypeLong::LONG; }
   virtual uint ideal_reg() const { return Op_RegL; }
@@ -241,7 +241,7 @@ public:
   RShiftINode( Node *in1, Node *in2 ) : Node(0,in1,in2) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   const Type *bottom_type() const { return TypeInt::INT; }
   virtual uint ideal_reg() const { return Op_RegI; }
@@ -286,7 +286,7 @@ public:
   URShiftINode( Node *in1, Node *in2 ) : Node(0,in1,in2) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   const Type *bottom_type() const { return TypeInt::INT; }
   virtual uint ideal_reg() const { return Op_RegI; }
@@ -299,7 +299,7 @@ public:
   URShiftLNode( Node *in1, Node *in2 ) : Node(0,in1,in2) {}
   virtual int Opcode() const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   const Type *bottom_type() const { return TypeLong::LONG; }
   virtual uint ideal_reg() const { return Op_RegL; }

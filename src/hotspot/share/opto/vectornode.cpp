@@ -1144,7 +1144,7 @@ Node* VectorNode::degenerate_vector_rotate(Node* src, Node* cnt, bool is_rotate_
                      vt);
 }
 
-Node* RotateLeftVNode::Ideal(PhaseGVN* phase, bool can_reshape) {
+Node* RotateLeftVNode::Ideal(PhaseGVN* phase) {
   int vlen = length();
   BasicType bt = vect_type()->element_basic_type();
   if (!Matcher::match_rule_supported_vector(Op_RotateLeftV, vlen, bt)) {
@@ -1153,7 +1153,7 @@ Node* RotateLeftVNode::Ideal(PhaseGVN* phase, bool can_reshape) {
   return NULL;
 }
 
-Node* RotateRightVNode::Ideal(PhaseGVN* phase, bool can_reshape) {
+Node* RotateRightVNode::Ideal(PhaseGVN* phase) {
   int vlen = length();
   BasicType bt = vect_type()->element_basic_type();
   if (!Matcher::match_rule_supported_vector(Op_RotateRightV, vlen, bt)) {

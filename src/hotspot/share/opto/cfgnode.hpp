@@ -99,7 +99,7 @@ public:
   virtual const Type* bottom_type() const { return Type::CONTROL; }
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
   virtual const RegMask &out_RegMask() const;
   bool try_clean_mem_phi(PhaseGVN* phase);
   bool optimize_trichotomy(PhaseIterGVN* igvn);
@@ -217,7 +217,7 @@ public:
 
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const RegMask &out_RegMask() const;
   virtual const RegMask &in_RegMask(uint) const;
 #ifndef PRODUCT
@@ -304,7 +304,7 @@ private:
 
 protected:
   ProjNode* range_check_trap_proj(int& flip, Node*& l, Node*& r);
-  Node* Ideal_common(PhaseGVN *phase, bool can_reshape);
+  Node* Ideal_common(PhaseGVN *phase);
   Node* search_identical(int dist);
 
   Node* simple_subsuming(PhaseIterGVN* igvn);
@@ -388,7 +388,7 @@ public:
   virtual int Opcode() const;
   virtual bool pinned() const { return true; }
   virtual const Type *bottom_type() const { return TypeTuple::IFBOTH; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual int required_outcnt() const { return 2; }
   virtual const RegMask &out_RegMask() const;
@@ -418,7 +418,7 @@ public:
   }
 
   virtual int Opcode() const;
-  virtual Node* Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN *phase);
 };
 
 class IfProjNode : public CProjNode {
@@ -479,7 +479,7 @@ public:
   }
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *bottom_type() const;
   virtual bool pinned() const { return true; }
   virtual int required_outcnt() const { return _size; }
@@ -607,7 +607,7 @@ public:
   virtual bool pinned() const { return true; };
   virtual const Type *bottom_type() const { return TypeTuple::IFBOTH; }
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual int required_outcnt() const { return 2; }
   virtual void emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const { }
   virtual uint size(PhaseRegAlloc *ra_) const { return 0; }

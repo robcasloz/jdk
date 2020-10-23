@@ -1042,14 +1042,14 @@ void ShenandoahBarrierSetC2::verify_gc_barriers(Compile* compile, CompilePhase p
 }
 #endif
 
-Node* ShenandoahBarrierSetC2::ideal_node(PhaseGVN* phase, Node* n, bool can_reshape) const {
+Node* ShenandoahBarrierSetC2::ideal_node(PhaseGVN* phase, Node* n) const {
   if (is_shenandoah_wb_pre_call(n)) {
     uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
     if (n->req() > cnt) {
       Node* addp = n->in(cnt);
       if (has_only_shenandoah_wb_pre_uses(addp)) {
         n->del_req(cnt);
-        if (can_reshape) {
+        if (phase->can_reshape()) {
           phase->is_IterGVN()->_worklist.push(addp);
         }
         return n;
@@ -1085,7 +1085,7 @@ Node* ShenandoahBarrierSetC2::ideal_node(PhaseGVN* phase, Node* n, bool can_resh
       }
       return n;
     }
-  } else if (can_reshape &&
+  } else if (phase->can_reshape() &&
              n->Opcode() == Op_If &&
              ShenandoahBarrierC2Support::is_heap_stable_test(n) &&
              n->in(0) != NULL) {

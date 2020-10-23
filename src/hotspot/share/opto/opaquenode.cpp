@@ -90,8 +90,8 @@ bool ProfileBooleanNode::cmp( const Node &n ) const {
   return (&n == this);
 }
 
-Node *ProfileBooleanNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (can_reshape && _delay_removal) {
+Node *ProfileBooleanNode::Ideal(PhaseGVN *phase) {
+  if (phase->can_reshape() && _delay_removal) {
     _delay_removal = false;
     return this;
   } else {

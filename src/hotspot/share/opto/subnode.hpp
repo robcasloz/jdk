@@ -70,7 +70,7 @@ class SubINode : public SubNode {
 public:
   SubINode( Node *in1, Node *in2 ) : SubNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
   const Type *add_id() const { return TypeInt::ZERO; }
   const Type *bottom_type() const { return TypeInt::INT; }
@@ -83,7 +83,7 @@ class SubLNode : public SubNode {
 public:
   SubLNode( Node *in1, Node *in2 ) : SubNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
   const Type *add_id() const { return TypeLong::ZERO; }
   const Type *bottom_type() const { return TypeLong::LONG; }
@@ -107,7 +107,7 @@ class SubFNode : public SubFPNode {
 public:
   SubFNode( Node *in1, Node *in2 ) : SubFPNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
   const Type   *add_id() const { return TypeF::ZERO; }
   const Type   *bottom_type() const { return Type::FLOAT; }
@@ -121,7 +121,7 @@ class SubDNode : public SubFPNode {
 public:
   SubDNode( Node *in1, Node *in2 ) : SubFPNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
   const Type   *add_id() const { return TypeD::ZERO; }
   const Type   *bottom_type() const { return Type::DOUBLE; }
@@ -154,7 +154,7 @@ class CmpINode : public CmpNode {
 public:
   CmpINode( Node *in1, Node *in2 ) : CmpNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
 };
 
@@ -175,7 +175,7 @@ class CmpPNode : public CmpNode {
 public:
   CmpPNode( Node *in1, Node *in2 ) : CmpNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
 };
 
@@ -185,7 +185,7 @@ class CmpNNode : public CmpNode {
 public:
   CmpNNode( Node *in1, Node *in2 ) : CmpNode(in1,in2) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
 };
 
@@ -195,7 +195,7 @@ class CmpLNode : public CmpNode {
 public:
   CmpLNode( Node *in1, Node *in2 ) : CmpNode(in1,in2) {}
   virtual int    Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type *sub( const Type *, const Type * ) const;
 };
 
@@ -258,7 +258,7 @@ public:
   virtual int Opcode() const;
   virtual const Type *sub( const Type *, const Type * ) const { ShouldNotReachHere(); return NULL; }
   const Type* Value(PhaseGVN* phase) const;
-  virtual Node  *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node  *Ideal(PhaseGVN *phase);
 };
 
 //------------------------------CmpD3Node--------------------------------------
@@ -319,7 +319,7 @@ public:
   // Invert sense of self, returning new Bool.
   BoolNode* negate(PhaseGVN* phase);
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual const Type *bottom_type() const { return TypeInt::BOOL; }
   uint match_edge(uint idx) const { return 0; }

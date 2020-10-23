@@ -103,7 +103,7 @@ const Type* SubTypeCheckNode::sub(const Type* sub_t, const Type* super_t) const 
   return bottom_type();
 }
 
-Node *SubTypeCheckNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *SubTypeCheckNode::Ideal(PhaseGVN *phase) {
   Node* obj_or_subklass = in(ObjOrSubKlass);
   Node* superklass = in(SuperKlass);
 

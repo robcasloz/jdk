@@ -282,10 +282,10 @@ static Node *step_through_mergemem(PhaseGVN *phase, MergeMemNode *mmem,  const T
 //--------------------------Ideal_common---------------------------------------
 // Look for degenerate control and memory inputs.  Bypass MergeMem inputs.
 // Unhook non-raw memories from complete (macro-expanded) initializations.
-Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
+Node *MemNode::Ideal_common(PhaseGVN *phase) {
   // If our control input is a dead region, kill all below the region
   Node *ctl = in(MemNode::Control);
-  if (ctl && remove_dead_region(phase, can_reshape))
+  if (ctl && remove_dead_region(phase))
     return this;
   ctl = in(MemNode::Control);
   // Don't bother trying to transform a dead node
@@ -293,7 +293,7 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
 
   PhaseIterGVN *igvn = phase->is_IterGVN();
   // Wait if control on the worklist.
-  if (ctl && can_reshape && igvn != NULL) {
+  if (ctl && phase->can_reshape()) {
     Node* bol = NULL;
     Node* cmp = NULL;
     if (ctl->in(0)->is_If()) {
@@ -316,7 +316,7 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
   if (phase->type( mem ) == Type::TOP) return NodeSentinel; // caller will return NULL
   assert(mem != this, "dead loop in MemNode::Ideal");
 
-  if (can_reshape && igvn != NULL && igvn->_worklist.member(mem)) {
+  if (phase->can_reshape() && igvn->_worklist.member(mem)) {
     // This memory slice may be dead.
     // Delay this mem node transformation until the memory is processed.
     phase->is_IterGVN()->_worklist.push(this);
@@ -327,7 +327,7 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
   const Type *t_adr = phase->type(address);
   if (t_adr == Type::TOP)              return NodeSentinel; // caller will return NULL
 
-  if (can_reshape && is_unsafe_access() && (t_adr == TypePtr::NULL_PTR)) {
+  if (phase->can_reshape() && is_unsafe_access() && (t_adr == TypePtr::NULL_PTR)) {
     // Unsafe off-heap access with zero address. Remove access and other control users
     // to not confuse optimizations and add a HaltNode to fail if this is ever executed.
     assert(ctl != NULL, "unsafe accesses should be control dependent");
@@ -345,7 +345,7 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
     return this;
   }
 
-  if (can_reshape && igvn != NULL &&
+  if (phase->can_reshape() &&
       (igvn->_worklist.member(address) ||
        (igvn->_worklist.size() > 0 && t_adr != adr_type())) ) {
     // The address's base and type may change when the address is processed.
@@ -392,7 +392,7 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
 
   if (mem != old_mem) {
     set_req(MemNode::Memory, mem);
-    if (can_reshape && old_mem->outcnt() == 0 && igvn != NULL) {
+    if (phase->can_reshape() && old_mem->outcnt() == 0 && igvn != NULL) {
       igvn->_worklist.push(old_mem);
     }
     if (phase->type(mem) == Type::TOP) return NodeSentinel;
@@ -1613,8 +1613,8 @@ AllocateNode* LoadNode::is_new_object_mark_load(PhaseGVN *phase) const {
 // zero out the control input.
 // If the offset is constant and the base is an object allocation,
 // try to hook me up to the exact initializing store.
-Node *LoadNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  Node* p = MemNode::Ideal_common(phase, can_reshape);
+Node *LoadNode::Ideal(PhaseGVN *phase) {
+  Node* p = MemNode::Ideal_common(phase);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
   Node* ctrl    = in(MemNode::Control);
@@ -1653,7 +1653,7 @@ Node *LoadNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* mem = in(MemNode::Memory);
   const TypePtr *addr_t = phase->type(address)->isa_ptr();
 
-  if (can_reshape && (addr_t != NULL)) {
+  if (phase->can_reshape() && (addr_t != NULL)) {
     // try to optimize our memory input
     Node* opt_mem = MemNode::optimize_memory_chain(mem, addr_t, this, phase);
     if (opt_mem != mem) {
@@ -1685,7 +1685,7 @@ Node *LoadNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   // Is there a dominating load that loads the same value?  Leave
   // anything that is not a load of a field/array element (like
   // barriers etc.) alone
-  if (in(0) != NULL && !adr_type()->isa_rawptr() && can_reshape) {
+  if (in(0) != NULL && !adr_type()->isa_rawptr() && phase->can_reshape()) {
     for (DUIterator_Fast imax, i = mem->fast_outs(imax); i < imax; i++) {
       Node *use = mem->fast_out(i);
       if (use != this &&
@@ -2023,7 +2023,7 @@ uint LoadNode::match_edge(uint idx) const {
 //  with the value stored truncated to a byte.  If no truncation is
 //  needed, the replacement is done in LoadNode::Identity().
 //
-Node *LoadBNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LoadBNode::Ideal(PhaseGVN *phase) {
   Node* mem = in(MemNode::Memory);
   Node* value = can_see_stored_value(mem,phase);
   if( value && !phase->type(value)->higher_equal( _type ) ) {
@@ -2031,7 +2031,7 @@ Node *LoadBNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return new RShiftINode(result, phase->intcon(24));
   }
   // Identity call will handle the case where truncation is not needed.
-  return LoadNode::Ideal(phase, can_reshape);
+  return LoadNode::Ideal(phase);
 }
 
 const Type* LoadBNode::Value(PhaseGVN* phase) const {
@@ -2055,13 +2055,13 @@ const Type* LoadBNode::Value(PhaseGVN* phase) const {
 //  with the value stored truncated to a byte.  If no truncation is
 //  needed, the replacement is done in LoadNode::Identity().
 //
-Node* LoadUBNode::Ideal(PhaseGVN* phase, bool can_reshape) {
+Node* LoadUBNode::Ideal(PhaseGVN* phase) {
   Node* mem = in(MemNode::Memory);
   Node* value = can_see_stored_value(mem, phase);
   if (value && !phase->type(value)->higher_equal(_type))
     return new AndINode(value, phase->intcon(0xFF));
   // Identity call will handle the case where truncation is not needed.
-  return LoadNode::Ideal(phase, can_reshape);
+  return LoadNode::Ideal(phase);
 }
 
 const Type* LoadUBNode::Value(PhaseGVN* phase) const {
@@ -2085,13 +2085,13 @@ const Type* LoadUBNode::Value(PhaseGVN* phase) const {
 //  with the value stored truncated to a char.  If no truncation is
 //  needed, the replacement is done in LoadNode::Identity().
 //
-Node *LoadUSNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LoadUSNode::Ideal(PhaseGVN *phase) {
   Node* mem = in(MemNode::Memory);
   Node* value = can_see_stored_value(mem,phase);
   if( value && !phase->type(value)->higher_equal( _type ) )
     return new AndINode(value,phase->intcon(0xFFFF));
   // Identity call will handle the case where truncation is not needed.
-  return LoadNode::Ideal(phase, can_reshape);
+  return LoadNode::Ideal(phase);
 }
 
 const Type* LoadUSNode::Value(PhaseGVN* phase) const {
@@ -2115,7 +2115,7 @@ const Type* LoadUSNode::Value(PhaseGVN* phase) const {
 //  with the value stored truncated to a short.  If no truncation is
 //  needed, the replacement is done in LoadNode::Identity().
 //
-Node *LoadSNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LoadSNode::Ideal(PhaseGVN *phase) {
   Node* mem = in(MemNode::Memory);
   Node* value = can_see_stored_value(mem,phase);
   if( value && !phase->type(value)->higher_equal( _type ) ) {
@@ -2123,7 +2123,7 @@ Node *LoadSNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return new RShiftINode(result, phase->intcon(16));
   }
   // Identity call will handle the case where truncation is not needed.
-  return LoadNode::Ideal(phase, can_reshape);
+  return LoadNode::Ideal(phase);
 }
 
 const Type* LoadSNode::Value(PhaseGVN* phase) const {
@@ -2408,8 +2408,8 @@ const Type* LoadRangeNode::Value(PhaseGVN* phase) const {
 
 //-------------------------------Ideal---------------------------------------
 // Feed through the length in AllocateArray(...length...)._length.
-Node *LoadRangeNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  Node* p = MemNode::Ideal_common(phase, can_reshape);
+Node *LoadRangeNode::Ideal(PhaseGVN *phase) {
+  Node* p = MemNode::Ideal_common(phase);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
   // Take apart the address into an oop and and offset.
@@ -2542,8 +2542,8 @@ uint StoreNode::hash() const {
 // Change back-to-back Store(, p, x) -> Store(m, p, y) to Store(m, p, x).
 // When a store immediately follows a relevant allocation/initialization,
 // try to capture it into the initialization, or hoist it above.
-Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  Node* p = MemNode::Ideal_common(phase, can_reshape);
+Node *StoreNode::Ideal(PhaseGVN *phase) {
+  Node* p = MemNode::Ideal_common(phase);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
   Node* mem     = in(MemNode::Memory);
@@ -2579,7 +2579,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
           st->as_Store()->memory_size() <= this->memory_size()) {
         Node* use = st->raw_out(0);
         phase->igvn_rehash_node_delayed(use);
-        if (can_reshape) {
+        if (phase->can_reshape()) {
           use->set_req_X(MemNode::Memory, st->in(MemNode::Memory), phase->is_IterGVN());
         } else {
           // It's OK to do this in the parser, since DU info is always accurate,
@@ -2595,12 +2595,12 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   // Capture an unaliased, unconditional, simple store into an initializer.
   // Or, if it is independent of the allocation, hoist it above the allocation.
-  if (ReduceFieldZeroing && /*can_reshape &&*/
+  if (ReduceFieldZeroing && /*phase->can_reshape() &&*/
       mem->is_Proj() && mem->in(0)->is_Initialize()) {
     InitializeNode* init = mem->in(0)->as_Initialize();
-    intptr_t offset = init->can_capture_store(this, phase, can_reshape);
+    intptr_t offset = init->can_capture_store(this, phase);
     if (offset > 0) {
-      Node* moved = init->capture_store(this, offset, phase, can_reshape);
+      Node* moved = init->capture_store(this, offset, phase);
       // If the InitializeNode captured me, it made a raw copy of me,
       // and I need to disappear.
       if (moved != NULL) {
@@ -2801,7 +2801,7 @@ MemBarNode* StoreNode::trailing_membar() const {
 // If the store is from an AND mask that leaves the low bits untouched, then
 // we can skip the AND operation.  If the store is from a sign-extension
 // (a left shift, then right shift) we can skip both.
-Node *StoreBNode::Ideal(PhaseGVN *phase, bool can_reshape){
+Node *StoreBNode::Ideal(PhaseGVN *phase) {
   Node *progress = StoreNode::Ideal_masked_input(phase, 0xFF);
   if( progress != NULL ) return progress;
 
@@ -2809,14 +2809,14 @@ Node *StoreBNode::Ideal(PhaseGVN *phase, bool can_reshape){
   if( progress != NULL ) return progress;
 
   // Finally check the default case
-  return StoreNode::Ideal(phase, can_reshape);
+  return StoreNode::Ideal(phase);
 }
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
 // If the store is from an AND mask that leaves the low bits untouched, then
 // we can skip the AND operation
-Node *StoreCNode::Ideal(PhaseGVN *phase, bool can_reshape){
+Node *StoreCNode::Ideal(PhaseGVN *phase) {
   Node *progress = StoreNode::Ideal_masked_input(phase, 0xFFFF);
   if( progress != NULL ) return progress;
 
@@ -2824,7 +2824,7 @@ Node *StoreCNode::Ideal(PhaseGVN *phase, bool can_reshape){
   if( progress != NULL ) return progress;
 
   // Finally check the default case
-  return StoreNode::Ideal(phase, can_reshape);
+  return StoreNode::Ideal(phase);
 }
 
 //=============================================================================
@@ -2843,8 +2843,8 @@ Node* StoreCMNode::Identity(PhaseGVN* phase) {
 
 //=============================================================================
 //------------------------------Ideal---------------------------------------
-Node *StoreCMNode::Ideal(PhaseGVN *phase, bool can_reshape){
-  Node* progress = StoreNode::Ideal(phase, can_reshape);
+Node *StoreCMNode::Ideal(PhaseGVN *phase) {
+  Node* progress = StoreNode::Ideal(phase);
   if (progress != NULL) return progress;
 
   Node* my_store = in(MemNode::OopStore);
@@ -2963,7 +2963,7 @@ Node* ClearArrayNode::Identity(PhaseGVN* phase) {
 
 //------------------------------Idealize---------------------------------------
 // Clearing a short array is faster with stores
-Node *ClearArrayNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ClearArrayNode::Ideal(PhaseGVN *phase) {
   // Already know this is a large node, do not try to ideal it
   if (!IdealizeClearArrayNode || _is_large) return NULL;
 
@@ -3174,8 +3174,8 @@ void MemBarNode::remove(PhaseIterGVN *igvn) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node *MemBarNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (remove_dead_region(phase, can_reshape)) return this;
+Node *MemBarNode::Ideal(PhaseGVN *phase) {
+  if (remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if (in(0) && in(0)->is_top()) {
     return NULL;
@@ -3183,7 +3183,7 @@ Node *MemBarNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   bool progress = false;
   // Eliminate volatile MemBars for scalar replaced objects.
-  if (can_reshape && req() == (Precedent+1)) {
+  if (phase->can_reshape() && req() == (Precedent+1)) {
     bool eliminate = false;
     int opc = Opcode();
     if ((opc == Op_MemBarAcquire || opc == Op_MemBarVolatile)) {
@@ -3628,7 +3628,7 @@ bool InitializeNode::detect_init_independence(Node* value, PhaseGVN* phase) {
 // an initialization.  Returns zero if a check fails.
 // On success, returns the (constant) offset to which the store applies,
 // within the initialized memory.
-intptr_t InitializeNode::can_capture_store(StoreNode* st, PhaseGVN* phase, bool can_reshape) {
+intptr_t InitializeNode::can_capture_store(StoreNode* st, PhaseGVN* phase) {
   const int FAIL = 0;
   if (st->req() != MemNode::ValueIn + 1)
     return FAIL;                // an inscrutable StoreNode (card mark?)
@@ -3730,7 +3730,7 @@ intptr_t InitializeNode::can_capture_store(StoreNode* st, PhaseGVN* phase, bool 
     }
   }
   if (failed) {
-    if (!can_reshape) {
+    if (!phase->can_reshape()) {
       // We decided we couldn't capture the store during parsing. We
       // should try again during the next IGVN once the graph is
       // cleaner.
@@ -3850,11 +3850,11 @@ Node* InitializeNode::make_raw_address(intptr_t offset,
 //                      rawstore1 rawstore2)
 //
 Node* InitializeNode::capture_store(StoreNode* st, intptr_t start,
-                                    PhaseGVN* phase, bool can_reshape) {
+                                    PhaseGVN* phase) {
   assert(stores_are_sane(phase), "");
 
   if (start < 0)  return NULL;
-  assert(can_capture_store(st, phase, can_reshape) == start, "sanity");
+  assert(can_capture_store(st, phase) == start, "sanity");
 
   Compile* C = phase->C;
   int size_in_bytes = st->memory_size();
@@ -4544,7 +4544,7 @@ Node* MergeMemNode::Identity(PhaseGVN* phase) {
 
 //------------------------------Ideal------------------------------------------
 // This method is invoked recursively on chains of MergeMem nodes
-Node *MergeMemNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *MergeMemNode::Ideal(PhaseGVN *phase) {
   // Remove chain'd MergeMems
   //
   // This is delicate, because the each "in(i)" (i >= Raw) is interpreted
@@ -4679,14 +4679,14 @@ Node *MergeMemNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     progress = this;
     // Cut inputs during Parse phase only.
     // During Optimize phase a dead MergeMem node will be subsumed by Top.
-    if( !can_reshape ) {
+    if (!phase->can_reshape()) {
       for (uint i = Compile::AliasIdxRaw; i < req(); i++) {
         if( in(i) != empty_mem ) { set_req(i, empty_mem); }
       }
     }
   }
 
-  if( !progress && base_memory()->is_Phi() && can_reshape ) {
+  if (!progress && base_memory()->is_Phi() && phase->can_reshape()) {
     // Check if PhiNode::Ideal's "Split phis through memory merges"
     // transform should be attempted. Look for this->phi->this cycle.
     uint merge_width = req();

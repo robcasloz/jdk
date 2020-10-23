@@ -77,8 +77,8 @@ const Type* ConstraintCastNode::Value(PhaseGVN* phase) const {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node *ConstraintCastNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  return (in(0) && remove_dead_region(phase, can_reshape)) ? this : NULL;
+Node *ConstraintCastNode::Ideal(PhaseGVN *phase) {
+  return (in(0) && remove_dead_region(phase)) ? this : NULL;
 }
 
 bool ConstraintCastNode::cmp(const Node &n) const {
@@ -221,8 +221,8 @@ const Type* CastIINode::Value(PhaseGVN* phase) const {
   return res;
 }
 
-Node *CastIINode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  Node* progress = ConstraintCastNode::Ideal(phase, can_reshape);
+Node *CastIINode::Ideal(PhaseGVN *phase) {
+  Node* progress = ConstraintCastNode::Ideal(phase);
   if (progress != NULL) {
     return progress;
   }
@@ -231,7 +231,7 @@ Node *CastIINode::Ideal(PhaseGVN *phase, bool can_reshape) {
   // Do not narrow the type of range check dependent CastIINodes to
   // avoid corruption of the graph if a CastII is replaced by TOP but
   // the corresponding range check is not removed.
-  if (can_reshape && !_range_check_dependency) {
+  if (phase->can_reshape() && !_range_check_dependency) {
     if (phase->C->post_loop_opts_phase()) {
       const TypeInt* this_type = this->type()->is_int();
       const TypeInt* in_type = phase->type(in(1))->isa_int();
@@ -444,7 +444,7 @@ static inline Node* addP_of_X2P(PhaseGVN *phase,
                       dispX);
 }
 
-Node *CastX2PNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *CastX2PNode::Ideal(PhaseGVN *phase) {
   // convert CastX2P(AddX(x, y)) to AddP(CastX2P(x), y) if y fits in an int
   int op = in(1)->Opcode();
   Node* x;
@@ -492,8 +492,8 @@ const Type* CastP2XNode::Value(PhaseGVN* phase) const {
   return CastP2XNode::bottom_type();
 }
 
-Node *CastP2XNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  return (in(0) && remove_dead_region(phase, can_reshape)) ? this : NULL;
+Node *CastP2XNode::Ideal(PhaseGVN *phase) {
+  return (in(0) && remove_dead_region(phase)) ? this : NULL;
 }
 
 //------------------------------Identity---------------------------------------

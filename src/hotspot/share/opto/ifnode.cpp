@@ -1367,10 +1367,10 @@ struct RangeCheck {
   jint off;
 };
 
-Node* IfNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
-  if (remove_dead_region(phase, can_reshape))  return this;
+Node* IfNode::Ideal_common(PhaseGVN *phase) {
+  if (remove_dead_region(phase)) return this;
   // No Def-Use info?
-  if (!can_reshape)  return NULL;
+  if (!phase->can_reshape()) return NULL;
 
   // Don't bother trying to transform a dead if
   if (in(0)->is_top())  return NULL;
@@ -1396,8 +1396,8 @@ Node* IfNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node* IfNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  Node* res = Ideal_common(phase, can_reshape);
+Node* IfNode::Ideal(PhaseGVN *phase) {
+  Node* res = Ideal_common(phase);
   if (res != NodeSentinel) {
     return res;
   }
@@ -1759,8 +1759,8 @@ static IfNode* idealize_test(PhaseGVN* phase, IfNode* iff) {
   return iff;
 }
 
-Node* RangeCheckNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  Node* res = Ideal_common(phase, can_reshape);
+Node* RangeCheckNode::Ideal(PhaseGVN *phase) {
+  Node* res = Ideal_common(phase);
   if (res != NodeSentinel) {
     return res;
   }

@@ -379,6 +379,7 @@ public:
   PhaseValues( PhaseValues *pt );
   NOT_PRODUCT( ~PhaseValues(); )
   virtual PhaseIterGVN *is_IterGVN() { return 0; }
+  virtual bool can_reshape() { return false; }
 
   // Some Ideal and other transforms delete --> modify --> insert values
   bool   hash_delete(Node *n)     { return _table.hash_delete(n); }
@@ -434,7 +435,7 @@ public:
   bool is_dominator(Node *d, Node *n) { return is_dominator_helper(d, n, true); }
 
   // Helper to call Node::Ideal() and BarrierSetC2::ideal_node().
-  Node* apply_ideal(Node* i, bool can_reshape);
+  Node* apply_ideal(Node* i);
 
   // Check for a simple dead loop when a data node references itself.
   DEBUG_ONLY(void dead_loop_check(Node *n);)
@@ -475,6 +476,7 @@ public:
   virtual void record_for_igvn(Node *n) { }
 
   virtual PhaseIterGVN *is_IterGVN() { return this; }
+  virtual bool can_reshape() { return true; }
 
   Unique_Node_List _worklist;       // Iterative worklist
 

@@ -34,7 +34,7 @@
 
 //------------------------------Ideal------------------------------------------
 // Remove dead inputs
-Node *RootNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *RootNode::Ideal(PhaseGVN *phase) {
   bool modified = false;
   for( uint i = 1; i < req(); i++ ) { // For all inputs
     // Check for and remove dead inputs
@@ -76,8 +76,8 @@ HaltNode::HaltNode(Node* ctrl, Node* frameptr, const char* halt_reason, bool rea
 const Type *HaltNode::bottom_type() const { return Type::BOTTOM; }
 
 //------------------------------Ideal------------------------------------------
-Node *HaltNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node *HaltNode::Ideal(PhaseGVN *phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //------------------------------Value------------------------------------------

@@ -58,7 +58,7 @@ Node* MulNode::Identity(PhaseGVN* phase) {
 //------------------------------Ideal------------------------------------------
 // We also canonicalize the Node, moving constants to the right input,
 // and flatten expressions (so that 1+x+2 becomes x+3).
-Node *MulNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *MulNode::Ideal(PhaseGVN *phase) {
   const Type *t1 = phase->type( in(1) );
   const Type *t2 = phase->type( in(2) );
   Node *progress = NULL;        // Progress flag
@@ -174,14 +174,14 @@ const Type* MulNode::Value(PhaseGVN* phase) const {
 //=============================================================================
 //------------------------------Ideal------------------------------------------
 // Check for power-of-2 multiply, then try the regular MulNode::Ideal
-Node *MulINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *MulINode::Ideal(PhaseGVN *phase) {
   // Swap constant to right
   jint con;
   if ((con = in(1)->find_int_con(0)) != 0) {
     swap_edges(1, 2);
     // Finish rest of method to use info in 'con'
   } else if ((con = in(2)->find_int_con(0)) == 0) {
-    return MulNode::Ideal(phase, can_reshape);
+    return MulNode::Ideal(phase);
   }
 
   // Now we have a constant Node on the right and the constant in con
@@ -217,7 +217,7 @@ Node *MulINode::Ideal(PhaseGVN *phase, bool can_reshape) {
       Node *n1 = phase->transform(new LShiftINode(in(1), phase->intcon(log2_uint(temp))));
       res = new SubINode(n1, in(1));
     } else {
-      return MulNode::Ideal(phase, can_reshape);
+      return MulNode::Ideal(phase);
     }
   }
 
@@ -271,14 +271,14 @@ const Type *MulINode::mul_ring(const Type *t0, const Type *t1) const {
 //=============================================================================
 //------------------------------Ideal------------------------------------------
 // Check for power-of-2 multiply, then try the regular MulNode::Ideal
-Node *MulLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *MulLNode::Ideal(PhaseGVN *phase) {
   // Swap constant to right
   jlong con;
   if ((con = in(1)->find_long_con(0)) != 0) {
     swap_edges(1, 2);
     // Finish rest of method to use info in 'con'
   } else if ((con = in(2)->find_long_con(0)) == 0) {
-    return MulNode::Ideal(phase, can_reshape);
+    return MulNode::Ideal(phase);
   }
 
   // Now we have a constant Node on the right and the constant in con
@@ -313,7 +313,7 @@ Node *MulLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       Node *n1 = phase->transform( new LShiftLNode(in(1), phase->intcon(log2_long(temp))));
       res = new SubLNode(n1, in(1));
     } else {
-      return MulNode::Ideal(phase, can_reshape);
+      return MulNode::Ideal(phase);
     }
   }
 
@@ -467,10 +467,10 @@ Node* AndINode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *AndINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AndINode::Ideal(PhaseGVN *phase) {
   // Special case constant AND mask
   const TypeInt *t2 = phase->type( in(2) )->isa_int();
-  if( !t2 || !t2->is_con() ) return MulNode::Ideal(phase, can_reshape);
+  if (!t2 || !t2->is_con()) return MulNode::Ideal(phase);
   const int mask = t2->get_con();
   Node *load = in(1);
   uint lop = load->Opcode();
@@ -481,7 +481,7 @@ Node *AndINode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return new AndINode(load,phase->intcon(mask&0xFFFF));
 
   // Masking bits off of a Short?  Loading a Character does some masking
-  if (can_reshape &&
+  if (phase->can_reshape() &&
       load->outcnt() == 1 && load->unique_out() == this) {
     if (lop == Op_LoadS && (mask & 0xFFFF0000) == 0 ) {
       Node* ldus = load->as_Load()->convert_to_unsigned_load(*phase);
@@ -522,7 +522,7 @@ Node *AndINode::Ideal(PhaseGVN *phase, bool can_reshape) {
       phase->type(load->in(1)) == TypeInt::ZERO )
     return new AndINode( load->in(2), in(2) );
 
-  return MulNode::Ideal(phase, can_reshape);
+  return MulNode::Ideal(phase);
 }
 
 //=============================================================================
@@ -590,10 +590,10 @@ Node* AndLNode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *AndLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *AndLNode::Ideal(PhaseGVN *phase) {
   // Special case constant AND mask
   const TypeLong *t2 = phase->type( in(2) )->isa_long();
-  if( !t2 || !t2->is_con() ) return MulNode::Ideal(phase, can_reshape);
+  if (!t2 || !t2->is_con()) return MulNode::Ideal(phase);
   const jlong mask = t2->get_con();
 
   Node* in1 = in(1);
@@ -627,7 +627,7 @@ Node *AndLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  return MulNode::Ideal(phase, can_reshape);
+  return MulNode::Ideal(phase);
 }
 
 //=============================================================================
@@ -663,7 +663,7 @@ Node* LShiftINode::Identity(PhaseGVN* phase) {
 //------------------------------Ideal------------------------------------------
 // If the right input is a constant, and the left input is an add of a
 // constant, flatten the tree: (X+con1)<<con0 ==> X<<con0 + con1<<con0
-Node *LShiftINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LShiftINode::Ideal(PhaseGVN *phase) {
   int con = maskShiftAmount(phase, this, BitsPerJavaInteger);
   if (con == 0) {
     return NULL;
@@ -771,7 +771,7 @@ Node* LShiftLNode::Identity(PhaseGVN* phase) {
 //------------------------------Ideal------------------------------------------
 // If the right input is a constant, and the left input is an add of a
 // constant, flatten the tree: (X+con1)<<con0 ==> X<<con0 + con1<<con0
-Node *LShiftLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LShiftLNode::Ideal(PhaseGVN *phase) {
   int con = maskShiftAmount(phase, this, BitsPerJavaLong);
   if (con == 0) {
     return NULL;
@@ -894,7 +894,7 @@ Node* RShiftINode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *RShiftINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *RShiftINode::Ideal(PhaseGVN *phase) {
   // Inputs may be TOP if they are dead.
   const TypeInt *t1 = phase->type(in(1))->isa_int();
   if (!t1) return NULL;        // Left input is an integer
@@ -935,7 +935,7 @@ Node *RShiftINode::Ideal(PhaseGVN *phase, bool can_reshape) {
       set_req(2, phase->intcon(0));
       return this;
     }
-    else if( can_reshape &&
+    else if (phase->can_reshape() &&
              ld->Opcode() == Op_LoadUS &&
              ld->outcnt() == 1 && ld->unique_out() == shl)
       // Replace zero-extension-load with sign-extension-load
@@ -1103,7 +1103,7 @@ Node* URShiftINode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *URShiftINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *URShiftINode::Ideal(PhaseGVN *phase) {
   int con = maskShiftAmount(phase, this, BitsPerJavaInteger);
   if (con == 0) {
     return NULL;
@@ -1262,7 +1262,7 @@ Node* URShiftLNode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *URShiftLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *URShiftLNode::Ideal(PhaseGVN *phase) {
   int con = maskShiftAmount(phase, this, BitsPerJavaLong);
   if (con == 0) {
     return NULL;

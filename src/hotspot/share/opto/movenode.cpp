@@ -74,8 +74,8 @@
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Move constants to the right.
-Node *CMoveNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if( in(0) && remove_dead_region(phase, can_reshape) ) return this;
+Node *CMoveNode::Ideal(PhaseGVN *phase) {
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
   assert( !phase->eqv(in(Condition), this) &&
@@ -179,9 +179,9 @@ CMoveNode *CMoveNode::make(Node *c, Node *bol, Node *left, Node *right, const Ty
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Check for conversions to boolean
-Node *CMoveINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *CMoveINode::Ideal(PhaseGVN *phase) {
   // Try generic ideal's first
-  Node *x = CMoveNode::Ideal(phase, can_reshape);
+  Node *x = CMoveNode::Ideal(phase);
   if( x ) return x;
 
   // If zero is on the left (false-case, no-move-case) it must mean another
@@ -244,9 +244,9 @@ Node *CMoveINode::Ideal(PhaseGVN *phase, bool can_reshape) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Check for absolute value
-Node *CMoveFNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *CMoveFNode::Ideal(PhaseGVN *phase) {
   // Try generic ideal's first
-  Node *x = CMoveNode::Ideal(phase, can_reshape);
+  Node *x = CMoveNode::Ideal(phase);
   if( x ) return x;
 
   int  cmp_zero_idx = 0;        // Index of compare input where to look for zero
@@ -300,9 +300,9 @@ Node *CMoveFNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Check for absolute value
-Node *CMoveDNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *CMoveDNode::Ideal(PhaseGVN *phase) {
   // Try generic ideal's first
-  Node *x = CMoveNode::Ideal(phase, can_reshape);
+  Node *x = CMoveNode::Ideal(phase);
   if( x ) return x;
 
   int  cmp_zero_idx = 0;        // Index of compare input where to look for zero

@@ -143,7 +143,7 @@ public:
     init_req(LoopBackControl, backedge);
   }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual int Opcode() const;
   bool can_be_counted_loop(PhaseTransform* phase) const {
     return req() == 3 && in(0) != NULL &&
@@ -226,7 +226,7 @@ public:
   }
 
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   Node *init_control() const { return in(EntryControl); }
   Node *back_control() const { return in(LoopBackControl); }
@@ -436,7 +436,7 @@ class LoopLimitNode : public Node {
   virtual const Type *bottom_type() const { return TypeInt::INT; }
   virtual uint ideal_reg() const { return Op_RegI; }
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual Node* Identity(PhaseGVN* phase);
 };
 
@@ -471,7 +471,7 @@ public:
   virtual int Opcode() const;
 
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   bool is_expanded(PhaseGVN *phase) const;
 };

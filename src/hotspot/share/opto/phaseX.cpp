@@ -802,10 +802,10 @@ ConNode* PhaseTransform::zerocon(BasicType bt) {
 
 
 //=============================================================================
-Node* PhaseGVN::apply_ideal(Node* k, bool can_reshape) {
-  Node* i = BarrierSet::barrier_set()->barrier_set_c2()->ideal_node(this, k, can_reshape);
+Node* PhaseGVN::apply_ideal(Node* k) {
+  Node* i = BarrierSet::barrier_set()->barrier_set_c2()->ideal_node(this, k);
   if (i == NULL) {
-    i = k->Ideal(this, can_reshape);
+    i = k->Ideal(this);
   }
   return i;
 }
@@ -827,7 +827,7 @@ Node *PhaseGVN::transform_no_reclaim( Node *n ) {
   Node *k = n;
   NOT_PRODUCT( uint loop_count = 0; )
   while( 1 ) {
-    Node *i = apply_ideal(k, /*can_reshape=*/false);
+    Node *i = apply_ideal(k);
     if( !i ) break;
     assert( i->_idx >= k->_idx, "Idealize should return new nodes, use Identity to return old nodes" );
     k = i;
@@ -1214,7 +1214,7 @@ Node *PhaseIterGVN::transform_old(Node* n) {
   DEBUG_ONLY(dead_loop_check(k);)
   DEBUG_ONLY(bool is_new = (k->outcnt() == 0);)
   C->remove_modified_node(k);
-  Node* i = apply_ideal(k, /*can_reshape=*/true);
+  Node* i = apply_ideal(k);
   assert(i != k || is_new || i->outcnt() > 0, "don't return dead nodes");
 #ifndef PRODUCT
   verify_step(k);
@@ -1240,7 +1240,7 @@ Node *PhaseIterGVN::transform_old(Node* n) {
     // Try idealizing again
     DEBUG_ONLY(is_new = (k->outcnt() == 0);)
     C->remove_modified_node(k);
-    i = apply_ideal(k, /*can_reshape=*/true);
+    i = apply_ideal(k);
     assert(i != k || is_new || (i->outcnt() > 0), "don't return dead nodes");
 #ifndef PRODUCT
     verify_step(k);

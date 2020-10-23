@@ -60,8 +60,8 @@ void StartNode::dump_compact_spec(outputStream *st) const { /* empty */ }
 #endif
 
 //------------------------------Ideal------------------------------------------
-Node *StartNode::Ideal(PhaseGVN *phase, bool can_reshape){
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node *StartNode::Ideal(PhaseGVN *phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //------------------------------calling_convention-----------------------------
@@ -173,8 +173,8 @@ ReturnNode::ReturnNode(uint edges, Node *cntrl, Node *i_o, Node *memory, Node *f
   init_req(TypeFunc::ReturnAdr,retadr);
 }
 
-Node *ReturnNode::Ideal(PhaseGVN *phase, bool can_reshape){
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node *ReturnNode::Ideal(PhaseGVN *phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 const Type* ReturnNode::Value(PhaseGVN* phase) const {
@@ -218,8 +218,8 @@ RethrowNode::RethrowNode(
   init_req(TypeFunc::Parms    , exception);
 }
 
-Node *RethrowNode::Ideal(PhaseGVN *phase, bool can_reshape){
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node *RethrowNode::Ideal(PhaseGVN *phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 const Type* RethrowNode::Value(PhaseGVN* phase) const {
@@ -931,9 +931,10 @@ void CallNode::extract_projections(CallProjections* projs, bool separate_io_proj
   }
 }
 
-Node *CallNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *CallNode::Ideal(PhaseGVN *phase) {
   CallGenerator* cg = generator();
-  if (can_reshape && cg != NULL && cg->is_mh_late_inline() && !cg->already_attempted()) {
+  if (phase->can_reshape() &&
+      cg != NULL && cg->is_mh_late_inline() && !cg->already_attempted()) {
     // Check whether this MH handle call becomes a candidate for inlining
     ciMethod* callee = cg->method();
     vmIntrinsics::ID iid = callee->intrinsic_id();
@@ -950,7 +951,7 @@ Node *CallNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
     }
   }
-  return SafePointNode::Ideal(phase, can_reshape);
+  return SafePointNode::Ideal(phase);
 }
 
 bool CallNode::is_call_to_arraycopystub() const {
@@ -1187,8 +1188,8 @@ SafePointNode* SafePointNode::next_exception() const {
 
 //------------------------------Ideal------------------------------------------
 // Skip over any collapsed Regions
-Node *SafePointNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node *SafePointNode::Ideal(PhaseGVN *phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //------------------------------Identity---------------------------------------
@@ -1452,14 +1453,14 @@ Node *AllocateNode::make_ideal_mark(PhaseGVN *phase, Node* obj, Node* control, N
 }
 
 //=============================================================================
-Node* AllocateArrayNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (remove_dead_region(phase, can_reshape))  return this;
+Node* AllocateArrayNode::Ideal(PhaseGVN *phase) {
+  if (remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if (in(0) && in(0)->is_top())  return NULL;
 
   const Type* type = phase->type(Ideal_length());
   if (type->isa_int() && type->is_int()->_hi < 0) {
-    if (can_reshape) {
+    if (phase->can_reshape()) {
       PhaseIterGVN *igvn = phase->is_IterGVN();
       // Unreachable fall through path (negative array length),
       // the allocation can only throw so disconnect it.
@@ -1865,10 +1866,10 @@ void AbstractLockNode::related(GrowableArray<Node*> *in_rel, GrowableArray<Node*
 #endif
 
 //=============================================================================
-Node *LockNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LockNode::Ideal(PhaseGVN *phase) {
 
   // perform any generic optimizations first (returns 'this' or NULL)
-  Node *result = SafePointNode::Ideal(phase, can_reshape);
+  Node *result = SafePointNode::Ideal(phase);
   if (result != NULL)  return result;
   // Don't bother trying to transform a dead node
   if (in(0) && in(0)->is_top())  return NULL;
@@ -1878,7 +1879,7 @@ Node *LockNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   // prevents macro expansion from expanding the lock.  Since we don't
   // modify the graph, the value returned from this function is the
   // one computed above.
-  if (can_reshape && EliminateLocks && !is_non_esc_obj()) {
+  if (phase->can_reshape() && EliminateLocks && !is_non_esc_obj()) {
     //
     // If we are locking an unescaped object, the lock/unlock is unnecessary
     //
@@ -2032,10 +2033,10 @@ bool LockNode::is_nested_lock_region(Compile * c) {
 uint UnlockNode::size_of() const { return sizeof(*this); }
 
 //=============================================================================
-Node *UnlockNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *UnlockNode::Ideal(PhaseGVN *phase) {
 
   // perform any generic optimizations first (returns 'this' or NULL)
-  Node *result = SafePointNode::Ideal(phase, can_reshape);
+  Node *result = SafePointNode::Ideal(phase);
   if (result != NULL)  return result;
   // Don't bother trying to transform a dead node
   if (in(0) && in(0)->is_top())  return NULL;
@@ -2046,7 +2047,7 @@ Node *UnlockNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   // modify the graph, the value returned from this function is the
   // one computed above.
   // Escape state is defined after Parse phase.
-  if (can_reshape && EliminateLocks && !is_non_esc_obj()) {
+  if (phase->can_reshape() && EliminateLocks && !is_non_esc_obj()) {
     //
     // If we are unlocking an unescaped object, the lock/unlock is unnecessary.
     //

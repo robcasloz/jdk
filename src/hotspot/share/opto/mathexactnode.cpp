@@ -186,7 +186,7 @@ struct IdealHelper {
   typedef typename OverflowOp::TypeClass TypeClass; // TypeInt, TypeLong
   typedef typename TypeClass::NativeType NativeType;
 
-  static Node* Ideal(const OverflowOp* node, PhaseGVN* phase, bool can_reshape) {
+  static Node* Ideal(const OverflowOp* node, PhaseGVN* phase) {
     Node* arg1 = node->in(1);
     Node* arg2 = node->in(2);
     const Type* type1 = phase->type(arg1);
@@ -249,12 +249,12 @@ struct IdealHelper {
   }
 };
 
-Node* OverflowINode::Ideal(PhaseGVN* phase, bool can_reshape) {
-  return IdealHelper<OverflowINode>::Ideal(this, phase, can_reshape);
+Node* OverflowINode::Ideal(PhaseGVN* phase) {
+  return IdealHelper<OverflowINode>::Ideal(this, phase);
 }
 
-Node* OverflowLNode::Ideal(PhaseGVN* phase, bool can_reshape) {
-  return IdealHelper<OverflowLNode>::Ideal(this, phase, can_reshape);
+Node* OverflowLNode::Ideal(PhaseGVN* phase) {
+  return IdealHelper<OverflowLNode>::Ideal(this, phase);
 }
 
 const Type* OverflowINode::Value(PhaseGVN* phase) const {

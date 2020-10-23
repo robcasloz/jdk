@@ -42,7 +42,7 @@ public:
     C->add_macro_node(this);
   }
 
-  Node* Ideal(PhaseGVN *phase, bool can_reshape);
+  Node* Ideal(PhaseGVN *phase);
   virtual const Type* sub(const Type*, const Type*) const;
   Node* Identity(PhaseGVN* phase) { return this; }
 

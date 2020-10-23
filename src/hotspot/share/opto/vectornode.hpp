@@ -1330,7 +1330,7 @@ public:
   : VectorNode(in1, in2, vt) {}
 
   virtual int Opcode() const;
-  Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  Node* Ideal(PhaseGVN* phase);
 };
 
 class RotateLeftVNode : public VectorNode {
@@ -1339,7 +1339,7 @@ public:
   : VectorNode(in1, in2, vt) {}
 
   virtual int Opcode() const;
-  Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  Node* Ideal(PhaseGVN* phase);
 };
 
 #endif // SHARE_OPTO_VECTORNODE_HPP

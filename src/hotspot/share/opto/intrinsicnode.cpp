@@ -36,12 +36,12 @@ uint StrIntrinsicNode::match_edge(uint idx) const {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node* StrIntrinsicNode::Ideal(PhaseGVN* phase, bool can_reshape) {
-  if (remove_dead_region(phase, can_reshape)) return this;
+Node* StrIntrinsicNode::Ideal(PhaseGVN* phase) {
+  if (remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if (in(0) && in(0)->is_top())  return NULL;
 
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     Node* mem = phase->transform(in(MemNode::Memory));
     // If transformed to a MergeMem, get the desired slice
     uint alias_idx = phase->C->get_alias_index(adr_type());
@@ -66,16 +66,16 @@ uint StrIntrinsicNode::size_of() const { return sizeof(*this); }
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node* StrCompressedCopyNode::Ideal(PhaseGVN* phase, bool can_reshape) {
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node* StrCompressedCopyNode::Ideal(PhaseGVN* phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node* StrInflatedCopyNode::Ideal(PhaseGVN* phase, bool can_reshape) {
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node* StrInflatedCopyNode::Ideal(PhaseGVN* phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //=============================================================================
@@ -88,8 +88,8 @@ uint EncodeISOArrayNode::match_edge(uint idx) const {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.  Strip out
 // control copies
-Node* EncodeISOArrayNode::Ideal(PhaseGVN* phase, bool can_reshape) {
-  return remove_dead_region(phase, can_reshape) ? this : NULL;
+Node* EncodeISOArrayNode::Ideal(PhaseGVN* phase) {
+  return remove_dead_region(phase) ? this : NULL;
 }
 
 //------------------------------Value------------------------------------------

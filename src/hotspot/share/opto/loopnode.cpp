@@ -1770,11 +1770,11 @@ Node* PhaseIdealLoop::exact_limit( IdealLoopTree *loop ) {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Attempt to convert into a counted-loop.
-Node *LoopNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LoopNode::Ideal(PhaseGVN *phase) {
   if (!can_be_counted_loop(phase) && !is_OuterStripMinedLoop()) {
     phase->C->set_major_progress();
   }
-  return RegionNode::Ideal(phase, can_reshape);
+  return RegionNode::Ideal(phase);
 }
 
 #ifdef ASSERT
@@ -1868,8 +1868,8 @@ void LoopNode::verify_strip_mined(int expect_skeleton) const {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Attempt to convert into a counted-loop.
-Node *CountedLoopNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  return RegionNode::Ideal(phase, can_reshape);
+Node *CountedLoopNode::Ideal(PhaseGVN *phase) {
+  return RegionNode::Ideal(phase);
 }
 
 //------------------------------dump_spec--------------------------------------
@@ -1926,7 +1926,7 @@ const Type* LoopLimitNode::Value(PhaseGVN* phase) const {
 
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
-Node *LoopLimitNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *LoopLimitNode::Ideal(PhaseGVN *phase) {
   if (phase->type(in(Init))   == Type::TOP ||
       phase->type(in(Limit))  == Type::TOP ||
       phase->type(in(Stride)) == Type::TOP)
@@ -1941,7 +1941,7 @@ Node *LoopLimitNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   // Delay following optimizations until all loop optimizations
   // done to keep Ideal graph simple.
-  if (!can_reshape || phase->C->major_progress())
+  if (!phase->can_reshape() || phase->C->major_progress())
     return NULL;
 
   const TypeInt* init_t  = phase->type(in(Init) )->is_int();
@@ -2487,8 +2487,8 @@ bool OuterStripMinedLoopEndNode::is_expanded(PhaseGVN *phase) const {
   return false;
 }
 
-Node *OuterStripMinedLoopEndNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (remove_dead_region(phase, can_reshape))  return this;
+Node *OuterStripMinedLoopEndNode::Ideal(PhaseGVN *phase) {
+  if (remove_dead_region(phase)) return this;
 
   return NULL;
 }

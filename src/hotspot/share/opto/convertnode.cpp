@@ -75,7 +75,7 @@ const Type* ConvD2FNode::Value(PhaseGVN* phase) const {
 
 //------------------------------Ideal------------------------------------------
 // If we see pattern ConvF2D SomeDoubleOp ConvD2F, do operation as float.
-Node *ConvD2FNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvD2FNode::Ideal(PhaseGVN *phase) {
   if ( in(1)->Opcode() == Op_SqrtD ) {
     Node* sqrtd = in(1);
     if ( sqrtd->in(1)->Opcode() == Op_ConvF2D ) {
@@ -107,7 +107,7 @@ const Type* ConvD2INode::Value(PhaseGVN* phase) const {
 
 //------------------------------Ideal------------------------------------------
 // If converting to an int type, skip any rounding nodes
-Node *ConvD2INode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvD2INode::Ideal(PhaseGVN *phase) {
   if( in(1)->Opcode() == Op_RoundDouble )
   set_req(1,in(1)->in(1));
   return NULL;
@@ -141,7 +141,7 @@ Node* ConvD2LNode::Identity(PhaseGVN* phase) {
 
 //------------------------------Ideal------------------------------------------
 // If converting to an int type, skip any rounding nodes
-Node *ConvD2LNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvD2LNode::Ideal(PhaseGVN *phase) {
   if( in(1)->Opcode() == Op_RoundDouble )
   set_req(1,in(1)->in(1));
   return NULL;
@@ -178,7 +178,7 @@ Node* ConvF2INode::Identity(PhaseGVN* phase) {
 
 //------------------------------Ideal------------------------------------------
 // If converting to an int type, skip any rounding nodes
-Node *ConvF2INode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvF2INode::Ideal(PhaseGVN *phase) {
   if( in(1)->Opcode() == Op_RoundFloat )
   set_req(1,in(1)->in(1));
   return NULL;
@@ -205,7 +205,7 @@ Node* ConvF2LNode::Identity(PhaseGVN* phase) {
 
 //------------------------------Ideal------------------------------------------
 // If converting to an int type, skip any rounding nodes
-Node *ConvF2LNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvF2LNode::Ideal(PhaseGVN *phase) {
   if( in(1)->Opcode() == Op_RoundFloat )
   set_req(1,in(1)->in(1));
   return NULL;
@@ -261,11 +261,11 @@ static inline bool long_ranges_overlap(jlong lo1, jlong hi1,
 #endif
 
 //------------------------------Ideal------------------------------------------
-Node *ConvI2LNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvI2LNode::Ideal(PhaseGVN *phase) {
   const TypeLong* this_type = this->type()->is_long();
   Node* this_changed = NULL;
 
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     // Do NOT remove this node's type assertion until no more loop ops can happen.
     if (phase->C->post_loop_opts_phase()) {
       const TypeInt* in_type = phase->type(in(1))->isa_int();
@@ -334,7 +334,7 @@ Node *ConvI2LNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* z = in(1);
   int op = z->Opcode();
   if (op == Op_AddI || op == Op_SubI) {
-    if (!can_reshape) {
+    if (!phase->can_reshape()) {
       // Postpone this optimization to after parsing because with deep AddNode
       // chains a large amount of dead ConvI2L nodes might be created that are
       // not removed during parsing. As a result, we might hit the node limit.
@@ -462,7 +462,7 @@ const Type* ConvL2INode::Value(PhaseGVN* phase) const {
 //------------------------------Ideal------------------------------------------
 // Return a node which is more "ideal" than the current node.
 // Blow off prior masking to int
-Node *ConvL2INode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ConvL2INode::Ideal(PhaseGVN *phase) {
   Node *andl = in(1);
   uint andl_op = andl->Opcode();
   if( andl_op == Op_AndL ) {

@@ -51,7 +51,7 @@ class ConvD2FNode : public Node {
   virtual const Type *bottom_type() const { return Type::FLOAT; }
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint  ideal_reg() const { return Op_RegF; }
 };
 
@@ -64,7 +64,7 @@ class ConvD2INode : public Node {
   virtual const Type *bottom_type() const { return TypeInt::INT; }
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint  ideal_reg() const { return Op_RegI; }
 };
 
@@ -77,7 +77,7 @@ class ConvD2LNode : public Node {
   virtual const Type *bottom_type() const { return TypeLong::LONG; }
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint ideal_reg() const { return Op_RegL; }
 };
 
@@ -101,7 +101,7 @@ class ConvF2INode : public Node {
   virtual const Type *bottom_type() const { return TypeInt::INT; }
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint  ideal_reg() const { return Op_RegI; }
 };
 
@@ -114,7 +114,7 @@ class ConvF2LNode : public Node {
   virtual const Type *bottom_type() const { return TypeLong::LONG; }
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint  ideal_reg() const { return Op_RegL; }
 };
 
@@ -150,7 +150,7 @@ class ConvI2LNode : public TypeNode {
   { init_req(1, in1); }
   virtual int Opcode() const;
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint  ideal_reg() const { return Op_RegL; }
 };
 
@@ -185,7 +185,7 @@ class ConvL2INode : public Node {
   virtual const Type *bottom_type() const { return TypeInt::INT; }
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual uint  ideal_reg() const { return Op_RegI; }
 };
 

@@ -44,7 +44,7 @@ class CMoveNode : public TypeNode {
     init_req(IfFalse,left);
     init_req(IfTrue,right);
   }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node* Identity(PhaseGVN* phase);
   static CMoveNode *make(Node *c, Node *bol, Node *left, Node *right, const Type *t);
@@ -57,7 +57,7 @@ class CMoveDNode : public CMoveNode {
   public:
   CMoveDNode( Node *bol, Node *left, Node *right, const Type* t) : CMoveNode(bol,left,right,t){}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 };
 
 //------------------------------CMoveFNode-------------------------------------
@@ -65,7 +65,7 @@ class CMoveFNode : public CMoveNode {
   public:
   CMoveFNode( Node *bol, Node *left, Node *right, const Type* t ) : CMoveNode(bol,left,right,t) {}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 };
 
 //------------------------------CMoveINode-------------------------------------
@@ -73,7 +73,7 @@ class CMoveINode : public CMoveNode {
   public:
   CMoveINode( Node *bol, Node *left, Node *right, const TypeInt *ti ) : CMoveNode(bol,left,right,ti){}
   virtual int Opcode() const;
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 };
 
 //------------------------------CMoveLNode-------------------------------------

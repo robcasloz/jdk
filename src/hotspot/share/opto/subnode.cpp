@@ -146,7 +146,7 @@ static bool ok_to_convert(Node* inc, Node* var) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *SubINode::Ideal(PhaseGVN *phase, bool can_reshape){
+Node *SubINode::Ideal(PhaseGVN *phase) {
   Node *in1 = in(1);
   Node *in2 = in(2);
   uint op1 = in1->Opcode();
@@ -288,7 +288,7 @@ const Type *SubINode::sub( const Type *t1, const Type *t2 ) const {
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
-Node *SubLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *SubLNode::Ideal(PhaseGVN *phase) {
   Node *in1 = in(1);
   Node *in2 = in(2);
   uint op1 = in1->Opcode();
@@ -437,7 +437,7 @@ const Type* SubFPNode::Value(PhaseGVN* phase) const {
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
-Node *SubFNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *SubFNode::Ideal(PhaseGVN *phase) {
   const Type *t2 = phase->type( in(2) );
   // Convert "x-c0" into "x+ -c0".
   if( t2->base() == Type::FloatCon ) {  // Might be bottom or top...
@@ -480,7 +480,7 @@ const Type *SubFNode::sub( const Type *t1, const Type *t2 ) const {
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
-Node *SubDNode::Ideal(PhaseGVN *phase, bool can_reshape){
+Node *SubDNode::Ideal(PhaseGVN *phase) {
   const Type *t2 = phase->type( in(2) );
   // Convert "x-c0" into "x+ -c0".
   if( t2->base() == Type::DoubleCon ) { // Might be bottom or top...
@@ -729,7 +729,7 @@ bool CmpUNode::is_index_range_check() const {
 }
 
 //------------------------------Idealize---------------------------------------
-Node *CmpINode::Ideal( PhaseGVN *phase, bool can_reshape ) {
+Node *CmpINode::Ideal(PhaseGVN *phase) {
   if (phase->type(in(2))->higher_equal(TypeInt::ZERO)) {
     switch (in(1)->Opcode()) {
     case Op_CmpL3:              // Collapse a CmpL3/CmpI into a CmpL
@@ -747,7 +747,7 @@ Node *CmpINode::Ideal( PhaseGVN *phase, bool can_reshape ) {
   return NULL;                  // No change
 }
 
-Node *CmpLNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
+Node *CmpLNode::Ideal(PhaseGVN *phase) {
   const TypeLong *t2 = phase->type(in(2))->isa_long();
   if (Opcode() == Op_CmpL && in(1)->Opcode() == Op_ConvI2L && t2 && t2->is_con()) {
     const jlong con = t2->get_con();
@@ -1001,7 +1001,7 @@ static inline Node* isa_const_java_mirror(PhaseGVN* phase, Node* n) {
 // super-type array vs a known klass with no subtypes.  This amounts to
 // checking to see an unknown klass subtypes a known klass with no subtypes;
 // this only happens on an exact match.  We can shorten this test by 1 load.
-Node *CmpPNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
+Node *CmpPNode::Ideal(PhaseGVN *phase) {
   // Normalize comparisons between Java mirrors into comparisons of the low-
   // level klass, where a dependent load could be shortened.
   //
@@ -1118,7 +1118,7 @@ const Type *CmpNNode::sub( const Type *t1, const Type *t2 ) const {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *CmpNNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
+Node *CmpNNode::Ideal(PhaseGVN *phase) {
   return NULL;
 }
 
@@ -1182,7 +1182,7 @@ const Type* CmpDNode::Value(PhaseGVN* phase) const {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *CmpDNode::Ideal(PhaseGVN *phase, bool can_reshape){
+Node *CmpDNode::Ideal(PhaseGVN *phase) {
   // Check if we can change this to a CmpF and remove a ConvD2F operation.
   // Change  (CMPD (F2D (float)) (ConD value))
   // To      (CMPF      (float)  (ConF value))
@@ -1380,7 +1380,7 @@ static bool is_counted_loop_cmp(Node *cmp) {
 }
 
 //------------------------------Ideal------------------------------------------
-Node *BoolNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *BoolNode::Ideal(PhaseGVN *phase) {
   // Change "bool tst (cmp con x)" into "bool ~tst (cmp x con)".
   // This moves the constant to the right.  Helps value-numbering.
   Node *cmp = in(1);

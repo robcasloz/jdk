@@ -92,24 +92,24 @@ private:
   int get_count(PhaseGVN *phase) const;
   static const TypePtr* get_address_type(PhaseGVN* phase, const TypePtr* atp, Node* n);
 
-  Node* try_clone_instance(PhaseGVN *phase, bool can_reshape, int count);
-  bool prepare_array_copy(PhaseGVN *phase, bool can_reshape,
+  Node* try_clone_instance(PhaseGVN *phase, int count);
+  bool prepare_array_copy(PhaseGVN *phase,
                           Node*& adr_src, Node*& base_src, Node*& adr_dest, Node*& base_dest,
                           BasicType& copy_type, const Type*& value_type, bool& disjoint_bases);
-  void array_copy_test_overlap(PhaseGVN *phase, bool can_reshape,
+  void array_copy_test_overlap(PhaseGVN *phase,
                                bool disjoint_bases, int count,
                                Node*& forward_ctl, Node*& backward_ctl);
-  Node* array_copy_forward(PhaseGVN *phase, bool can_reshape, Node*& ctl,
+  Node* array_copy_forward(PhaseGVN *phase, Node*& ctl,
                            MergeMemNode* mm,
                            const TypePtr* atp_src, const TypePtr* atp_dest,
                            Node* adr_src, Node* base_src, Node* adr_dest, Node* base_dest,
                            BasicType copy_type, const Type* value_type, int count);
-  Node* array_copy_backward(PhaseGVN *phase, bool can_reshape, Node*& ctl,
+  Node* array_copy_backward(PhaseGVN *phase, Node*& ctl,
                             MergeMemNode* mm,
                             const TypePtr* atp_src, const TypePtr* atp_dest,
                             Node* adr_src, Node* base_src, Node* adr_dest, Node* base_dest,
                             BasicType copy_type, const Type* value_type, int count);
-  bool finish_transform(PhaseGVN *phase, bool can_reshape,
+  bool finish_transform(PhaseGVN *phase,
                         Node* ctl, Node *mem);
   static bool may_modify_helper(const TypeOopPtr *t_oop, Node* n, PhaseTransform *phase, CallNode*& call);
 public:
@@ -171,7 +171,7 @@ public:
   virtual int Opcode() const;
   virtual uint size_of() const; // Size is bigger
   virtual bool guaranteed_safepoint()  { return false; }
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual Node *Ideal(PhaseGVN *phase);
 
   virtual bool may_modify(const TypeOopPtr *t_oop, PhaseTransform *phase);
 

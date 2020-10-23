@@ -245,7 +245,7 @@ public:
                              Node*& fast_oop_ctrl, Node*& fast_oop_rawmem,
                              intx prefetch_lines) const;
 
-  virtual Node* ideal_node(PhaseGVN* phase, Node* n, bool can_reshape) const { return NULL; }
+  virtual Node* ideal_node(PhaseGVN* phase, Node* n) const { return NULL; }
 
   // These are general helper methods used by C2
   enum ArrayCopyPhase {

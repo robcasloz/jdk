@@ -464,8 +464,8 @@ Node* DivINode::Identity(PhaseGVN* phase) {
 
 //------------------------------Idealize---------------------------------------
 // Divides can be changed to multiplies and/or shifts
-Node *DivINode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (in(0) && remove_dead_region(phase, can_reshape))  return this;
+Node *DivINode::Ideal(PhaseGVN *phase) {
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
 
@@ -569,8 +569,8 @@ Node* DivLNode::Identity(PhaseGVN* phase) {
 
 //------------------------------Idealize---------------------------------------
 // Dividing by a power of 2 is a shift.
-Node *DivLNode::Ideal( PhaseGVN *phase, bool can_reshape) {
-  if (in(0) && remove_dead_region(phase, can_reshape))  return this;
+Node *DivLNode::Ideal(PhaseGVN *phase) {
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
 
@@ -718,8 +718,8 @@ Node* DivFNode::Identity(PhaseGVN* phase) {
 
 
 //------------------------------Idealize---------------------------------------
-Node *DivFNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (in(0) && remove_dead_region(phase, can_reshape))  return this;
+Node *DivFNode::Ideal(PhaseGVN *phase) {
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
 
@@ -812,8 +812,8 @@ Node* DivDNode::Identity(PhaseGVN* phase) {
 }
 
 //------------------------------Idealize---------------------------------------
-Node *DivDNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (in(0) && remove_dead_region(phase, can_reshape))  return this;
+Node *DivDNode::Ideal(PhaseGVN *phase) {
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
 
@@ -849,9 +849,9 @@ Node *DivDNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
 //=============================================================================
 //------------------------------Idealize---------------------------------------
-Node *ModINode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ModINode::Ideal(PhaseGVN *phase) {
   // Check for dead control input
-  if( in(0) && remove_dead_region(phase, can_reshape) )  return this;
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
 
@@ -912,7 +912,7 @@ Node *ModINode::Ideal(PhaseGVN *phase, bool can_reshape) {
       // cmov2 is now the mod
 
       // Now remove the bogus extra edges used to keep things alive
-      if (can_reshape) {
+      if (phase->can_reshape()) {
         phase->is_IterGVN()->remove_dead_node(hook);
       } else {
         hook->set_req(0, NULL);   // Just yank bogus edge during Parse phase
@@ -968,7 +968,7 @@ Node *ModINode::Ideal(PhaseGVN *phase, bool can_reshape) {
   }
 
   // Now remove the bogus extra edges used to keep things alive
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     phase->is_IterGVN()->remove_dead_node(hook);
   } else {
     hook->set_req(0, NULL);       // Just yank bogus edge during Parse phase
@@ -1020,9 +1020,9 @@ const Type* ModINode::Value(PhaseGVN* phase) const {
 
 //=============================================================================
 //------------------------------Idealize---------------------------------------
-Node *ModLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+Node *ModLNode::Ideal(PhaseGVN *phase) {
   // Check for dead control input
-  if( in(0) && remove_dead_region(phase, can_reshape) )  return this;
+  if (in(0) && remove_dead_region(phase)) return this;
   // Don't bother trying to transform a dead node
   if( in(0) && in(0)->is_top() )  return NULL;
 
@@ -1085,7 +1085,7 @@ Node *ModLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       // cmov2 is now the mod
 
       // Now remove the bogus extra edges used to keep things alive
-      if (can_reshape) {
+      if (phase->can_reshape()) {
         phase->is_IterGVN()->remove_dead_node(hook);
       } else {
         hook->set_req(0, NULL);   // Just yank bogus edge during Parse phase
@@ -1141,7 +1141,7 @@ Node *ModLNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   }
 
   // Now remove the bogus extra edges used to keep things alive
-  if (can_reshape) {
+  if (phase->can_reshape()) {
     phase->is_IterGVN()->remove_dead_node(hook);
   } else {
     hook->set_req(0, NULL);       // Just yank bogus edge during Parse phase

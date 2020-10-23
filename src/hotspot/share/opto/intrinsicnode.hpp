@@ -78,7 +78,7 @@ class StrIntrinsicNode: public Node {
   virtual const TypePtr* adr_type() const { return TypeAryPtr::BYTES; }
   virtual uint match_edge(uint idx) const;
   virtual uint ideal_reg() const { return Op_RegI; }
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   ArgEncoding encoding() const { return _encoding; }
 };
@@ -132,7 +132,7 @@ class StrCompressedCopyNode: public StrIntrinsicNode {
   virtual int Opcode() const;
   virtual const Type* bottom_type() const { return TypeInt::INT; }
   virtual const TypePtr* adr_type() const { return TypePtr::BOTTOM; }
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
 };
 
 //--------------------------StrInflatedCopy---------------------------------
@@ -144,7 +144,7 @@ class StrInflatedCopyNode: public StrIntrinsicNode {
   virtual int Opcode() const;
   virtual const Type* bottom_type() const { return Type::MEMORY; }
   virtual const TypePtr* adr_type() const { return TypePtr::BOTTOM; }
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
 };
 
 //------------------------------AryEq---------------------------------------
@@ -178,7 +178,7 @@ class EncodeISOArrayNode: public Node {
   virtual const TypePtr* adr_type() const { return TypePtr::BOTTOM; }
   virtual uint match_edge(uint idx) const;
   virtual uint ideal_reg() const { return Op_RegI; }
-  virtual Node* Ideal(PhaseGVN* phase, bool can_reshape);
+  virtual Node* Ideal(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
 };
 

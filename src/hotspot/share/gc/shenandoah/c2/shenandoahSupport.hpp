@@ -136,7 +136,7 @@ public:
   ShenandoahCompareAndSwapPNode(Node *c, Node *mem, Node *adr, Node *val, Node *ex, MemNode::MemOrd mem_ord)
     : CompareAndSwapPNode(c, mem, adr, val, ex, mem_ord) { }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) {
+  virtual Node *Ideal(PhaseGVN *phase) {
     if (in(ExpectedIn) != NULL && phase->type(in(ExpectedIn)) == TypePtr::NULL_PTR) {
       return new CompareAndSwapPNode(in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), in(MemNode::ValueIn), in(ExpectedIn), order());
     }
@@ -151,7 +151,7 @@ public:
   ShenandoahCompareAndSwapNNode(Node *c, Node *mem, Node *adr, Node *val, Node *ex, MemNode::MemOrd mem_ord)
     : CompareAndSwapNNode(c, mem, adr, val, ex, mem_ord) { }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) {
+  virtual Node *Ideal(PhaseGVN *phase) {
     if (in(ExpectedIn) != NULL && phase->type(in(ExpectedIn)) == TypeNarrowOop::NULL_PTR) {
       return new CompareAndSwapNNode(in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), in(MemNode::ValueIn), in(ExpectedIn), order());
     }
@@ -166,7 +166,7 @@ public:
   ShenandoahWeakCompareAndSwapPNode(Node *c, Node *mem, Node *adr, Node *val, Node *ex, MemNode::MemOrd mem_ord)
     : WeakCompareAndSwapPNode(c, mem, adr, val, ex, mem_ord) { }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) {
+  virtual Node *Ideal(PhaseGVN *phase) {
     if (in(ExpectedIn) != NULL && phase->type(in(ExpectedIn)) == TypePtr::NULL_PTR) {
       return new WeakCompareAndSwapPNode(in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), in(MemNode::ValueIn), in(ExpectedIn), order());
     }
@@ -181,7 +181,7 @@ public:
   ShenandoahWeakCompareAndSwapNNode(Node *c, Node *mem, Node *adr, Node *val, Node *ex, MemNode::MemOrd mem_ord)
     : WeakCompareAndSwapNNode(c, mem, adr, val, ex, mem_ord) { }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) {
+  virtual Node *Ideal(PhaseGVN *phase) {
     if (in(ExpectedIn) != NULL && phase->type(in(ExpectedIn)) == TypeNarrowOop::NULL_PTR) {
       return new WeakCompareAndSwapNNode(in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), in(MemNode::ValueIn), in(ExpectedIn), order());
     }
@@ -196,7 +196,7 @@ public:
   ShenandoahCompareAndExchangePNode(Node *c, Node *mem, Node *adr, Node *val, Node *ex, const TypePtr* at, const Type* t, MemNode::MemOrd mem_ord)
     : CompareAndExchangePNode(c, mem, adr, val, ex, at, t, mem_ord) { }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) {
+  virtual Node *Ideal(PhaseGVN *phase) {
     if (in(ExpectedIn) != NULL && phase->type(in(ExpectedIn)) == TypePtr::NULL_PTR) {
       return new CompareAndExchangePNode(in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), in(MemNode::ValueIn), in(ExpectedIn), adr_type(), bottom_type(), order());
     }
@@ -211,7 +211,7 @@ public:
   ShenandoahCompareAndExchangeNNode(Node *c, Node *mem, Node *adr, Node *val, Node *ex, const TypePtr* at, const Type* t, MemNode::MemOrd mem_ord)
     : CompareAndExchangeNNode(c, mem, adr, val, ex, at, t, mem_ord) { }
 
-  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape) {
+  virtual Node *Ideal(PhaseGVN *phase) {
     if (in(ExpectedIn) != NULL && phase->type(in(ExpectedIn)) == TypeNarrowOop::NULL_PTR) {
       return new CompareAndExchangeNNode(in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), in(MemNode::ValueIn), in(ExpectedIn), adr_type(), bottom_type(), order());
     }
