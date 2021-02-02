@@ -1,0 +1,425 @@
+#!/usr/bin/python3
+#
+# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+
+import sys
+import argparse
+import xml.etree.ElementTree as et
+import networkx as nx
+import os
+import io
+from pathlib import *
+import multiprocessing
+import concurrent
+import subprocess
+import pygraphviz
+import tempfile
+import shutil
+
+# BGV binary format constants.
+
+BEGIN_GROUP = 0x00
+BEGIN_GRAPH = 0x01
+CLOSE_GROUP = 0x02
+BEGIN_DOCUMENT = 0x03
+
+POOL_NEW = 0x00
+POOL_STRING = 0x01
+POOL_ENUM = 0x02
+POOL_CLASS = 0x03
+POOL_METHOD = 0x04
+POOL_NULL = 0x05
+POOL_NODE_CLASS = 0x06
+POOL_FIELD = 0x07
+POOL_SIGNATURE = 0x08
+POOL_NODE_SOURCE_POSITION = 0x09
+POOL_NODE = 0x0a
+
+PROPERTY_POOL = 0x00
+PROPERTY_INT = 0x01
+PROPERTY_LONG = 0x02
+PROPERTY_DOUBLE = 0x03
+PROPERTY_FLOAT = 0x04
+PROPERTY_TRUE = 0x05
+PROPERTY_FALSE = 0x06
+PROPERTY_ARRAY = 0x07
+PROPERTY_SUBGRAPH = 0x08
+
+KLASS = 0x00
+ENUM_KLASS = 0x01
+
+# Global state for object caching in BGV emission.
+
+obj_id = 0
+pool = {}
+
+# Helper functions for binary conversion.
+
+def to_bytes(i, n, s):
+    return i.to_bytes(n, byteorder='big', signed=s)
+
+def sint8(i):
+    return to_bytes(i, 1, True)
+
+def sint16(i):
+    return to_bytes(i, 2, True)
+
+def sint32(i):
+    return to_bytes(i, 4, True)
+
+def uint8(i):
+    return to_bytes(i, 1, False)
+
+def uint16(i):
+    return to_bytes(i, 2, False)
+
+def write_bool(out, b):
+    out.write(uint8(b))
+
+def write_string(out, obj):
+    utf = obj.encode('utf-8')
+    out.write(sint32(len(utf)))
+    out.write(utf)
+
+def write_pool_object(out, obj_type, obj):
+    global obj_id
+    global pool
+    key = (obj_type, obj)
+    if key in pool:
+        out.write(sint8(obj_type))
+        out.write(uint16(pool[key]))
+        return
+    write_new_pool_object(out, obj_type, obj)
+
+def write_new_pool_object(out, obj_type, obj):
+    global obj_id
+    global pool
+    out.write(sint8(POOL_NEW))
+    out.write(uint16(obj_id))
+    pool[(obj_type, obj)] = obj_id
+    obj_id += 1
+    out.write(sint8(obj_type))
+    if obj_type == POOL_STRING:
+        write_string(out, obj)
+    elif obj_type == POOL_NODE_CLASS:
+        (node_name, inputs) = obj
+        write_pool_object(out, POOL_CLASS, node_name)
+        write_string(out, node_name)
+        out.write(sint16(inputs))
+        for i in range(inputs):
+            write_bool(out, 0) # indirect
+            write_pool_object(out, POOL_STRING, '') # edge name
+            out.write(sint8(POOL_NULL)) # edge type (FIXME: complete)
+        # Set output_count to 0: all edges are listed as incoming.
+        out.write(sint16(0))
+    elif obj_type == POOL_CLASS:
+        write_string(out, obj)
+        out.write(sint8(KLASS))
+
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def write_property_object(out, obj):
+    if obj == 'true':
+        out.write(sint8(PROPERTY_TRUE))
+    elif obj == 'false':
+        out.write(sint8(PROPERTY_FALSE))
+    elif is_int(obj):
+        out.write(sint8(PROPERTY_INT))
+        out.write(sint32(int(obj)))
+    else:
+        out.write(sint8(PROPERTY_POOL))
+        write_pool_object(out, POOL_STRING, obj)
+
+# Helper functions for traversing the XML graph.
+
+def find_node(graph, idx):
+    for node in graph.find('nodes'):
+        if int(node.attrib['id']) == idx:
+            return node
+    assert False
+
+def find_node_properties(graph, idx):
+    node = find_node(graph, idx)
+    assert node != None
+    ps = {}
+    for p in node.find('properties'):
+        ps[p.attrib['name']] = p.text.strip()
+    ps.pop('idx', None)
+    return ps
+
+def xml2bgv(xml_root, args):
+    """
+    Return a binary stream with the BGV representation of a parsed XML graph.
+    For more info on the BGV specification, see
+    https://github.com/Shopify/seafoam/blob/master/docs/bgv.md.
+    """
+    out = io.BytesIO()
+    graphs = []
+    graph_id = 0
+    # begin BGV
+    out.write(b'BIGV')
+    out.write(sint8(6))
+    out.write(sint8(1))
+    #   begin GroupDocumentGraph
+    for group in xml_root:
+        method = group.find('method')
+        group_name = method.attrib['name']
+        short_group_name = method.attrib['shortName'].strip()
+        bci = int(method.attrib['bci'])
+        # begin BeginGroup
+        out.write(sint8(BEGIN_GROUP))
+        write_pool_object(out, POOL_STRING, group_name)
+        write_pool_object(out, POOL_STRING, short_group_name)
+        # FIXME: this should not be a POOL_STRING but a POOL_METHOD
+        write_pool_object(out, POOL_STRING, 'FIXME')
+        out.write(sint32(bci))
+        #   begin Props
+        out.write(sint16(0))
+        #   end Props
+        # end BeginGroup
+        for graph in group.findall('graph'):
+            graph_name = graph.attrib['name']
+            graph_tuple = (graph_id, short_group_name, graph_name)
+            graphs.append(graph_tuple)
+            # Load the entire graph first.
+            G = nx.DiGraph()
+            for node in graph.find('nodes'):
+                idx = int(node.attrib['id'])
+                G.add_node(idx)
+            for edge in graph.find('edges'):
+                src = int(edge.attrib['from'])
+                dst = int(edge.attrib['to'])
+                G.add_edge(src, dst)
+            # begin Graph
+            out.write(sint8(BEGIN_GRAPH))
+            out.write(sint32(0)) # id
+            write_string(out, graph_name)
+            #   begin Args
+            out.write(sint32(0))
+            #   end Args
+            #   begin GraphBody
+            #     begin Props (source, just to trigger C2 configuration)
+            out.write(sint16(1))
+            write_pool_object(out, POOL_STRING, 'source')
+            out.write(sint8(PROPERTY_POOL))
+            write_pool_object(out, POOL_STRING, 'C2Compiler')
+            #     end Props
+            out.write(sint32(G.number_of_nodes())) # nodes_count
+            for n in G.nodes:
+                node_props = find_node_properties(graph, n)
+                out.write(sint32(n)) # id
+                write_pool_object(out, POOL_NODE_CLASS,
+                                  (node_props['name'], G.in_degree(n)))
+                write_bool(out, 0) # has_predecessor
+                #     begin Props
+                out.write(sint16(len(node_props)))
+                for (key, value) in node_props.items():
+                    write_pool_object(out, POOL_STRING, key)
+                    write_property_object(out, value)
+                #     end Props
+                # edges_in (no edges_out, all edges are listed as incoming)
+                for (s, t) in G.in_edges(n):
+                    out.write(sint32(s))
+            #     begin Blocks
+            out.write(sint32(0)) # times
+            #     end Blocks
+            #   end GraphBody
+            graph_id += 1
+            # end Graph
+        # begin CloseGroup
+        out.write(sint8(CLOSE_GROUP))
+        # end CloseGroup
+    #   end GroupDocumentGraph
+    # end BGV
+    return out, graphs
+
+def is_control_edge(edge):
+    return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '2'
+
+def is_effect_node(node):
+    return node.attr['fillcolor'] == "#da2d4f"
+
+def is_control_node(node):
+    return node.attr['fillcolor'] == "#e98693"
+
+def is_inlined(node):
+    return node.attr['shape'] == 'oval'
+
+def is_self(edge):
+    (s, t) = edge
+    return s == t
+
+def is_backbone(edge):
+    (s, t) = edge
+    if is_self(edge):
+        return False
+    if is_control_edge(edge):
+        return True
+    if is_effect_node(s) and is_control_node(t):
+        return True
+    return False
+
+def post_process(graph):
+    """
+    Post-process a DOT graph emitted by Seafoam. Ideally, all processing should
+    occur during the annotation phase (see c2.rb), but some aspects of the graph
+    can only be controlled in this way.
+    """
+    # Remove spurious nodes resulting from asking Seafoam to inline nodes which
+    # actually have incoming edges, such as Parm nodes.
+    spurious = [n for n in graph.nodes() if not n.attr]
+    graph.delete_nodes_from(spurious)
+    # Remove self-loops.
+    selfedges = [e for e in graph.edges() if is_self(e)]
+    graph.delete_edges_from(selfedges)
+    # Increase weight of "backbone edges". These are edges that should have more
+    # influence in the structure of the graph.
+    for e in graph.edges():
+        if is_backbone(e):
+            e.attr['weight'] = 100000
+    # Reduce inlined nodes.
+    for n in graph.nodes():
+        if is_inlined(n):
+            n.attr['shape'] = 'rectangle'
+            n.attr['width'] = 0
+            n.attr['height'] = 0
+            n.attr['margin'] = 0.03
+
+def draw(graph_args):
+    """
+    Draw the given BGV graph by running Seafoam, post-processing the generated
+    DOT file, and finally invoking Graphviz (dot) to produce a PDF file.
+    """
+    (graph, bgv, tempdir, args) = graph_args
+    (graph_id, short_group_name, graph_name) = graph
+    outdir = Path(args.outdir)
+    dot = Path.joinpath(tempdir, str(graph_id)).with_suffix('.dot')
+    seafoam_command = ['seafoam', os.fspath(bgv) + ':' + str(graph_id),
+                       'render', '--out', os.fspath(dot)]
+    # Run seafoam.
+    if args.verbose:
+            print("creating DOT file " + os.fspath(dot) + " ...")
+    subprocess.run(seafoam_command)
+    graph = pygraphviz.AGraph(os.fspath(dot))
+    # Post-process and update the DOT file.
+    if args.verbose:
+            print("post-processing DOT file " + os.fspath(dot) + " ...")
+    post_process(graph)
+    graph.write(os.fspath(dot))
+    # Finally draw the graph into a PDF file.
+    pdf = Path.joinpath(outdir, str(graph_id)).with_suffix('.pdf')
+    if args.verbose:
+            print("creating PDF file " + os.fspath(pdf) + " ...")
+    graph.draw(os.fspath(pdf), prog='dot')
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Prints XML graph files.",
+        formatter_class=argparse.RawTextHelpFormatter)
+
+    parser.add_argument('XML_FILE', nargs='?')
+    parser.add_argument('--outdir',
+                        default=os.getcwd(),
+                        help="output directory (default: %(default)s)")
+    parser.add_argument('-j', '--jobs',
+                        metavar='N',
+                        type=int,
+                        default=multiprocessing.cpu_count(),
+                        help="maximum number of parallel jobs (default: %(default)s)")
+    parser.add_argument('--no-clean',
+                        dest='clean',
+                        action='store_false',
+                        default=True,
+                        help="do not remove intermediate files")
+    parser.add_argument('--verbose',
+                        dest='verbose',
+                        action='store_true',
+                        default=False)
+
+    args = parser.parse_args()
+
+    # Create temporary directory to store all intermediate files and to run
+    # seafoam under the right configuration (specified in 'c2.rb' in the
+    # script's directory).
+    tempdir = Path(tempfile.mkdtemp(prefix = "ideal2pdf-"))
+    if args.verbose:
+        print("creating temporary directory " + os.fspath(tempdir) + " ...")
+
+    try:
+        # Parse XML file.
+        if args.verbose:
+            print("parsing input file " + args.XML_FILE + " ...")
+        tree = et.parse(args.XML_FILE)
+        root = tree.getroot()
+
+        # Convert XML to BGV.
+        if args.verbose:
+            print("converting XML to BGV ...")
+        bgv_buffer, graphs = xml2bgv(root, args)
+
+        # Dump BGV file into tempdir.
+        xml_base = Path(args.XML_FILE).stem
+        bgv = Path.joinpath(tempdir, xml_base).with_suffix('.bgv')
+        if args.verbose:
+            print("writing BGV file " + os.fspath(bgv) + " ...")
+        with open(bgv, 'wb') as f:
+            f.write(bgv_buffer.getbuffer())
+
+        # Create outdir if it does not exist.
+        outdir = Path(args.outdir)
+        if not outdir.is_dir():
+            if args.verbose:
+                print("creating output directory " + args.outdir + " ...")
+            outdir.mkdir(parents=True)
+
+        # Create temporary working directory and place seafoam's configuration
+        # file ('c2.rb' in this script's directory).
+        seafoam_configdir = Path.joinpath(Path(tempdir), '.seafoam')
+        seafoam_configdir.mkdir(parents=True)
+        if args.verbose:
+            print("creating Seafoam configuration directory " + \
+                  os.fspath(seafoam_configdir) + " ...")
+        config = Path.joinpath(Path(__file__).parent.absolute(), 'c2.rb')
+        seafoam_config = os.fspath(Path.joinpath(seafoam_configdir, 'config'))
+        shutil.copy(config, seafoam_config)
+        original_workdir = os.fspath(Path().absolute())
+        os.chdir(tempdir)
+        # Do the rest of the work in parallel. The list conversion is just to
+        # force evaluation.
+        ex = concurrent.futures.ProcessPoolExecutor(max_workers=int(args.jobs))
+        list(ex.map(draw, [(graph, bgv, tempdir, args) for graph in graphs]))
+        os.chdir(original_workdir)
+
+    finally:
+        # Clean up.
+        if args.clean:
+            if args.verbose:
+                print("cleaning temporary directory " + os.fspath(tempdir))
+            shutil.rmtree(tempdir)
+
+if __name__ == '__main__':
+    main()
