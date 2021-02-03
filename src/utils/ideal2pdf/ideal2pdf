@@ -212,7 +212,10 @@ def xml2bgv(xml_root, args):
         #   end Props
         # end BeginGroup
         for graph in group.findall('graph'):
-            graph_name = graph.attrib['name']
+            graph_name = graph.attrib['name'] \
+                              .replace('1', 'One') \
+                              .replace('2', 'Two') \
+                              .replace('3', 'Three')
             graph_tuple = (graph_id, short_group_name, graph_name)
             graphs.append(graph_tuple)
             # Load the entire graph first.
@@ -226,7 +229,7 @@ def xml2bgv(xml_root, args):
                 G.add_edge(src, dst)
             # begin Graph
             out.write(sint8(BEGIN_GRAPH))
-            out.write(sint32(0)) # id
+            out.write(sint32(graph_id)) # id
             write_string(out, graph_name)
             #   begin Args
             out.write(sint32(0))
