@@ -127,12 +127,12 @@ module Seafoam
           return 'control'
         end
         if node_name.start_with?('Call') ||
-           node_name.start_with?('Load') ||
-           node_name.start_with?('CreateEx')
+           node_name.start_with?('Load')
           return 'effect'
         end
         if node_name.start_with?('Phi') ||
-           node_name.start_with?('Opaque')
+           node_name.start_with?('Opaque') ||
+           node_name.start_with?('CreateEx')
           return 'virtual'
         end
         if is_simple_input(node)
@@ -163,10 +163,14 @@ module Seafoam
         'virtual' => 'data'
       }
 
-      # Edge kind based on 'from' node.
+      # Edge kind (mostly) based on 'from' node.
       def edge_kind(edge)
         from_kind = node_kind(edge.from)
-        EDGE_KIND_MAP[from_kind] || 'other'
+        edge_kind = EDGE_KIND_MAP[from_kind] || 'other'
+        if edge_kind == 'control' and node_kind(edge.to) == 'virtual'
+            edge_kind = 'info'
+        end
+        edge_kind
       end
 
       # Annotate nodes with their label and kind.
@@ -182,7 +186,11 @@ module Seafoam
       # Annotate edges with their label and kind.
       def annotate_edges(graph)
         graph.edges.each do |edge|
-          edge.props[:kind] ||= edge_kind(edge)
+          kind = edge_kind(edge)
+          edge.props[:kind] ||= kind
+          if kind == 'info'
+            edge.props[:reverse] = true
+          end
         end
       end
 

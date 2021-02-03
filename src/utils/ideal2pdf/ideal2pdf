@@ -273,6 +273,9 @@ def xml2bgv(xml_root, args):
 def is_control_edge(edge):
     return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '2'
 
+def is_info_edge(edge):
+    return edge.attr['dir'] == 'back' and edge.attr['style'] == 'dashed'
+
 def is_effect_node(node):
     return node.attr['fillcolor'] == '#da2d4f'
 
@@ -293,6 +296,9 @@ def is_backbone(edge):
     if is_control_edge(edge):
         return True
     if is_effect_node(s) and is_control_node(t):
+        return True
+    # Info edges are used for pinning, we want them to be short.
+    if is_info_edge(edge):
         return True
     return False
 
