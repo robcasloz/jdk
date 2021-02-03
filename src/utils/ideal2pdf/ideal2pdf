@@ -135,7 +135,17 @@ def write_new_pool_object(out, obj_type, obj):
     elif obj_type == POOL_CLASS:
         write_string(out, obj)
         out.write(sint8(KLASS))
-
+    elif obj_type == POOL_METHOD:
+        write_pool_object(out, POOL_CLASS, 'dummy_class') # declaring class
+        write_pool_object(out, POOL_STRING, 'dummy_method_name') # method name
+        write_pool_object(out, POOL_SIGNATURE, 'dummy_signature') # signature
+        out.write(sint32(0)) # modifiers
+        out.write(sint32(0)) # bytes length
+    elif obj_type == POOL_SIGNATURE:
+        out.write(sint16(0)) # arg number
+        write_pool_object(out, POOL_STRING, 'dummy_return_type')
+    else:
+        assert False
 def is_int(s):
     try:
         int(s)
@@ -195,8 +205,7 @@ def xml2bgv(xml_root, args):
         out.write(sint8(BEGIN_GROUP))
         write_pool_object(out, POOL_STRING, group_name)
         write_pool_object(out, POOL_STRING, short_group_name)
-        # FIXME: this should not be a POOL_STRING but a POOL_METHOD
-        write_pool_object(out, POOL_STRING, 'FIXME')
+        write_pool_object(out, POOL_METHOD, 'dummy_method')
         out.write(sint32(bci))
         #   begin Props
         out.write(sint16(0))
@@ -262,10 +271,10 @@ def is_control_edge(edge):
     return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '2'
 
 def is_effect_node(node):
-    return node.attr['fillcolor'] == "#da2d4f"
+    return node.attr['fillcolor'] == '#da2d4f'
 
 def is_control_node(node):
-    return node.attr['fillcolor'] == "#e98693"
+    return node.attr['fillcolor'] == '#e98693'
 
 def is_inlined(node):
     return node.attr['shape'] == 'oval'
@@ -320,7 +329,7 @@ def split_filter(filter):
     """
     Split filter into its (id, method, phase, nodes) components.
     """
-    components = filter.split(";")
+    components = filter.split(';')
     if len(components) != 4:
         assert False
     return components
@@ -416,7 +425,7 @@ def main():
                         default=False,
                         help="list id, method, and compiler phase of each graph (default: %(default)s)")
     parser.add_argument('--filter',
-                        default=";;;",
+                        default=';;;',
                         help="""filtered PDF files and nodes within (default: %(default)s)
 FILTER is of the form "i;m;p;n1,n2,...,ni" where
 - i is a regex specification of a (method, compiler phase) id (empty for all ids)
@@ -455,7 +464,7 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
     # Create temporary directory to store all intermediate files and to run
     # seafoam under the right configuration (specified in 'c2.rb' in the
     # script's directory).
-    tempdir = Path(tempfile.mkdtemp(prefix = "ideal2pdf-"))
+    tempdir = Path(tempfile.mkdtemp(prefix = 'ideal2pdf-'))
     if args.verbose:
         print("creating temporary directory " + os.fspath(tempdir) + " ...")
 
@@ -477,7 +486,7 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
             ws = [max(map(len, map(str, c))) for c in zip(*table)]
             for r in table:
                 if r[0] == 'id' or matches(r, args.filter):
-                    print("  ".join((str(v).ljust(w) for v, w in zip(r, ws))))
+                    print('  '.join((str(v).ljust(w) for v, w in zip(r, ws))))
 
         # Create outdir if it does not exist.
         outdir = Path(args.outdir)
