@@ -34,6 +34,7 @@ import subprocess
 import pygraphviz
 import tempfile
 import shutil
+import re
 
 # BGV binary format constants.
 
@@ -309,6 +310,41 @@ def post_process(graph):
             n.attr['height'] = 0
             n.attr['margin'] = 0.03
 
+def matches_field(field, filter):
+    """
+    Whether a field (id, method, or phase) matches a filter specification.
+    """
+    return filter == '*' or re.match('.*' + filter + '.*', str(field))
+
+def split_filter(filter):
+    """
+    Split filter into its (id, method, phase, nodes) components.
+    """
+    components = filter.split(";")
+    if len(components) != 4:
+        assert False
+    return components
+
+def matches(graph_tuple, filter):
+    """
+    Whether a (id, method, phase) graph tuple matches a filter specification.
+    """
+    (id, method, phase) = graph_tuple
+    components = split_filter(filter)
+    return matches_field(id,     components[0]) and \
+           matches_field(method, components[1]) and \
+           matches_field(phase,  components[2])
+
+def filtered_nodes(filter):
+    """
+    Set of filtered nodes, or None if all nodes are included.
+    """
+    nodes = split_filter(filter)[3]
+    if nodes == '' or nodes == '*':
+        return None
+    else:
+        return nodes
+
 def draw(graph_args):
     """
     Draw the given BGV graph by running Seafoam, post-processing the generated
@@ -320,10 +356,20 @@ def draw(graph_args):
     dot = Path.joinpath(tempdir, str(graph_id)).with_suffix('.dot')
     seafoam_command = ['seafoam', os.fspath(bgv) + ':' + str(graph_id),
                        'render', '--out', os.fspath(dot)]
+    nodes = filtered_nodes(args.filter)
+    if nodes != None:
+        seafoam_command += ['--spotlight', nodes]
     # Run seafoam.
     if args.verbose:
-            print("creating DOT file " + os.fspath(dot) + " ...")
-    subprocess.run(seafoam_command)
+            print("running " + ' '.join(seafoam_command) + " ...")
+    result = subprocess.run(seafoam_command, capture_output=True, text=True)
+    if not dot.is_file():
+        sys.stderr.write("could not draw graph " + str(graph_id))
+        if len(result.stderr) > 0:
+            sys.stderr.write(": " + result.stderr)
+        else:
+            sys.stderr.write('\n')
+        return
     graph = pygraphviz.AGraph(os.fspath(dot))
     # Post-process and update the DOT file.
     if args.verbose:
@@ -338,13 +384,27 @@ def draw(graph_args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Prints XML graph files.",
+        description="Draws graphs in XML graph files as PDF documents.",
         formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('XML_FILE', nargs='?')
+    parser.add_argument('XML_FILE',
+                        help="XML graph file emitted by the HotSpot JVM")
     parser.add_argument('--outdir',
                         default=os.getcwd(),
                         help="output directory (default: %(default)s)")
+    parser.add_argument('--list',
+                        action='store_true',
+                        default=False,
+                        help="list id, method, and compiler phase of each graph (default: %(default)s)")
+    parser.add_argument('--filter',
+                        default=";;;",
+                        help="""filtered PDF files and nodes within (default: %(default)s)
+FILTER is of the form "i;m;p;n1,n2,...,ni" where
+- i is a regex specification of a (method, compiler phase) id (empty for all ids)
+- m is a regex specification of a method (empty for all methods)
+- p is a regex specification of a compiler phase (empty for all phases)
+- n1,n2,...,ni is a comma-separated list of node ids (empty for all nodes)
+""")
     parser.add_argument('-j', '--jobs',
                         metavar='N',
                         type=int,
@@ -354,11 +414,12 @@ def main():
                         dest='clean',
                         action='store_false',
                         default=True,
-                        help="do not remove intermediate files")
+                        help="do not remove intermediate files (default: %(default)s)")
     parser.add_argument('--verbose',
                         dest='verbose',
                         action='store_true',
-                        default=False)
+                        default=False,
+                        help="Print debug information to the standard output (default: %(default)s)")
 
     args = parser.parse_args()
 
@@ -380,6 +441,14 @@ def main():
         if args.verbose:
             print("converting XML to BGV ...")
         bgv_buffer, graphs = xml2bgv(root, args)
+
+        # If asked for, list the graphs (id, method, phase).
+        if args.list:
+            table = [('id', 'method', 'phase')] + graphs
+            ws = [max(map(len, map(str, c))) for c in zip(*table)]
+            for r in table:
+                if r[0] == 'id' or matches(r, args.filter):
+                    print("  ".join((str(v).ljust(w) for v, w in zip(r, ws))))
 
         # Dump BGV file into tempdir.
         xml_base = Path(args.XML_FILE).stem
@@ -411,7 +480,8 @@ def main():
         # Do the rest of the work in parallel. The list conversion is just to
         # force evaluation.
         ex = concurrent.futures.ProcessPoolExecutor(max_workers=int(args.jobs))
-        list(ex.map(draw, [(graph, bgv, tempdir, args) for graph in graphs]))
+        list(ex.map(draw, [(graph, bgv, tempdir, args) for graph in graphs
+                           if matches(graph, args.filter)]))
         os.chdir(original_workdir)
 
     finally:
