@@ -352,8 +352,8 @@ def draw(graph_args):
     """
     (graph, bgv, tempdir, args) = graph_args
     (graph_id, short_group_name, graph_name) = graph
-    outdir = Path(args.outdir)
-    dot = Path.joinpath(tempdir, str(graph_id)).with_suffix('.dot')
+    dot = Path.joinpath(dotdir(args, tempdir),
+                        str(graph_id)).with_suffix('.dot')
     seafoam_command = ['seafoam', os.fspath(bgv) + ':' + str(graph_id),
                        'render', '--out', os.fspath(dot)]
     nodes = filtered_nodes(args.filter)
@@ -377,10 +377,29 @@ def draw(graph_args):
     post_process(graph)
     graph.write(os.fspath(dot))
     # Finally draw the graph into a PDF file.
+    outdir = Path(args.outdir)
     pdf = Path.joinpath(outdir, str(graph_id)).with_suffix('.pdf')
     if args.verbose:
             print("creating PDF file " + os.fspath(pdf) + " ...")
     graph.draw(os.fspath(pdf), prog='dot')
+
+def bgvdir(args, tempdir):
+    """
+    Directory where the BGV file should be stored.
+    """
+    if args.output_bgv:
+        return Path(args.outdir)
+    else:
+        return tempdir
+
+def dotdir(args, tempdir):
+    """
+    Directory where the DOT files should be stored.
+    """
+    if args.output_dot:
+        return Path(args.outdir)
+    else:
+        return tempdir
 
 def main():
     parser = argparse.ArgumentParser(
@@ -410,6 +429,16 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                         type=int,
                         default=multiprocessing.cpu_count(),
                         help="maximum number of parallel jobs (default: %(default)s)")
+    parser.add_argument('--output-bgv',
+                        dest='output_bgv',
+                        action='store_true',
+                        default=False,
+                        help="Output BGV file corresponding to the input XML file (default: %(default)s)")
+    parser.add_argument('--output-dot',
+                        dest='output_dot',
+                        action='store_true',
+                        default=False,
+                        help="Output DOT files corresponding to each graph (default: %(default)s)")
     parser.add_argument('--no-clean',
                         dest='clean',
                         action='store_false',
@@ -450,20 +479,20 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                 if r[0] == 'id' or matches(r, args.filter):
                     print("  ".join((str(v).ljust(w) for v, w in zip(r, ws))))
 
-        # Dump BGV file into tempdir.
-        xml_base = Path(args.XML_FILE).stem
-        bgv = Path.joinpath(tempdir, xml_base).with_suffix('.bgv')
-        if args.verbose:
-            print("writing BGV file " + os.fspath(bgv) + " ...")
-        with open(bgv, 'wb') as f:
-            f.write(bgv_buffer.getbuffer())
-
         # Create outdir if it does not exist.
         outdir = Path(args.outdir)
         if not outdir.is_dir():
             if args.verbose:
                 print("creating output directory " + args.outdir + " ...")
             outdir.mkdir(parents=True)
+
+        # Dump BGV file.
+        xml_base = Path(args.XML_FILE).stem
+        bgv = Path.joinpath(bgvdir(args, tempdir), xml_base).with_suffix('.bgv')
+        if args.verbose:
+            print("writing BGV file " + os.fspath(bgv) + " ...")
+        with open(bgv, 'wb') as f:
+            f.write(bgv_buffer.getbuffer())
 
         # Create temporary working directory and place seafoam's configuration
         # file ('c2.rb' in this script's directory).
