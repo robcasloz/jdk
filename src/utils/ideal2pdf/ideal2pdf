@@ -219,14 +219,17 @@ def xml2bgv(xml_root, args):
             graph_tuple = (graph_id, short_group_name, graph_name)
             graphs.append(graph_tuple)
             # Load the entire graph first.
-            G = nx.DiGraph()
+            G = nx.MultiDiGraph()
             for node in graph.find('nodes'):
                 idx = int(node.attrib['id'])
                 G.add_node(idx)
             for edge in graph.find('edges'):
                 src = int(edge.attrib['from'])
                 dst = int(edge.attrib['to'])
-                G.add_edge(src, dst)
+                ind = int(edge.attrib['index'])
+                # The XML file sometimes contains edge (src,dst,ind) duplicates.
+                if not G.has_edge(src, dst, key=ind):
+                    G.add_edge(src, dst, key=ind)
             # begin Graph
             out.write(sint8(BEGIN_GRAPH))
             out.write(sint32(graph_id)) # id
@@ -255,7 +258,7 @@ def xml2bgv(xml_root, args):
                     write_property_object(out, value)
                 #     end Props
                 # edges_in (no edges_out, all edges are listed as incoming)
-                for (s, t) in G.in_edges(n):
+                for (s, t, index) in G.in_edges(n, keys=True):
                     out.write(sint32(s))
             #     begin Blocks
             out.write(sint32(0)) # times
