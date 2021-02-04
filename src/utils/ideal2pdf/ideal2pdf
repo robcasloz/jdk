@@ -140,7 +140,7 @@ def write_new_pool_object(out, obj_type, obj):
         write_pool_object(out, POOL_STRING, 'dummy_method_name') # method name
         write_pool_object(out, POOL_SIGNATURE, 'dummy_signature') # signature
         out.write(sint32(0)) # modifiers
-        out.write(sint32(0)) # bytes length
+        write_string(out, '') # bytecode in binary format
     elif obj_type == POOL_SIGNATURE:
         out.write(sint16(0)) # arg number
         write_pool_object(out, POOL_STRING, 'dummy_return_type')
@@ -302,7 +302,17 @@ def is_backbone(edge):
         return True
     return False
 
-def post_process(graph):
+def pinned_region(graph, node):
+    """
+    Region node to which the given node is pinned, or None if not pinned.
+    """
+    for edge in graph.in_edges(node):
+        if is_info_edge(edge):
+            (s, _) = edge
+            return s
+    return None
+
+def post_process(graph, args):
     """
     Post-process a DOT graph emitted by Seafoam. Ideally, all processing should
     occur during the annotation phase (see c2.rb), but some aspects of the graph
@@ -327,6 +337,17 @@ def post_process(graph):
             n.attr['width'] = 0
             n.attr['height'] = 0
             n.attr['margin'] = 0.03
+    if args.align_pinned:
+        # Force vertical alignment of pinned nodes and their regions.
+        pinned = {}
+        for n in graph.nodes():
+            r = pinned_region(graph, n)
+            if r != None:
+                if not r in pinned:
+                    pinned[r] = set()
+                pinned[r].add(n)
+        for r, ps in pinned.items():
+            graph.add_subgraph([r] + list(ps), rank='same')
 
 def matches_field(field, filter):
     """
@@ -392,7 +413,7 @@ def draw(graph_args):
     # Post-process and update the DOT file.
     if args.verbose:
             print("post-processing DOT file " + os.fspath(dot) + " ...")
-    post_process(graph)
+    post_process(graph, args)
     graph.write(os.fspath(dot))
     # Finally draw the graph into a PDF file.
     outdir = Path(args.outdir)
@@ -405,7 +426,7 @@ def bgvdir(args, tempdir):
     """
     Directory where the BGV file should be stored.
     """
-    if args.output_bgv:
+    if args.bgv:
         return Path(args.outdir)
     else:
         return tempdir
@@ -414,10 +435,25 @@ def dotdir(args, tempdir):
     """
     Directory where the DOT files should be stored.
     """
-    if args.output_dot:
+    if args.dot:
         return Path(args.outdir)
     else:
         return tempdir
+
+def add_feature_argument(parser, feature, help_msg, default):
+    """
+    Add a Boolean, mutually-exclusive feature argument to a parser.
+    """
+    help_string = help_msg + " (default: " + str(default) + ")"
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--' + feature,
+                                dest=feature,
+                                action='store_true',
+                                help=help_string)
+    feature_parser.add_argument('--no-' + feature,
+                                dest=feature,
+                                action='store_false')
+    parser.set_defaults(**{feature:default})
 
 def main():
     parser = argparse.ArgumentParser(
@@ -429,10 +465,10 @@ def main():
     parser.add_argument('--outdir',
                         default=os.getcwd(),
                         help="output directory (default: %(default)s)")
-    parser.add_argument('--list',
-                        action='store_true',
-                        default=False,
-                        help="list id, method, and compiler phase of each graph (default: %(default)s)")
+    add_feature_argument(parser,
+                         'list',
+                         "list id, method, and compiler phase of each graph",
+                         False)
     parser.add_argument('--filter',
                         default=';;;',
                         help="""filtered PDF files and nodes within (default: %(default)s)
@@ -447,26 +483,26 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                         type=int,
                         default=multiprocessing.cpu_count(),
                         help="maximum number of parallel jobs (default: %(default)s)")
-    parser.add_argument('--output-bgv',
-                        dest='output_bgv',
-                        action='store_true',
-                        default=False,
-                        help="Output BGV file corresponding to the input XML file (default: %(default)s)")
-    parser.add_argument('--output-dot',
-                        dest='output_dot',
-                        action='store_true',
-                        default=False,
-                        help="Output DOT files corresponding to each graph (default: %(default)s)")
-    parser.add_argument('--no-clean',
-                        dest='clean',
-                        action='store_false',
-                        default=True,
-                        help="do not remove intermediate files (default: %(default)s)")
-    parser.add_argument('--verbose',
-                        dest='verbose',
-                        action='store_true',
-                        default=False,
-                        help="Print debug information to the standard output (default: %(default)s)")
+    add_feature_argument(parser,
+                         'bgv',
+                         "output BGV file corresponding to the input XML file",
+                         False)
+    add_feature_argument(parser,
+                         'dot',
+                         "output DOT files corresponding to each graph",
+                         False)
+    add_feature_argument(parser,
+                         'clean',
+                         "remove intermediate files",
+                         True)
+    add_feature_argument(parser,
+                         'verbose',
+                         "print debug information to the standard output",
+                         False)
+    add_feature_argument(parser,
+                         'align_pinned',
+                         "align pinned nodes vertically",
+                         True)
 
     args = parser.parse_args()
 
