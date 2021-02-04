@@ -248,8 +248,13 @@ def xml2bgv(xml_root, args):
             for n in G.nodes:
                 node_props = find_node_properties(graph, n)
                 out.write(sint32(n)) # id
+                # compute number of in-ports to the node (max in-edge index + 1)
+                in_edges = G.in_edges(n, keys=True)
+                no_inputs = 0
+                if len(in_edges) > 0:
+                    no_inputs = max([index for (s, t, index) in in_edges]) + 1
                 write_pool_object(out, POOL_NODE_CLASS,
-                                  (node_props['name'], G.in_degree(n)))
+                                  (node_props['name'], no_inputs))
                 write_bool(out, 0) # has_predecessor
                 #     begin Props
                 out.write(sint16(len(node_props)))
@@ -258,8 +263,11 @@ def xml2bgv(xml_root, args):
                     write_property_object(out, value)
                 #     end Props
                 # edges_in (no edges_out, all edges are listed as incoming)
-                for (s, t, index) in G.in_edges(n, keys=True):
-                    out.write(sint32(s))
+                positioned_ins = [-1] * no_inputs
+                for (s, t, index) in in_edges:
+                    positioned_ins[index] = s
+                for src in positioned_ins:
+                    out.write(sint32(src))
             #     begin Blocks
             out.write(sint32(0)) # times
             #     end Blocks
