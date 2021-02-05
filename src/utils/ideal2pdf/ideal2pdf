@@ -128,7 +128,7 @@ def write_new_pool_object(out, obj_type, obj):
         out.write(sint16(inputs))
         for i in range(inputs):
             write_bool(out, 0) # indirect
-            write_pool_object(out, POOL_STRING, '') # edge name
+            write_pool_object(out, POOL_STRING, str(i))
             out.write(sint8(POOL_NULL)) # edge type (FIXME: complete)
         # Set output_count to 0: all edges are listed as incoming.
         out.write(sint16(0))
@@ -348,6 +348,14 @@ def post_process(graph, args):
             n.attr['width'] = 0
             n.attr['height'] = 0
             n.attr['margin'] = 0.03
+    # Move edge labels (input port numbers) closer to the destination node.
+    for e in graph.edges():
+        edge_label = e.attr['label']
+        if edge_label != None and len(edge_label) > 0:
+            e.attr['label'] = ''
+            e.attr['headlabel'] = edge_label
+            e.attr['labeldistance'] = 2
+            e.attr['labelangle'] = -20.0
     if args.align_pinned:
         # Force vertical alignment of pinned nodes and their regions.
         pinned = {}

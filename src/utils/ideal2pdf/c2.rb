@@ -191,6 +191,9 @@ module Seafoam
           if kind == 'info'
             edge.props[:reverse] = true
           end
+          if kind != 'control' and kind != 'info'
+            edge.props[:label] = edge.props[:name]
+          end
         end
       end
 
