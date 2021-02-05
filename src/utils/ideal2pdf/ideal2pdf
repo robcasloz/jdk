@@ -296,6 +296,10 @@ def is_control_node(node):
 def is_inlined(node):
     return node.attr['shape'] == 'oval'
 
+def is_projection(node):
+    projs = ['Proj', 'Bool', 'IfTrue', 'IfFalse', 'Parm']
+    return any([node.attr['label'].endswith(name) for name in projs])
+
 def is_self(edge):
     (s, t) = edge
     return s == t
@@ -312,6 +316,13 @@ def is_backbone(edge):
     if is_info_edge(edge):
         return True
     return False
+
+def simplify_projection_label(label):
+    if label.endswith('IfTrue'):
+        return 'T'
+    if label.endswith('IfFalse'):
+        return 'F'
+    return ''
 
 def pinned_region(graph, node):
     """
@@ -380,6 +391,25 @@ def post_process(graph, args):
             e.attr['labelangle'] = -20.0 - len(edge_label) * 3
             e.attr['fontcolor'] = ''
             e.attr['fontsize'] = 12
+    if args.hide_projs:
+        # Hide projection-like nodes and show their information in the edge.
+        projs = [n for n in graph.nodes() if is_projection(n)]
+        for n in projs:
+            # Draw edges from the only predecessor to each of the successors,
+            # copying the attributes of the outgoing edges.
+            pred = graph.predecessors(n)
+            assert(len(pred) == 1)
+            p = pred[0]
+            graph.delete_edge(p, n)
+            for s in graph.successors(n):
+                graph.add_edge(p, s)
+                old = graph.get_edge(n, s)
+                new = graph.get_edge(p, s)
+                for (key, val) in old.attr.items():
+                    new.attr[key] = val
+                new.attr['label'] = simplify_projection_label(n.attr['label'])
+                graph.delete_edge(n, s)
+            graph.delete_node(n)
     if args.align_pinned:
         # Force vertical alignment of pinned nodes and their regions.
         pinned = {}
@@ -555,6 +585,10 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
     add_feature_argument(parser,
                          'align_pinned',
                          "align pinned nodes vertically",
+                         True)
+    add_feature_argument(parser,
+                         'hide_projs',
+                         "hide projection nodes",
                          True)
 
     args = parser.parse_args()
