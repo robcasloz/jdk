@@ -348,6 +348,28 @@ def post_process(graph, args):
             n.attr['width'] = 0
             n.attr['height'] = 0
             n.attr['margin'] = 0.03
+    # Merge edges between same source and destination node, where only their
+    # labels (input port numbers) change.
+    duplicated = {}
+    for e in graph.edges():
+        (src, dst) = e
+        if not (src, dst) in duplicated:
+            duplicated[(src, dst)] = []
+        duplicated[(src, dst)].append(e.attr['label'])
+    for ((src, dst), labels) in duplicated.items():
+        if len(labels) > 1:
+            first = graph.get_edge(src, dst)
+            # Save attributes for the new representative edge.
+            first_attr = {}
+            for (key, val) in first.attr.items():
+                 first_attr[key] = val
+            while graph.has_edge(src, dst):
+                graph.delete_edge(src, dst)
+            graph.add_edge(first)
+            new = graph.get_edge(src, dst)
+            for (key, val) in first_attr.items():
+                new.attr[key] = val
+            new.attr['label'] = ','.join(labels)
     # Move edge labels (input port numbers) closer to the destination node.
     for e in graph.edges():
         edge_label = e.attr['label']
@@ -355,7 +377,7 @@ def post_process(graph, args):
             e.attr['label'] = ''
             e.attr['headlabel'] = edge_label
             e.attr['labeldistance'] = 2
-            e.attr['labelangle'] = -20.0
+            e.attr['labelangle'] = -20.0 - len(edge_label) * 3
             e.attr['fontcolor'] = ''
             e.attr['fontsize'] = 12
     if args.align_pinned:
