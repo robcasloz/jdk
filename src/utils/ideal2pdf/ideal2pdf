@@ -327,6 +327,18 @@ def simplify_projection_label(label):
         return 'F'
     return ''
 
+p_constant_label = re.compile("C\(([^\)]+)\)")
+p_parm_label     = re.compile("P\(([^\)]+)\)")
+def extract_constant(constant_label):
+    val = constant_label.split()[1]
+    cm = p_constant_label.match(val)
+    if cm:
+        return cm.group(1)
+    pm = p_parm_label.match(val)
+    if pm:
+        return pm.group(1)
+    return val
+
 def pinned_region(graph, node):
     """
     Region node to which the given node is pinned, or None if not pinned.
@@ -433,11 +445,16 @@ def post_process(graph, args):
         constant = [n for n in graph.nodes() if is_inlined(n)]
         for n in graph.nodes():
             pconstants = [p for p in graph.predecessors(n) if is_inlined(p)]
-            constant_inputs = [p.attr['label'].split()[1] + ':' + \
-                               graph.get_edge(p, n).attr['headlabel']
+            constant_inputs = [extract_constant(p.attr['label']) + \
+                               '(' + graph.get_edge(p, n).attr['headlabel'] + ')'
                                for p in pconstants]
             if len(pconstants) > 0:
-                n.attr['label'] += '\n' + (' '.join(constant_inputs))
+                n.attr['label'] = '<' + \
+                    '<FONT POINT-SIZE="10">' + \
+                    ('  '.join(constant_inputs)) + '</FONT>' + \
+                    '<br/>' + \
+                    n.attr['label'].replace('\\n', '<br/>') + \
+                    '>'
         graph.delete_nodes_from(constant)
 
 def matches_field(field, filter):
