@@ -296,6 +296,9 @@ def is_control_node(node):
 def is_inlined(node):
     return node.attr['fillcolor'] == '#d7ede7'
 
+def is_calc_node(node):
+    return node.attr['fillcolor'] == '#3cb4a4'
+
 def is_projection(node):
     projs = ['Proj', 'Bool', 'IfTrue', 'IfFalse', 'Parm']
     return any([node.attr['label'].endswith(name) for name in projs])
@@ -347,6 +350,10 @@ def post_process(graph, args):
     # Remove self-loops.
     selfedges = [e for e in graph.edges() if is_self(e)]
     graph.delete_edges_from(selfedges)
+    # Normalize shape of "calc" nodes.
+    for n in graph.nodes():
+        if is_calc_node(n):
+            n.attr['shape'] = 'rectangle'
     if args.control_centric:
         # Increase weight of "backbone edges". These are edges that should have
         # more influence in the structure of the graph.
