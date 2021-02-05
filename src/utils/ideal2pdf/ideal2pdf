@@ -294,7 +294,7 @@ def is_control_node(node):
     return node.attr['fillcolor'] == '#e98693'
 
 def is_inlined(node):
-    return node.attr['shape'] == 'oval'
+    return node.attr['fillcolor'] == '#d7ede7'
 
 def is_projection(node):
     projs = ['Proj', 'Bool', 'IfTrue', 'IfFalse', 'Parm']
@@ -347,11 +347,12 @@ def post_process(graph, args):
     # Remove self-loops.
     selfedges = [e for e in graph.edges() if is_self(e)]
     graph.delete_edges_from(selfedges)
-    # Increase weight of "backbone edges". These are edges that should have more
-    # influence in the structure of the graph.
-    for e in graph.edges():
-        if is_backbone(e):
-            e.attr['weight'] = 100000
+    if args.control_centric:
+        # Increase weight of "backbone edges". These are edges that should have
+        # more influence in the structure of the graph.
+        for e in graph.edges():
+            if is_backbone(e):
+                e.attr['weight'] = 100000
     # Reduce inlined nodes.
     for n in graph.nodes():
         if is_inlined(n):
@@ -391,8 +392,8 @@ def post_process(graph, args):
             e.attr['labelangle'] = -20.0 - len(edge_label) * 3
             e.attr['fontcolor'] = ''
             e.attr['fontsize'] = 12
-    if args.hide_projs:
-        # Hide projection-like nodes and show their information in the edge.
+    if args.fold_projs:
+        # Fold projection-like nodes into edges.
         projs = [n for n in graph.nodes() if is_projection(n)]
         for n in projs:
             # Draw edges from the only predecessor to each of the successors,
@@ -421,6 +422,16 @@ def post_process(graph, args):
                 pinned[r].add(n)
         for r, ps in pinned.items():
             graph.add_subgraph([r] + list(ps), rank='same')
+    if args.fold_constants:
+        constant = [n for n in graph.nodes() if is_inlined(n)]
+        for n in graph.nodes():
+            pconstants = [p for p in graph.predecessors(n) if is_inlined(p)]
+            constant_inputs = [p.attr['label'].split()[1] + ':' + \
+                               graph.get_edge(p, n).attr['headlabel']
+                               for p in pconstants]
+            if len(pconstants) > 0:
+                n.attr['label'] += '\n' + (' '.join(constant_inputs))
+        graph.delete_nodes_from(constant)
 
 def matches_field(field, filter):
     """
@@ -585,10 +596,18 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
     add_feature_argument(parser,
                          'align_pinned',
                          "align pinned nodes vertically",
+                         False)
+    add_feature_argument(parser,
+                         'fold_projs',
+                         "fold projection nodes into edges",
                          True)
     add_feature_argument(parser,
-                         'hide_projs',
-                         "hide projection nodes",
+                         'fold_constants',
+                         "fold constant nodes into their users",
+                         True)
+    add_feature_argument(parser,
+                         'control_centric',
+                         "increase weight of control edges",
                          True)
 
     args = parser.parse_args()
