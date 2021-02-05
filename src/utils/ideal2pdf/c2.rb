@@ -101,6 +101,17 @@ module Seafoam
         node_name
       end
 
+      def has_two_or_less_inputs(node)
+        [
+          'Proj',
+          'Bool',
+          'If',
+          'CreateEx',
+          'CountedLoopEnd',
+          'Catch'
+        ].include?(node.props['name'])
+      end
+
       # Node kind can be one of {info, input, control, effect, virtual, calc,
       # guard, other}.
       def node_kind(node)
@@ -191,7 +202,8 @@ module Seafoam
           if kind == 'info'
             edge.props[:reverse] = true
           end
-          if kind != 'control' and kind != 'info'
+          if kind != 'control' and kind != 'info' \
+            and not has_two_or_less_inputs(edge.to)
             edge.props[:label] = edge.props[:name]
           end
         end

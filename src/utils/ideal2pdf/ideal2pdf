@@ -356,6 +356,8 @@ def post_process(graph, args):
             e.attr['headlabel'] = edge_label
             e.attr['labeldistance'] = 2
             e.attr['labelangle'] = -20.0
+            e.attr['fontcolor'] = ''
+            e.attr['fontsize'] = 12
     if args.align_pinned:
         # Force vertical alignment of pinned nodes and their regions.
         pinned = {}
