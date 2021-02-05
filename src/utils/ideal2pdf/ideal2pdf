@@ -413,6 +413,13 @@ def draw(graph_args):
     if args.verbose:
             print("running " + ' '.join(seafoam_command) + " ...")
     result = subprocess.run(seafoam_command, capture_output=True, text=True)
+    outdir = Path(args.outdir)
+    if args.log:
+        for (output, ext) in [(result.stdout, '.out'), (result.stderr, '.err')]:
+            if len(output) > 0:
+                log = Path.joinpath(outdir, str(graph_id)).with_suffix(ext)
+                with open(log, 'w') as f:
+                    f.write(output)
     if not dot.is_file():
         sys.stderr.write("could not draw graph " + str(graph_id))
         if len(result.stderr) > 0:
@@ -427,7 +434,6 @@ def draw(graph_args):
     post_process(graph, args)
     graph.write(os.fspath(dot))
     # Finally draw the graph into a PDF file.
-    outdir = Path(args.outdir)
     pdf = Path.joinpath(outdir, str(graph_id)).with_suffix('.pdf')
     if args.verbose:
             print("creating PDF file " + os.fspath(pdf) + " ...")
@@ -500,7 +506,11 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                          False)
     add_feature_argument(parser,
                          'dot',
-                         "output DOT files corresponding to each graph",
+                         "output DOT files for each graph",
+                         False)
+    add_feature_argument(parser,
+                         'log',
+                         "output log files (.out and .err) for each graph",
                          False)
     add_feature_argument(parser,
                          'clean',
