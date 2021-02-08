@@ -396,16 +396,6 @@ def pinned_region(graph, node):
             return s
     return None
 
-def category_color(category, palette):
-    index = {
-        'mixed'   : 0,
-        'control' : 1,
-        'other'   : 2,
-        'scalar'  : 3,
-        'memory'  : 4
-    }
-    return palette[index[category]]
-
 def post_process(graph, args):
     """
     Post-process a DOT graph emitted by Seafoam. Ideally, all processing should
@@ -519,24 +509,37 @@ def post_process(graph, args):
                     '>'
         graph.delete_nodes_from(constant)
     # Remap node and edge styles.
-    palette = ['#da2d4f', '#e98693', '#343d46', '#d7ede7', '#3cb4a4']
+    node_color = {
+        'mixed'   : '#da2d4f',
+        'control' : '#e98693',
+        'other'   : '#343d46',
+        'scalar'  : '#d7ede7',
+        'memory'  : '#3cb4a4'
+    }
+    edge_color = {
+        'mixed'   : '#da2d4f',
+        'control' : '#e98693',
+        'other'   : '#343d46',
+        'scalar'  : '#d7ede7',
+        'memory'  : '#3cb4a4'
+    }
     for n in graph.nodes():
         fillcolor = ''
         if is_effect_node(n):
-            # Compund node.
-            fillcolor = category_color('mixed', palette)
+            # Mixed node.
+            fillcolor = node_color['mixed']
         elif is_control_node(n):
             # Control node.
-            fillcolor = category_color('control', palette)
+            fillcolor = node_color['control']
         elif is_other_node(n):
             # Other node.
-            fillcolor = category_color('other', palette)
+            fillcolor = node_color['other']
         elif is_input_node(n):
             # Scalar node.
-            fillcolor = category_color('scalar', palette)
+            fillcolor = node_color['scalar']
         elif is_calc_node(n):
             # Memory node.
-            fillcolor = category_color('memory', palette)
+            fillcolor = node_color['memory']
         else:
             assert False
         n.attr['fillcolor'] = fillcolor
@@ -554,23 +557,23 @@ def post_process(graph, args):
         color = ''
         penwidth = 1
         if is_effect_edge(e):
-            # Compund edge.
-            color = category_color('mixed', palette)
+            # Mixed edge.
+            color = edge_color['mixed']
             penwidth = 3
         elif is_control_edge(e):
             # Control edge.
             penwidth = 2
-            color = category_color('mixed', palette)
+            color = edge_color['mixed']
         elif is_other_edge(e):
             # Other edge.
-            color = category_color('other', palette)
+            color = edge_color['other']
         elif is_info_edge(e):
             # Scalar edge.
-            color = category_color('memory', palette)
+            color = edge_color['memory']
             e.attr['style'] = ''
         elif is_calc_edge(e):
             # Memory edge.
-            color = category_color('memory', palette)
+            color = edge_color['memory']
             penwidth = 3
         else:
             assert False
