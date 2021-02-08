@@ -117,71 +117,58 @@ module Seafoam
       def node_kind(node)
         node_name = node.props['name']
         node_type = node.props['type']
-        if node_name.start_with?('Add') ||
-           node_name.start_with?('Mul') ||
-           node_name.start_with?('Cmp') ||
-           node_name.start_with?('Conv') ||
-           node_name.start_with?('Sub') ||
-           node_name.start_with?('Bool') ||
-           node_name.start_with?('CMove') ||
-           node_name.start_with?('CastII')
-          return 'calc'
-        end
-        if node_name.start_with?('If') ||
-           node_name.start_with?('Region') ||
-           node_name.start_with?('Start') ||
-           node_name.start_with?('Return') ||
-           node_name.start_with?('Halt') ||
-           node_name.include?('Loop') ||
-           node_name.start_with?('Catch') ||
-           node_name.start_with?('Rethrow')
-          return 'control'
-        end
-        if node_name.start_with?('Call') ||
-           node_name.start_with?('Load')
-          return 'effect'
-        end
-        if node_name.start_with?('Phi') ||
-           node_name.start_with?('Opaque') ||
-           node_name.start_with?('CreateEx')
-          return 'virtual'
-        end
-        if is_simple_input(node)
+        # Scalar type.
+        if ['int:',
+            'long:',
+            'return_address',
+            'rawptr:',
+            'inst:'].include?(node_type)
           return 'input'
         end
-        if node_type == 'control'
-          return 'control'
-        end
-        if node_type == 'abIO'
-          return 'effect'
-        end
-        if node_type == 'int:'
-          return 'calc'
-        end
+        # Memory type.
         if node_type == 'memory'
           return 'calc'
         end
-        # TODO: complete list.
-        'other'
+        # Control type: nodes with type 'control' and nodes with type 'tuple:'
+        # where all types in the tuple are known to be control.
+        if node_type == 'control' or
+          (node_type == 'tuple:' and
+           [
+             'If',
+             'Catch',
+             'CountedLoopEnd',
+             'OuterStripMinedLoopEnd'
+           ].include?(node_name))
+          return 'control'
+        end
+        # Mixed type.
+        if node_type == 'tuple:'
+          return 'effect'
+        end
+        # Other type.
+        if ['abIO', 'bottom', 'top', 'ary:'].include?(node_type)
+          return 'virtual'
+        end
+        raise "unmatched type: " + node_type
       end
 
       # Edge kind can be one of {info, control, loop, data}.
       EDGE_KIND_MAP = {
+        # Scalar type.
+        'input'   => 'info',
+         # Memory type.
         'calc'    => 'data',
+         # Control type.
         'control' => 'control',
-        'input'   => 'input',
-        'effect'  => 'effect',
-        'virtual' => 'data'
+        # Mixed type.
+        'effect'  => 'loop',
+        # Other type
+        'virtual' => 'none'
       }
 
-      # Edge kind (mostly) based on 'from' node.
+      # Edge kind based on 'from' node.
       def edge_kind(edge)
-        from_kind = node_kind(edge.from)
-        edge_kind = EDGE_KIND_MAP[from_kind] || 'other'
-        if edge_kind == 'control' and node_kind(edge.to) == 'virtual'
-            edge_kind = 'info'
-        end
-        edge_kind
+        EDGE_KIND_MAP[node_kind(edge.from)] || 'other'
       end
 
       # Annotate nodes with their label and kind.
@@ -199,10 +186,7 @@ module Seafoam
         graph.edges.each do |edge|
           kind = edge_kind(edge)
           edge.props[:kind] ||= kind
-          if kind == 'info'
-            edge.props[:reverse] = true
-          end
-          if kind != 'control' and kind != 'info' \
+          if kind != 'control' \
             and not has_two_or_less_inputs(edge.to)
             edge.props[:label] = edge.props[:name]
           end

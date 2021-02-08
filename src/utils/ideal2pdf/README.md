@@ -19,7 +19,7 @@ ideal2pdf has the following dependencies:
 ### Installation on Ubuntu 20.04
 
 ```
-$ sudo apt-get install python3 ruby graphviz
+$ sudo apt-get install python3 python3-pygraphviz ruby graphviz
 $ gem install seafoam
 ```
 

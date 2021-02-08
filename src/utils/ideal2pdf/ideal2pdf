@@ -284,8 +284,17 @@ def xml2bgv(xml_root, args):
 def is_control_edge(edge):
     return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '2'
 
+def is_calc_edge(edge):
+    return edge.attr['color'] == '#3cb4a4'
+
 def is_info_edge(edge):
-    return edge.attr['dir'] == 'back' and edge.attr['style'] == 'dashed'
+    return edge.attr['style'] == 'dashed'
+
+def is_effect_edge(edge):
+    return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '4'
+
+def is_other_edge(edge):
+    return len(edge.attr['color']) == 0
 
 def is_effect_node(node):
     return node.attr['fillcolor'] == '#da2d4f'
@@ -293,11 +302,17 @@ def is_effect_node(node):
 def is_control_node(node):
     return node.attr['fillcolor'] == '#e98693'
 
+def is_other_node(node):
+    return node.attr['fillcolor'] == '#343d46'
+
 def is_inlined(node):
-    return node.attr['fillcolor'] == '#d7ede7'
+    return node.attr['fontsize'] == '8'
 
 def is_calc_node(node):
     return node.attr['fillcolor'] == '#3cb4a4'
+
+def is_input_node(node):
+    return node.attr['fillcolor'] == '#d7ede7'
 
 def is_projection(node):
     projs = ['Proj', 'Bool', 'IfTrue', 'IfFalse', 'Parm']
@@ -315,10 +330,14 @@ def is_backbone(edge):
         return True
     if is_effect_node(s) and is_control_node(t):
         return True
-    # Info edges are used for pinning, we want them to be short.
-    if is_info_edge(edge):
-        return True
+    # TODO: include also pinning edges for Phis, etc.?
     return False
+
+def is_pinning(edge):
+    (_, t) = edge
+    pinned = ['Phi', 'CreateEx']
+    return is_control_edge(edge) and \
+        any([name in t.attr['label'] for name in pinned])
 
 def simplify_projection_label(label):
     if label.endswith('IfTrue'):
@@ -344,10 +363,20 @@ def pinned_region(graph, node):
     Region node to which the given node is pinned, or None if not pinned.
     """
     for edge in graph.in_edges(node):
-        if is_info_edge(edge):
+        if is_pinning(edge):
             (s, _) = edge
             return s
     return None
+
+def category_color(category, palette):
+    index = {
+        'mixed'   : 0,
+        'control' : 1,
+        'other'   : 2,
+        'scalar'  : 3,
+        'memory'  : 4
+    }
+    return palette[index[category]]
 
 def post_process(graph, args):
     """
@@ -362,7 +391,7 @@ def post_process(graph, args):
     # Remove self-loops.
     selfedges = [e for e in graph.edges() if is_self(e)]
     graph.delete_edges_from(selfedges)
-    # Normalize shape of "calc" nodes.
+    # Normalize shape of "calc" nodes (memory).
     for n in graph.nodes():
         if is_calc_node(n):
             n.attr['shape'] = 'rectangle'
@@ -372,12 +401,9 @@ def post_process(graph, args):
         for e in graph.edges():
             if is_backbone(e):
                 e.attr['weight'] = 100000
-    # Reduce inlined nodes.
+    # Increase margin of inlined nodes.
     for n in graph.nodes():
         if is_inlined(n):
-            n.attr['shape'] = 'rectangle'
-            n.attr['width'] = 0
-            n.attr['height'] = 0
             n.attr['margin'] = 0.03
     # Merge edges between same source and destination node, where only their
     # labels (input port numbers) change.
@@ -427,10 +453,16 @@ def post_process(graph, args):
                 new = graph.get_edge(p, s)
                 for (key, val) in old.attr.items():
                     new.attr[key] = val
-                new.attr['label'] = simplify_projection_label(n.attr['label'])
+                simple = simplify_projection_label(n.attr['label'])
+                if len(simple) > 0:
+                    new.attr['label'] = ' ' + simple
                 graph.delete_edge(n, s)
             graph.delete_node(n)
     if args.align_pinned:
+        # TODO: to ensure that subgraphs are specified at the end and do not
+        # affect graphviz's DFS-based cycle-breaking algorithm, dump them to a
+        # separate file and append them to the end (!).
+        subgraphs = pygraphviz.AGraph()
         # Force vertical alignment of pinned nodes and their regions.
         pinned = {}
         for n in graph.nodes():
@@ -440,22 +472,94 @@ def post_process(graph, args):
                     pinned[r] = set()
                 pinned[r].add(n)
         for r, ps in pinned.items():
-            graph.add_subgraph([r] + list(ps), rank='same')
+            for n in [r] + list(ps):
+                subgraphs.add_node(n)
+            subgraphs.add_subgraph([r] + list(ps), rank='same')
     if args.fold_constants:
         constant = [n for n in graph.nodes() if is_inlined(n)]
         for n in graph.nodes():
             pconstants = [p for p in graph.predecessors(n) if is_inlined(p)]
-            constant_inputs = [extract_constant(p.attr['label']) + \
-                               '(' + graph.get_edge(p, n).attr['headlabel'] + ')'
+            constant_inputs = ['[' + graph.get_edge(p, n).attr['headlabel'] + \
+                               ']=' + extract_constant(p.attr['label'])
                                for p in pconstants]
             if len(pconstants) > 0:
                 n.attr['label'] = '<' + \
                     '<FONT POINT-SIZE="10">' + \
                     ('  '.join(constant_inputs)) + '</FONT>' + \
-                    '<br/>' + \
+                    '<br/><FONT POINT-SIZE="6"><br/></FONT>' + \
                     n.attr['label'].replace('\\n', '<br/>') + \
                     '>'
         graph.delete_nodes_from(constant)
+    # Remap node and edge styles.
+    palette = ['#da2d4f', '#e98693', '#343d46', '#d7ede7', '#3cb4a4']
+    for n in graph.nodes():
+        fillcolor = ''
+        if is_effect_node(n):
+            # Compund node.
+            fillcolor = category_color('mixed', palette)
+        elif is_control_node(n):
+            # Control node.
+            fillcolor = category_color('control', palette)
+        elif is_other_node(n):
+            # Other node.
+            fillcolor = category_color('other', palette)
+        elif is_input_node(n):
+            # Scalar node.
+            fillcolor = category_color('scalar', palette)
+        elif is_calc_node(n):
+            # Memory node.
+            fillcolor = category_color('memory', palette)
+        else:
+            assert False
+        n.attr['fillcolor'] = fillcolor
+        # Compute whether to use black or white node font color.
+        rgb = [int(fillcolor.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)]
+        y = 0.2126 * (rgb[0]/255)**2.2 + \
+            0.7151 * (rgb[1]/255)**2.2 + \
+            0.0721 * (rgb[2]/255)**2.2
+        if y < 0.20:
+            fontcolor = '#ffffff'
+        else:
+            fontcolor = '#000000'
+        n.attr['fontcolor'] = fontcolor
+    for e in graph.edges():
+        color = ''
+        penwidth = 1
+        if is_effect_edge(e):
+            # Compund edge.
+            color = category_color('mixed', palette)
+            penwidth = 3
+        elif is_control_edge(e):
+            # Control edge.
+            penwidth = 2
+            color = category_color('mixed', palette)
+        elif is_other_edge(e):
+            # Other edge.
+            color = category_color('other', palette)
+        elif is_info_edge(e):
+            # Scalar edge.
+            color = category_color('memory', palette)
+            e.attr['style'] = ''
+        elif is_calc_edge(e):
+            # Memory edge.
+            color = category_color('memory', palette)
+            penwidth = 3
+        else:
+            assert False
+        e.attr['color'] = color
+        if len(e.attr['headlabel']) == 0:
+            e.attr['fontcolor'] = color
+        e.attr['penwidth'] = penwidth
+    # Highlight pinning edges.
+    for e in graph.edges():
+        if is_pinning(e):
+            e.attr['dir'] = 'back'
+            e.attr['style'] = 'dashed'
+            e.attr['penwidth'] = '1'
+    # Set 'Start' node as the source.
+    starts = [n for n in graph.nodes() if n.attr['label'].endswith('Start')]
+    if len(starts) == 1:
+        graph.add_subgraph([starts[0]], rank='source')
 
 def matches_field(field, filter):
     """
