@@ -230,6 +230,24 @@ def xml2bgv(xml_root, args):
                 # The XML file sometimes contains edge (src,dst,ind) duplicates.
                 if not G.has_edge(src, dst, key=ind):
                     G.add_edge(src, dst, key=ind)
+            # Load the control-flow graph, if available.
+            block_list = []
+            block_nodes = {}
+            block_succs = {}
+            if graph.find('controlFlow'):
+                for xmlblock in graph.find('controlFlow'):
+                    block = int(xmlblock.attrib['name'])
+                    block_list.append(block)
+                    nodes = []
+                    for xmlnode in xmlblock.find('nodes'):
+                        node = int(xmlnode.attrib['id'])
+                        nodes.append(node)
+                    block_nodes[block] = nodes
+                    succs = []
+                    for xmlsucc in xmlblock.find('successors'):
+                        succ = int(xmlsucc.attrib['name'])
+                        succs.append(succ)
+                    block_succs[block] = succs
             # begin Graph
             out.write(sint8(BEGIN_GRAPH))
             out.write(sint32(graph_id)) # id
@@ -269,7 +287,17 @@ def xml2bgv(xml_root, args):
                 for src in positioned_ins:
                     out.write(sint32(src))
             #     begin Blocks
-            out.write(sint32(0)) # times
+            out.write(sint32(len(block_list))) # times
+            for block in block_list:
+                out.write(sint32(block)) # id
+                out.write(sint32(len(block_nodes[block]))) # nodes_count
+                # nodes
+                for node in block_nodes[block]:
+                    out.write(sint32(node))
+                out.write(sint32(len(block_succs[block]))) # followers_count
+                # followers
+                for succ in block_succs[block]:
+                    out.write(sint32(succ))
             #     end Blocks
             #   end GraphBody
             graph_id += 1
