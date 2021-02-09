@@ -117,7 +117,7 @@ module Seafoam
       def node_kind(node)
         node_name = node.props['name']
         node_type = node.props['type']
-        # Scalar type.
+        # Data type.
         if ['int:',
             'long:',
             'return_address',
@@ -154,7 +154,7 @@ module Seafoam
 
       # Edge kind can be one of {info, control, loop, data}.
       EDGE_KIND_MAP = {
-        # Scalar type.
+        # Data type.
         'input'   => 'info',
          # Memory type.
         'calc'    => 'data',

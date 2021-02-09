@@ -35,6 +35,7 @@ import pygraphviz
 import tempfile
 import shutil
 import re
+import colorsys
 
 # BGV binary format constants.
 
@@ -309,6 +310,50 @@ def xml2bgv(xml_root, args):
     # end BGV
     return out, graphs
 
+def scale(hex, f):
+    """
+    Scales the lightness of a hex color by a factor.
+    """
+    rgb = tuple(int(hex.lstrip('#')[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    adj_rgb = colorsys.hls_to_rgb(h, min(1, l * f), s = s)
+    return '#%02x%02x%02x' % tuple([int(c * 255.0) for c in adj_rgb])
+
+# Color-blind friendly palette.
+colorblind = ['#bbcc33',
+              scale('#aaaa00', 1.1),
+              scale('#77aadd', 1.2),
+              '#ee8866',
+              '#eedd88',
+              '#ffaabb',
+              '#99ddff',
+              '#44bb99',
+              '#dddddd']
+
+node_color = {
+    'mixed'   : colorblind[5],
+    'control' : colorblind[3],
+    'other'   : colorblind[4],
+    'data'    : colorblind[2],
+    'memory'  : colorblind[1]
+    }
+
+dark_factor = {
+    colorblind[1] : 0.7,
+    colorblind[2] : 0.6,
+    colorblind[3] : 0.8,
+    colorblind[4] : 0.7,
+    colorblind[5] : 0.9
+}
+
+edge_color = {
+    'mixed'   : scale(node_color['mixed'], dark_factor[node_color['mixed']]),
+    'control' : scale(node_color['control'], dark_factor[node_color['control']]),
+    'other'   : scale(node_color['other'], dark_factor[node_color['other']]),
+    'data'    : scale(node_color['data'], dark_factor[node_color['data']]),
+    'memory'  : scale(node_color['memory'], dark_factor[node_color['memory']])
+    }
+
 def is_control_edge(edge):
     return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '2'
 
@@ -327,6 +372,20 @@ def is_other_edge(edge):
 def is_effect_node(node):
     return node.attr['fillcolor'] == '#da2d4f'
 
+def edge_category(edge):
+    if is_effect_edge(edge):
+        return 'mixed'
+    elif is_control_edge(edge):
+        return 'control'
+    elif is_other_edge(edge):
+        return 'other'
+    elif is_info_edge(edge):
+        return 'data'
+    elif is_calc_edge(edge):
+        return 'memory'
+    else:
+        assert False
+
 def is_control_node(node):
     return node.attr['fillcolor'] == '#e98693'
 
@@ -341,6 +400,22 @@ def is_calc_node(node):
 
 def is_input_node(node):
     return node.attr['fillcolor'] == '#d7ede7'
+
+def node_category(node):
+    if is_effect_node(node):
+        return 'mixed'
+    elif is_control_node(node):
+        return 'control'
+    elif is_other_node(node):
+        return 'other'
+    elif is_input_node(node):
+        return 'data'
+    elif is_calc_node(node):
+        return 'memory'
+    else:
+        print(str(node))
+        print(str(node.attr.items()))
+        assert False
 
 def is_projection(node):
     projs = ['Proj', 'Bool', 'IfTrue', 'IfFalse', 'Parm']
@@ -473,7 +548,7 @@ def post_process(graph, args):
                     new.attr[key] = val
                 simple = simplify_projection_label(n.attr['label'])
                 if len(simple) > 0:
-                    new.attr['label'] = ' ' + simple
+                    new.attr['label'] = '<<B> ' + simple + '</B>>'
                 graph.delete_edge(n, s)
             graph.delete_node(n)
     if args.align_pinned:
@@ -508,41 +583,21 @@ def post_process(graph, args):
                     n.attr['label'].replace('\\n', '<br/>') + \
                     '>'
         graph.delete_nodes_from(constant)
-    # Remap node and edge styles.
-    node_color = {
-        'mixed'   : '#da2d4f',
-        'control' : '#e98693',
-        'other'   : '#343d46',
-        'scalar'  : '#d7ede7',
-        'memory'  : '#3cb4a4'
-    }
-    edge_color = {
-        'mixed'   : '#da2d4f',
-        'control' : '#e98693',
-        'other'   : '#343d46',
-        'scalar'  : '#d7ede7',
-        'memory'  : '#3cb4a4'
-    }
+    # Highlight pinning edges.
+    for e in graph.edges():
+        if is_pinning(e):
+            e.attr['dir'] = 'back'
+            e.attr['style'] = 'dashed'
+    # Set 'Start' node as the source.
+    starts = [n for n in graph.nodes() if n.attr['label'].endswith('Start')]
+    if len(starts) == 1:
+        graph.add_subgraph([starts[0]], rank='source')
+    # Remap node and edge styles. This should be the last step as it makes all
+    # node and edge predicate functions obsolete.
     for n in graph.nodes():
-        fillcolor = ''
-        if is_effect_node(n):
-            # Mixed node.
-            fillcolor = node_color['mixed']
-        elif is_control_node(n):
-            # Control node.
-            fillcolor = node_color['control']
-        elif is_other_node(n):
-            # Other node.
-            fillcolor = node_color['other']
-        elif is_input_node(n):
-            # Scalar node.
-            fillcolor = node_color['scalar']
-        elif is_calc_node(n):
-            # Memory node.
-            fillcolor = node_color['memory']
-        else:
-            assert False
-        n.attr['fillcolor'] = fillcolor
+        category  = node_category(n)
+        fillcolor = node_color[category]
+        color     = edge_color[category]
         # Compute whether to use black or white node font color.
         rgb = [int(fillcolor.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)]
         y = 0.2126 * (rgb[0]/255)**2.2 + \
@@ -552,45 +607,22 @@ def post_process(graph, args):
             fontcolor = '#ffffff'
         else:
             fontcolor = '#000000'
+        n.attr['fillcolor'] = fillcolor
+        n.attr['color'] = color
         n.attr['fontcolor'] = fontcolor
     for e in graph.edges():
-        color = ''
-        penwidth = 1
-        if is_effect_edge(e):
-            # Mixed edge.
-            color = edge_color['mixed']
-            penwidth = 3
-        elif is_control_edge(e):
-            # Control edge.
-            penwidth = 2
-            color = edge_color['mixed']
-        elif is_other_edge(e):
-            # Other edge.
-            color = edge_color['other']
-        elif is_info_edge(e):
-            # Scalar edge.
-            color = edge_color['memory']
-            e.attr['style'] = ''
-        elif is_calc_edge(e):
-            # Memory edge.
-            color = edge_color['memory']
-            penwidth = 3
-        else:
-            assert False
+        category = edge_category(e)
+        color = edge_color[category]
         e.attr['color'] = color
+        penwidth = 1
+        if category == 'control' and e.attr['style'] == 'dashed':
+            e.attr['penwidth'] = 1
+        elif category in ['mixed', 'control']:
+            e.attr['penwidth'] = 2
+        elif category == 'data':
+            e.attr['style'] = ''
         if len(e.attr['headlabel']) == 0:
             e.attr['fontcolor'] = color
-        e.attr['penwidth'] = penwidth
-    # Highlight pinning edges.
-    for e in graph.edges():
-        if is_pinning(e):
-            e.attr['dir'] = 'back'
-            e.attr['style'] = 'dashed'
-            e.attr['penwidth'] = '1'
-    # Set 'Start' node as the source.
-    starts = [n for n in graph.nodes() if n.attr['label'].endswith('Start')]
-    if len(starts) == 1:
-        graph.add_subgraph([starts[0]], rank='source')
 
 def matches_field(field, filter):
     """
@@ -825,6 +857,16 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
         shutil.copy(config, seafoam_config)
         original_workdir = os.fspath(Path().absolute())
         os.chdir(tempdir)
+
+        if args.verbose:
+            print("IGV palette definition:")
+            for (cat, color) in node_color.items():
+                print("var " + cat + \
+                      "NodeColor = java.awt.Color.decode(\"" + color + "\");")
+            for (cat, color) in edge_color.items():
+                print("var " + cat + \
+                      "EdgeColor = java.awt.Color.decode(\"" + color + "\");")
+
         # Do the rest of the work in parallel. The list conversion is just to
         # force evaluation.
         ex = concurrent.futures.ProcessPoolExecutor(max_workers=int(args.jobs))
