@@ -122,6 +122,7 @@ module Seafoam
             'long:',
             'return_address',
             'rawptr:',
+            'narrowoop:',
             'inst:'].include?(node_type)
           return 'input'
         end
