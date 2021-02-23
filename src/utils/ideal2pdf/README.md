@@ -12,15 +12,12 @@ file.
 ideal2pdf has the following dependencies:
 
 - Python ≥ 3.8
-- Ruby ≥ 2.5
 - Graphviz ≥ 2.43
-- Seafoam ≥ 0.4
 
 ### Installation on Ubuntu 20.04
 
 ```
-$ sudo apt-get install python3 python3-pygraphviz ruby graphviz
-$ gem install seafoam
+$ sudo apt-get install python3 python3-pygraphviz python3-matplotlib graphviz
 ```
 
 ## Usage
@@ -37,17 +34,24 @@ To list the id, method, and compiler phase of each graph, run:
 ./ideal2pdf foo.xml --list
 ```
 
-By default, ideal2pdf draws all graphs in the XML graph file, including all
-nodes in each graph. To only draw the graph with id `i`, method `m`, compiler
-phase `p`, and nodes `n1`, `n2`, ..., `ni`, run:
+By default, `ideal2pdf` draws all graphs in the XML graph file, including all
+nodes in each graph. To select only a graph with id `i`, method `m`, and
+compiler phase `p`, run:
 
 ```
-./ideal2pdf foo.xml --filter i;m;p;n1,n2,...,ni
+./ideal2pdf foo.xml --filter "g == i and method(g) == 'm' and phase(g) == 'p'"
 ```
 
-A subset of the input graphs can be selected by leaving fields empty (matches
-all values in the field) or using a regular expression instead of a concrete
-value (works for all fields except the node specification).
+By default, `ideal2pdf` shows all nodes in the selected graphs. To select a
+subset `n1`, `n2`, ..., `ni` of nodes to be shown, run:
+
+```
+./ideal2pdf foo.xml --highlight "n in [n1, n2, ..., nj]"
+```
+
+As is the case with `--filter`, the node subset specification is an arbitrary
+Python expression, and can include node property queries such as `name(n)` or
+`category(n)`.
 
 To see all available options, run:
 

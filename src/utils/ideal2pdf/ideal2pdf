@@ -31,140 +31,15 @@ from pathlib import *
 import multiprocessing
 import concurrent
 import subprocess
-import pygraphviz
 import tempfile
 import shutil
 import re
 import colorsys
-
-# BGV binary format constants.
-
-BEGIN_GROUP = 0x00
-BEGIN_GRAPH = 0x01
-CLOSE_GROUP = 0x02
-BEGIN_DOCUMENT = 0x03
-
-POOL_NEW = 0x00
-POOL_STRING = 0x01
-POOL_ENUM = 0x02
-POOL_CLASS = 0x03
-POOL_METHOD = 0x04
-POOL_NULL = 0x05
-POOL_NODE_CLASS = 0x06
-POOL_FIELD = 0x07
-POOL_SIGNATURE = 0x08
-POOL_NODE_SOURCE_POSITION = 0x09
-POOL_NODE = 0x0a
-
-PROPERTY_POOL = 0x00
-PROPERTY_INT = 0x01
-PROPERTY_LONG = 0x02
-PROPERTY_DOUBLE = 0x03
-PROPERTY_FLOAT = 0x04
-PROPERTY_TRUE = 0x05
-PROPERTY_FALSE = 0x06
-PROPERTY_ARRAY = 0x07
-PROPERTY_SUBGRAPH = 0x08
-
-KLASS = 0x00
-ENUM_KLASS = 0x01
-
-# Global state for object caching in BGV emission.
-
-obj_id = 0
-pool = {}
-
-# Helper functions for binary conversion.
-
-def to_bytes(i, n, s):
-    return i.to_bytes(n, byteorder='big', signed=s)
-
-def sint8(i):
-    return to_bytes(i, 1, True)
-
-def sint16(i):
-    return to_bytes(i, 2, True)
-
-def sint32(i):
-    return to_bytes(i, 4, True)
-
-def uint8(i):
-    return to_bytes(i, 1, False)
-
-def uint16(i):
-    return to_bytes(i, 2, False)
-
-def write_bool(out, b):
-    out.write(uint8(b))
-
-def write_string(out, obj):
-    utf = obj.encode('utf-8')
-    out.write(sint32(len(utf)))
-    out.write(utf)
-
-def write_pool_object(out, obj_type, obj):
-    global obj_id
-    global pool
-    key = (obj_type, obj)
-    if key in pool:
-        out.write(sint8(obj_type))
-        out.write(uint16(pool[key]))
-        return
-    write_new_pool_object(out, obj_type, obj)
-
-def write_new_pool_object(out, obj_type, obj):
-    global obj_id
-    global pool
-    out.write(sint8(POOL_NEW))
-    out.write(uint16(obj_id))
-    pool[(obj_type, obj)] = obj_id
-    obj_id += 1
-    out.write(sint8(obj_type))
-    if obj_type == POOL_STRING:
-        write_string(out, obj)
-    elif obj_type == POOL_NODE_CLASS:
-        (node_name, inputs) = obj
-        write_pool_object(out, POOL_CLASS, node_name)
-        write_string(out, node_name)
-        out.write(sint16(inputs))
-        for i in range(inputs):
-            write_bool(out, 0) # indirect
-            write_pool_object(out, POOL_STRING, str(i))
-            out.write(sint8(POOL_NULL)) # edge type (FIXME: complete)
-        # Set output_count to 0: all edges are listed as incoming.
-        out.write(sint16(0))
-    elif obj_type == POOL_CLASS:
-        write_string(out, obj)
-        out.write(sint8(KLASS))
-    elif obj_type == POOL_METHOD:
-        write_pool_object(out, POOL_CLASS, 'dummy_class') # declaring class
-        write_pool_object(out, POOL_STRING, 'dummy_method_name') # method name
-        write_pool_object(out, POOL_SIGNATURE, 'dummy_signature') # signature
-        out.write(sint32(0)) # modifiers
-        write_string(out, '') # bytecode in binary format
-    elif obj_type == POOL_SIGNATURE:
-        out.write(sint16(0)) # arg number
-        write_pool_object(out, POOL_STRING, 'dummy_return_type')
-    else:
-        assert False
-def is_int(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
-
-def write_property_object(out, obj):
-    if obj == 'true':
-        out.write(sint8(PROPERTY_TRUE))
-    elif obj == 'false':
-        out.write(sint8(PROPERTY_FALSE))
-    elif is_int(obj):
-        out.write(sint8(PROPERTY_INT))
-        out.write(sint32(int(obj)))
-    else:
-        out.write(sint8(PROPERTY_POOL))
-        write_pool_object(out, POOL_STRING, obj)
+import graphviz # 0.8.4
+import html
+import matplotlib
+import matplotlib.cm as cm
+from itertools import chain
 
 # Helper functions for traversing the XML graph.
 
@@ -183,141 +58,65 @@ def find_node_properties(graph, idx):
     ps.pop('idx', None)
     return ps
 
-def xml2bgv(xml_root, args):
-    """
-    Return a binary stream with the BGV representation of a parsed XML graph.
-    For more info on the BGV specification, see
-    https://github.com/Shopify/seafoam/blob/master/docs/bgv.md.
-    """
-    out = io.BytesIO()
-    graphs = []
+def xml2graphs(xml_root, args):
+    graphs = {}
     graph_id = 0
-    # begin BGV
-    out.write(b'BIGV')
-    out.write(sint8(6))
-    out.write(sint8(1))
-    #   begin GroupDocumentGraph
     for group in xml_root:
         method = group.find('method')
         group_name = method.attrib['name']
         short_group_name = method.attrib['shortName'].strip()
         bci = int(method.attrib['bci'])
-        # begin BeginGroup
-        out.write(sint8(BEGIN_GROUP))
-        write_pool_object(out, POOL_STRING, group_name)
-        write_pool_object(out, POOL_STRING, short_group_name)
-        write_pool_object(out, POOL_METHOD, 'dummy_method')
-        out.write(sint32(bci))
-        #   begin Props
-        out.write(sint16(0))
-        #   end Props
-        # end BeginGroup
         for graph in group.findall('graph'):
-            graph_name = graph.attrib['name'] \
-                              .replace('1', 'One') \
-                              .replace('2', 'Two') \
-                              .replace('3', 'Three')
-            graph_tuple = (graph_id, short_group_name, graph_name)
-            graphs.append(graph_tuple)
+            graph_name = graph.attrib['name']
+            if not matches((graph_id, short_group_name, graph_name), args.filter):
+                graph_id += 1
+                continue
             # Load the entire graph first.
             G = nx.MultiDiGraph()
-            for node in graph.find('nodes'):
-                idx = int(node.attrib['id'])
-                G.add_node(idx)
-            for edge in graph.find('edges'):
-                src = int(edge.attrib['from'])
-                dst = int(edge.attrib['to'])
-                ind = int(edge.attrib['index'])
-                # The XML file sometimes contains edge (src,dst,ind) duplicates.
-                if not G.has_edge(src, dst, key=ind):
-                    G.add_edge(src, dst, key=ind)
+            if not args.list:
+                for node in graph.find('nodes'):
+                    idx = int(node.attrib['id'])
+                    properties = find_node_properties(graph, idx)
+                    G.add_node(idx, **properties)
+                for edge in graph.find('edges'):
+                    src = int(edge.attrib['from'])
+                    dst = int(edge.attrib['to'])
+                    ind = int(edge.attrib['index'])
+                    # The XML file sometimes contains (src,dst,ind) duplicates.
+                    if not G.has_edge(src, dst, key=ind):
+                        G.add_edge(src, dst, key=ind)
             # Load the control-flow graph, if available.
-            block_list = []
-            block_nodes = {}
-            block_succs = {}
+            CFG = None
             if graph.find('controlFlow'):
-                for xmlblock in graph.find('controlFlow'):
-                    block = int(xmlblock.attrib['name'])
-                    block_list.append(block)
-                    nodes = []
-                    for xmlnode in xmlblock.find('nodes'):
-                        node = int(xmlnode.attrib['id'])
-                        nodes.append(node)
-                    block_nodes[block] = nodes
-                    succs = []
-                    for xmlsucc in xmlblock.find('successors'):
-                        succ = int(xmlsucc.attrib['name'])
-                        succs.append(succ)
-                    block_succs[block] = succs
-            # begin Graph
-            out.write(sint8(BEGIN_GRAPH))
-            out.write(sint32(graph_id)) # id
-            write_string(out, graph_name)
-            #   begin Args
-            out.write(sint32(0))
-            #   end Args
-            #   begin GraphBody
-            #     begin Props (source, just to trigger C2 configuration)
-            out.write(sint16(1))
-            write_pool_object(out, POOL_STRING, 'source')
-            out.write(sint8(PROPERTY_POOL))
-            write_pool_object(out, POOL_STRING, 'C2Compiler')
-            #     end Props
-            out.write(sint32(G.number_of_nodes())) # nodes_count
-            for n in G.nodes:
-                node_props = find_node_properties(graph, n)
-                out.write(sint32(n)) # id
-                # compute number of in-ports to the node (max in-edge index + 1)
-                in_edges = G.in_edges(n, keys=True)
-                no_inputs = 0
-                if len(in_edges) > 0:
-                    no_inputs = max([index for (s, t, index) in in_edges]) + 1
-                write_pool_object(out, POOL_NODE_CLASS,
-                                  (node_props['name'], no_inputs))
-                write_bool(out, 0) # has_predecessor
-                #     begin Props
-                out.write(sint16(len(node_props)))
-                for (key, value) in node_props.items():
-                    write_pool_object(out, POOL_STRING, key)
-                    write_property_object(out, value)
-                #     end Props
-                # edges_in (no edges_out, all edges are listed as incoming)
-                positioned_ins = [-1] * no_inputs
-                for (s, t, index) in in_edges:
-                    positioned_ins[index] = s
-                for src in positioned_ins:
-                    out.write(sint32(src))
-            #     begin Blocks
-            out.write(sint32(len(block_list))) # times
-            for block in block_list:
-                out.write(sint32(block)) # id
-                out.write(sint32(len(block_nodes[block]))) # nodes_count
-                # nodes
-                for node in block_nodes[block]:
-                    out.write(sint32(node))
-                out.write(sint32(len(block_succs[block]))) # followers_count
-                # followers
-                for succ in block_succs[block]:
-                    out.write(sint32(succ))
-            #     end Blocks
-            #   end GraphBody
+                CFG = nx.DiGraph()
+                if not args.list:
+                    for xmlblock in graph.find('controlFlow'):
+                        block = int(xmlblock.attrib['name'])
+                        # The node order reflects the local schedule.
+                        nodes = []
+                        for xmlnode in xmlblock.find('nodes'):
+                            node = int(xmlnode.attrib['id'])
+                            nodes.append(node)
+                        CFG.add_node(block, **{'nodes' : nodes})
+                        for xmlsucc in xmlblock.find('successors'):
+                            succ = int(xmlsucc.attrib['name'])
+                            CFG.add_edge(block, succ)
+            graphs[graph_id] = ((short_group_name, graph_name), G, CFG)
             graph_id += 1
-            # end Graph
-        # begin CloseGroup
-        out.write(sint8(CLOSE_GROUP))
-        # end CloseGroup
-    #   end GroupDocumentGraph
-    # end BGV
-    return out, graphs
+    return graphs
+
+def to_rgb(hex):
+    return tuple(int(hex.lstrip('#')[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+
+def to_hex(rgb):
+    return '#%02x%02x%02x' % tuple([int(c * 255.0) for c in rgb])
 
 def scale(hex, f):
     """
     Scales the lightness of a hex color by a factor.
     """
-    rgb = tuple(int(hex.lstrip('#')[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
-    h, l, s = colorsys.rgb_to_hls(*rgb)
-    adj_rgb = colorsys.hls_to_rgb(h, min(1, l * f), s = s)
-    return '#%02x%02x%02x' % tuple([int(c * 255.0) for c in adj_rgb])
+    h, l, s = colorsys.rgb_to_hls(*to_rgb(hex))
+    return to_hex(colorsys.hls_to_rgb(h, min(1, l * f), s = s))
 
 # Color-blind friendly palette.
 colorblind = ['#bbcc33',
@@ -354,354 +153,671 @@ edge_color = {
     'memory'  : scale(node_color['memory'], dark_factor[node_color['memory']])
     }
 
-def is_control_edge(edge):
-    return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '2'
-
-def is_calc_edge(edge):
-    return edge.attr['color'] == '#3cb4a4'
-
-def is_info_edge(edge):
-    return edge.attr['style'] == 'dashed'
-
-def is_effect_edge(edge):
-    return edge.attr['color'] == '#da2d4f' and edge.attr['penwidth'] == '4'
-
-def is_other_edge(edge):
-    return len(edge.attr['color']) == 0
-
-def is_effect_node(node):
-    return node.attr['fillcolor'] == '#da2d4f'
-
-def edge_category(edge):
-    if is_effect_edge(edge):
-        return 'mixed'
-    elif is_control_edge(edge):
-        return 'control'
-    elif is_other_edge(edge):
-        return 'other'
-    elif is_info_edge(edge):
-        return 'data'
-    elif is_calc_edge(edge):
-        return 'memory'
+def frontcolor(backcolor):
+    """
+    Whether to use black or white front color, based on background color.
+    """
+    rgb = [int(backcolor.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)]
+    y = 0.2126 * (rgb[0]/255)**2.2 + \
+        0.7151 * (rgb[1]/255)**2.2 + \
+        0.0721 * (rgb[2]/255)**2.2
+    if y < 0.20:
+        return '#ffffff'
     else:
-        assert False
+        return '#000000'
 
-def is_control_node(node):
-    return node.attr['fillcolor'] == '#e98693'
-
-def is_other_node(node):
-    return node.attr['fillcolor'] == '#343d46'
-
-def is_inlined(node):
-    return node.attr['fontsize'] == '8'
-
-def is_calc_node(node):
-    return node.attr['fillcolor'] == '#3cb4a4'
-
-def is_input_node(node):
-    return node.attr['fillcolor'] == '#d7ede7'
-
-def node_category(node):
-    if is_effect_node(node):
-        return 'mixed'
-    elif is_control_node(node):
-        return 'control'
-    elif is_other_node(node):
-        return 'other'
-    elif is_input_node(node):
-        return 'data'
-    elif is_calc_node(node):
-        return 'memory'
+def draw(job_args):
+    (job_type, graph_id, graphs, tempdir, args) = job_args
+    if job_type == 'sea':
+        draw_sea(graph_id, graphs, tempdir, args)
+    elif job_type == 'cfg':
+        draw_cfg(graph_id, graphs, tempdir, args)
     else:
-        print(str(node))
-        print(str(node.attr.items()))
-        assert False
+        assert(False)
 
-def is_projection(node):
-    projs = ['Proj', 'Bool', 'IfTrue', 'IfFalse', 'Parm']
-    return any([node.attr['label'].endswith(name) for name in projs])
+filter_symbols = {'g' : 'int g',
+                  'method' : 'str method(int)',
+                  'phase' : 'str phase(int)'}
+def matches(graph_tuple, filter):
+    (g, m, p) = graph_tuple
+    method = lambda g : m
+    phase  = lambda g : p
+    loc = locals()
+    filter_locals = dict([(sym, loc[sym]) for sym in filter_symbols.keys()])
+    return eval(filter, {}, filter_locals)
 
-def is_self(edge):
-    (s, t) = edge
-    return s == t
+def has_two_or_less_inputs(G, n):
+    return G.nodes[n]['name'] in \
+        ['Proj', 'Bool', 'If', 'CreateEx', 'CountedLoopEnd', 'Catch']
 
-def is_backbone(edge):
-    (s, t) = edge
-    if is_self(edge):
-        return False
-    if is_control_edge(edge):
+def remove_nodes_if(G, p):
+    G.remove_nodes_from([n for n in G.nodes if p(G, n)])
+
+def is_inline(G, n):
+    name = G.nodes[n]['name']
+    if name in ['Parm', 'MachProj'] and \
+       G.nodes[n]['type'] != 'control' and \
+       all([G.nodes[p]['name'] == 'Start' for p in G.predecessors(n)]):
         return True
-    if is_effect_node(s) and is_control_node(t):
+    if name in ['Con', 'ConI', 'ConL', 'ThreadLocal', 'loadConI']:
         return True
-    # TODO: include also pinning edges for Phis, etc.?
     return False
 
-def is_pinning(edge):
-    (_, t) = edge
-    pinned = ['Phi', 'CreateEx']
-    return is_control_edge(edge) and \
-        any([name in t.attr['label'] for name in pinned])
+def is_projection(G, n):
+    preds = list(G.predecessors(n))
+    if len(preds) == 1 and G.nodes[preds[0]]['type'] == 'tuple:':
+        return True
+    if G.nodes[n]['name'] in ['Bool', 'jmpDir']:
+        return True
+    return False
 
-def simplify_projection_label(label):
-    if label.endswith('IfTrue'):
+def add_node_alias(G, n):
+    if is_inline(G, n):
+        name = G.nodes[n]['name']
+        type = G.nodes[n]['type']
+        dump_spec = G.nodes[n]['dump_spec']
+        alias = None
+        if 'is_con' in G.nodes[n] and dump_spec:
+            if type == 'top':
+                alias = '⊤'
+            else:
+                if ':' in dump_spec:
+                    # Example: ConI
+                    alias = dump_spec.split(':')[1]
+                else:
+                    # Example: loadConI
+                    alias = dump_spec.split('/')[0].replace('#', '')
+                if type == 'long:':
+                    alias += 'L'
+        elif name == 'Parm' and 'short_name' in G.nodes[n]:
+            alias = G.nodes[n]['short_name']
+        elif name == 'MachProj':
+            alias = dump_spec.split('/')[0]
+        if alias:
+            G.nodes[n]['alias'] = alias
+
+p_call_trap = re.compile("uncommon_trap\(reason=\'(\w*)\'")
+def add_extra_info(G, n):
+    name = G.nodes[n]['name']
+    dump_spec = G.nodes[n]['dump_spec']
+    dump_components = dump_spec.split()
+    extra = None
+    if name == 'CallStaticJava':
+        if len(dump_components) >= 3:
+            tm = p_call_trap.match(dump_components[2])
+            if tm:
+                extra = 'trap: ' + tm.group(1)
+            else:
+                extra = dump_components[2]
+    elif name == 'CreateEx':
+        if len(dump_components) >= 1:
+            ex_components = dump_components[0].split(':')
+            if len(ex_components) >= 2:
+                extra = ex_components[1]
+    if extra:
+        G.nodes[n]['extra'] = extra
+
+def simple_projection_label(G, n):
+    name = G.nodes[n]['name']
+    if name == 'IfTrue':
         return 'T'
-    if label.endswith('IfFalse'):
+    if name == 'IfFalse':
         return 'F'
+    if name == 'CatchProj':
+        con = G.nodes[n]['con']
+        if con == '0':
+            return 'F'
+        else:
+            return 'T'
     return ''
 
-p_constant_label = re.compile("C\(([^\)]+)\)")
-p_parm_label     = re.compile("P\(([^\)]+)\)")
-def extract_constant(constant_label):
-    val = constant_label.split()[1]
-    cm = p_constant_label.match(val)
-    if cm:
-        return cm.group(1)
-    pm = p_parm_label.match(val)
-    if pm:
-        return pm.group(1)
-    return val
+def is_pin(G, e):
+    (src, dst, _ind) = e
+    return G.edges[e]['category'] == 'control' and not 'cfg' in G.nodes[dst]
 
-def pinned_region(graph, node):
-    """
-    Region node to which the given node is pinned, or None if not pinned.
-    """
-    for edge in graph.in_edges(node):
-        if is_pinning(edge):
-            (s, _) = edge
-            return s
-    return None
+def is_cfg(G, n):
+    if G.nodes[n]['category'] in ['control', 'mixed']:
+        # Example: If, IfTrue, CallStaticJava.
+        return True
+    if G.nodes[n]['type'] == 'bottom':
+        # Example: Halt, Return, Rethrow.
+        for (_, __, ind, attrs) in G.in_edges(n, data=True, keys=True):
+            if ind == 0 and attrs['category'] == 'control':
+                return True
+    if G.nodes[n]['name'] == 'Root':
+        return True
+    return False
 
-def post_process(graph, args):
+def is_source(G, n):
+    if not 'cfg' in G.nodes[n]:
+        return False
+    preds = set(G.predecessors(n))
+    preds.discard(n)
+    if len(preds) == 0:
+        return True
+    if len(preds) == 1:
+        return G.nodes[next(iter(preds))]['name'] == 'Root'
+    return False
+
+def process_sea(G, args):
     """
-    Post-process a DOT graph emitted by Seafoam. Ideally, all processing should
-    occur during the annotation phase (see c2.rb), but some aspects of the graph
-    can only be controlled in this way.
+    Process the graph, applying analysis and simplifications to make it more
+    understandable.
     """
-    # Remove spurious nodes resulting from asking Seafoam to inline nodes which
-    # actually have incoming edges, such as Parm nodes.
-    spurious = [n for n in graph.nodes() if not n.attr]
-    graph.delete_nodes_from(spurious)
+    # Mark CFG nodes and edges.
+    for n in G.nodes:
+        if is_cfg(G, n):
+            G.nodes[n]['cfg'] = True
+    for e in G.edges:
+        (src, dst, _) = e
+        if 'cfg' in G.nodes[src] and 'cfg' in G.nodes[dst]:
+            G.edges[e]['cfg'] = True
+    # Mark source node.
+    for n in G.nodes:
+        if is_source(G, n):
+            G.nodes[n]['source'] = True
+    # Decide whether each edge needs a port label.
+    for e in G.edges:
+        (src, dst, ind) = e
+        requires_index_label = G.edges[e]['category'] != 'control' and \
+            not has_two_or_less_inputs(G, dst)
+        G.edges[e]['requires_index_label'] = requires_index_label
+    if args.remove_secondary:
+        # Hide root node.
+        remove_nodes_if(G, lambda G, n: G.nodes[n]['name'] == 'Root')
+        # Hide frame pointer, return address, and I/O nodes.
+        for type in ['return_address', 'rawptr:', 'abIO']:
+            remove_nodes_if(G, lambda G, n: G.nodes[n]['type'] == type)
+    # Inline constant and parameter nodes.
+    if args.inline:
+        for n in list(G.nodes):
+            if not is_inline(G, n):
+                continue
+            # Duplicate n as a predecessor of s.
+            for s in G.successors(n):
+                i = str(n) + 'x' + str(s)
+                G.add_node(i, **G.nodes[n])
+                G.nodes[i]['inlined'] = True
+            # Duplicate edges.
+            for e in G.edges([n], keys=True):
+                (_, s, ind) = e
+                i = str(n) + 'x' + str(s)
+                G.add_edge(i, s, key=ind, **G.edges[e])
+            # Remove original node.
+            G.remove_node(n)
     # Remove self-loops.
-    selfedges = [e for e in graph.edges() if is_self(e)]
-    graph.delete_edges_from(selfedges)
-    # Normalize shape of "calc" nodes (memory).
-    for n in graph.nodes():
-        if is_calc_node(n):
-            n.attr['shape'] = 'rectangle'
-    if args.control_centric:
-        # Increase weight of "backbone edges". These are edges that should have
-        # more influence in the structure of the graph.
-        for e in graph.edges():
-            if is_backbone(e):
-                e.attr['weight'] = 100000
-    # Increase margin of inlined nodes.
-    for n in graph.nodes():
-        if is_inlined(n):
-            n.attr['margin'] = 0.03
+    if args.remove_self:
+        for e in list(G.edges):
+            (src, dst, _) = e
+            if src == dst:
+                G.remove_edge(src, dst)
+    # Increase weight of backbone edges.
     # Merge edges between same source and destination node, where only their
-    # labels (input port numbers) change.
-    duplicated = {}
-    for e in graph.edges():
-        (src, dst) = e
-        if not (src, dst) in duplicated:
-            duplicated[(src, dst)] = []
-        duplicated[(src, dst)].append(e.attr['label'])
-    for ((src, dst), labels) in duplicated.items():
-        if len(labels) > 1:
-            first = graph.get_edge(src, dst)
-            # Save attributes for the new representative edge.
-            first_attr = {}
-            for (key, val) in first.attr.items():
-                 first_attr[key] = val
-            while graph.has_edge(src, dst):
-                graph.delete_edge(src, dst)
-            graph.add_edge(first)
-            new = graph.get_edge(src, dst)
-            for (key, val) in first_attr.items():
-                new.attr[key] = val
-            new.attr['label'] = ','.join(labels)
-    # Move edge labels (input port numbers) closer to the destination node.
-    for e in graph.edges():
-        edge_label = e.attr['label']
-        if edge_label != None and len(edge_label) > 0:
-            e.attr['label'] = ''
-            e.attr['headlabel'] = edge_label
-            e.attr['labeldistance'] = 2
-            e.attr['labelangle'] = -20.0 - len(edge_label) * 3
-            e.attr['fontcolor'] = ''
-            e.attr['fontsize'] = 12
+    # input port numbers change.
+    if args.collapse_edges:
+        duplicated = {}
+        for e in G.edges(keys=True):
+            (src, dst, ind) = e
+            if not (src, dst) in duplicated:
+                duplicated[(src, dst)] = []
+            duplicated[(src, dst)].append(ind)
+        for ((src, dst), inds) in duplicated.items():
+            if len(inds) <= 1:
+                continue
+            edges = G.get_edge_data(src, dst)
+            # Pick a representative edge, we assume all are equal.
+            (ind, attrs) = next(iter(edges.items()))
+            attrs['indices'] = sorted(edges.keys())
+            while G.has_edge(src, dst):
+                G.remove_edge(src, dst)
+            # The index becomes irrelevant if it has an 'indices' attribute.
+            G.add_edge(src, dst, ind, **attrs)
+    # Compute node name aliases.
+    if args.use_aliases:
+        for n in G.nodes():
+            add_node_alias(G, n)
+    # Show extra node information on a per-node basis.
+    if args.extend_node_info:
+        for n in G.nodes():
+            add_extra_info(G, n)
+    # Fold projection-like nodes into edges.
     if args.fold_projs:
         # Fold projection-like nodes into edges.
-        projs = [n for n in graph.nodes() if is_projection(n)]
-        for n in projs:
+        for n in list(G.nodes()):
+            if not is_projection(G, n):
+                continue
             # Draw edges from the only predecessor to each of the successors,
             # copying the attributes of the outgoing edges.
-            pred = graph.predecessors(n)
+            pred = list(G.predecessors(n))
             assert(len(pred) == 1)
             p = pred[0]
-            graph.delete_edge(p, n)
-            for s in graph.successors(n):
-                graph.add_edge(p, s)
-                old = graph.get_edge(n, s)
-                new = graph.get_edge(p, s)
-                for (key, val) in old.attr.items():
-                    new.attr[key] = val
-                simple = simplify_projection_label(n.attr['label'])
-                if len(simple) > 0:
-                    new.attr['label'] = '<<B> ' + simple + '</B>>'
-                graph.delete_edge(n, s)
-            graph.delete_node(n)
+            for s in list(G.successors(n)):
+                for (ind, attrs) in list(G.get_edge_data(n, s).items()):
+                    G.add_edge(p, s, ind, **attrs)
+                    simple_label = simple_projection_label(G, n)
+                    if len(simple_label) > 0:
+                        G.edges[(p, s, ind)]['simple_label'] = simple_label
+                    G.remove_edge(n, s, ind)
+            G.remove_node(n)
+    # Fold constant and parameter nodes.
+    if args.fold_constants:
+        is_inlined = lambda n : 'inlined' in G.nodes[n]
+        for n in G.nodes():
+            folded_inputs = \
+                sorted([(attrs.get('indices', [ind]),
+                         G.nodes[p].get('alias', G.nodes[p]['name']))
+                        for (p, _, ind, attrs)
+                        in G.in_edges(n, data=True, keys=True)
+                        if is_inlined(p)])
+            if len(folded_inputs) > 0:
+                G.nodes[n]['folded_inputs'] = folded_inputs
+        G.remove_nodes_from(list(filter(is_inlined, G.nodes())))
+    # Mark pin edges.
+    for e in G.edges(keys=True):
+        if is_pin(G, e):
+            G.edges[e]['pin'] = True
+    # Mark pinned nodes with their corresponding region.
     if args.align_pinned:
-        # TODO: to ensure that subgraphs are specified at the end and do not
-        # affect graphviz's DFS-based cycle-breaking algorithm, dump them to a
-        # separate file and append them to the end (!).
-        subgraphs = pygraphviz.AGraph()
+        for n in G.nodes():
+            for (src, _, attrs) in G.in_edges(n, data=True):
+                if 'pin' in attrs:
+                    G.nodes[n]['pinned_region'] = src
+
+highlight_symbols = {'n' : 'int n',
+                     'name' : 'str name(int)',
+                     'type' : 'str type(int)',
+                     'category' : 'str category(int)'}
+def highlight(G, CFG, args):
+    """
+    Filter the graph nodes according to the highlighting specification. Compute
+    the status of each node (selected, neighbor n, external). If
+    args.preserve_layout is false, directly removee external nodes.
+    """
+    # Define a few convenience methods for users.
+    name     = lambda n : G.nodes[n]['name']
+    type     = lambda n : G.nodes[n]['type']
+    category = lambda n : G.nodes[n]['category']
+    visited = set()
+    for n in G.nodes:
+        loc = locals()
+        highlight_locals = dict([(sym, loc[sym]) for sym in highlight_symbols])
+        if eval(args.highlight, {}, highlight_locals):
+            status = 'selected'
+            G.nodes[n]['distance'] = 0
+            visited.add(n)
+        else:
+            status = 'external'
+        G.nodes[n]['status'] = status
+    # Compute neighborhood and mark status of neighbors with their distance.
+    queue = list(visited)
+    while queue:
+        n = queue.pop(0)
+        distance = G.nodes[n]['distance']
+        if args.neighborhood == 'inf' or \
+           distance < int(args.neighborhood):
+            for s in chain(G.predecessors(n), G.successors(n)):
+                if s not in visited:
+                    visited.add(s)
+                    queue.append(s)
+                    G.nodes[s]['distance'] = distance + 1
+                    G.nodes[s]['status'] = 'neighbor'
+    # If args.preserve_layout is false, directly remove external nodes.
+    if not args.preserve_layout:
+        remove_nodes_if(G, lambda _, n: not (n in visited))
+        for n in G.nodes:
+            r = G.nodes[n].get('pinned_region')
+            if r != None and not r in visited:
+                del G.nodes[n]['pinned_region']
+        if CFG != None:
+            for b in CFG.nodes():
+                nodelist = [(n, ins) for (n, ins) in CFG.nodes[b]['nodelist']
+                            if n['id'] in visited]
+                CFG.nodes[b]['nodelist'] = nodelist
+
+def format_inputs(folded_inputs):
+    return ' '.join([('[' + ','.join(map(str, indices)) + ']=' + name)
+                     for (indices, name) in folded_inputs])
+
+def label(G, n):
+    name = G.nodes[n].get('alias', G.nodes[n]['name'])
+    folded_inputs_text = ''
+    if 'folded_inputs' in G.nodes[n]:
+        folded_inputs_text = \
+            '<FONT POINT-SIZE="10">' + \
+            format_inputs(G.nodes[n]['folded_inputs']) + '</FONT>' + \
+            '<br/><FONT POINT-SIZE="6"><br/></FONT>'
+    node_text = str(G.nodes[n]['id']) + ' ' + name + '<br/>'
+    extra_text = ''
+    if 'extra' in G.nodes[n]:
+        extra_text = '(' + G.nodes[n]['extra'] + ')' + '<br/>'
+    return '<' + folded_inputs_text + node_text + extra_text + '>'
+
+def blend(hex1, w, hex2):
+    """
+    Blends w percent of a color with (1 - w) percent of another one.
+    """
+    blended = [(c1 * w + c2 * (1.0 - w))
+               for (c1, c2) in zip(to_rgb(hex1), to_rgb(hex2))]
+    return to_hex(blended)
+
+def adjust(color, distance):
+    if distance == 0:
+        return color
+    else:
+        return blend(color, 0.2, '#ffffff')
+
+def translate_sea(G, Gdot, args):
+    """
+    Translates the graph from its generic graph format into its GraphViz form.
+    """
+    for n in G.nodes:
+        distance = 0
+        if G.nodes[n]['status'] == 'neighbor':
+            distance = G.nodes[n]['distance']
+        category  = G.nodes[n]['category']
+        fillcolor = adjust(node_color[category], distance)
+        color     = adjust(edge_color[category], distance)
+        fontcolor = adjust(frontcolor(fillcolor), distance)
+        if G.nodes[n]['status'] == 'external':
+            style = 'invis'
+        else:
+            style = 'filled'
+        inlined_attrs = {}
+        if 'inlined' in G.nodes[n]:
+            inlined_attrs = {
+                'fontsize' : '9',
+                'margin'   : '0.03',
+                'width'    : '0',
+                'height'   : '0',
+                'penwidth' : '1'
+            }
+        else:
+            inlined_attrs = {
+                'penwidth' : '2'
+            }
+        Gdot.node(str(n),
+                  shape='rectangle',
+                  style=style,
+                  label=label(G, n),
+                  fillcolor=fillcolor,
+                  color=color,
+                  fontcolor=fontcolor,
+                  **inlined_attrs)
+    for e in G.edges:
+        (src, dst, ind) = e
+        distance = 0
+        if G.nodes[src]['status'] == 'neighbor' or \
+           G.nodes[dst]['status'] == 'neighbor':
+            distance = max([G.nodes[n].get('distance', 0) for n in [src, dst]])
+        category  = G.edges[e]['category']
+        color     = adjust(edge_color[category], distance)
+        penwidth  = '1'
+        if category in ['mixed', 'control']:
+            penwidth = '2'
+        style = 'solid'
+        dir = 'forward'
+        if 'pin' in G.edges[e]:
+            style = 'dashed'
+            dir = 'back'
+            penwidth = '1'
+        if 'external' in [G.nodes[src]['status'], G.nodes[dst]['status']]:
+            style = 'invis'
+        index_label_attrs = {}
+        if G.edges[e]['requires_index_label']:
+            index = str(ind)
+            if 'indices' in G.edges[e]:
+                index = ','.join(map(str, G.edges[e]['indices']))
+            headfontcolor = adjust('#000000', distance)
+            hlab = '<<font color="' + headfontcolor + '">' + index + '</font>>'
+            index_label_attrs = {
+                'headlabel'     : hlab,
+                'labeldistance' : '2',
+                'labelangle'    : str(-20.0 - len(str(ind)) * 3),
+                'fontsize'      : '12'
+            }
+        simple_label_attrs = {}
+        if 'simple_label' in G.edges[e]:
+            simple_label = G.edges[e]['simple_label']
+            if not 'pin' in G.edges[e]:
+                simple_label = '<<B> ' + simple_label + '</B>>'
+            simple_label_attrs = {
+                'label' : simple_label,
+                'fontcolor' : color
+            }
+        other_attrs = {}
+        if args.control_centric and 'cfg' in G.edges[e]:
+            other_attrs['weight'] = "100000"
+        Gdot.edge(str(src), str(dst),
+                  color=color,
+                  penwidth=penwidth,
+                  style=style,
+                  dir=dir,
+                  **index_label_attrs,
+                  **simple_label_attrs,
+                  **other_attrs)
+    if args.control_centric:
+        # Mark start node as graph source (if available).
+        source = next((n for n in G.nodes() if 'source' in G.nodes[n]), None)
+        if source != None:
+            with Gdot.subgraph(name='source') as s:
+                s.node(str(source))
+                s.attr(rank='source')
+    if args.align_pinned:
         # Force vertical alignment of pinned nodes and their regions.
         pinned = {}
-        for n in graph.nodes():
-            r = pinned_region(graph, n)
+        for n in G.nodes():
+            r = G.nodes[n].get('pinned_region')
             if r != None:
                 if not r in pinned:
                     pinned[r] = set()
                 pinned[r].add(n)
         for r, ps in pinned.items():
-            for n in [r] + list(ps):
-                subgraphs.add_node(n)
-            subgraphs.add_subgraph([r] + list(ps), rank='same')
-    if args.fold_constants:
-        constant = [n for n in graph.nodes() if is_inlined(n)]
-        for n in graph.nodes():
-            pconstants = [p for p in graph.predecessors(n) if is_inlined(p)]
-            constant_inputs = ['[' + graph.get_edge(p, n).attr['headlabel'] + \
-                               ']=' + extract_constant(p.attr['label'])
-                               for p in pconstants]
-            if len(pconstants) > 0:
-                n.attr['label'] = '<' + \
-                    '<FONT POINT-SIZE="10">' + \
-                    ('  '.join(constant_inputs)) + '</FONT>' + \
-                    '<br/><FONT POINT-SIZE="6"><br/></FONT>' + \
-                    n.attr['label'].replace('\\n', '<br/>') + \
-                    '>'
-        graph.delete_nodes_from(constant)
-    # Highlight pinning edges.
-    for e in graph.edges():
-        if is_pinning(e):
-            e.attr['dir'] = 'back'
-            e.attr['style'] = 'dashed'
-    # Set 'Start' node as the source.
-    starts = [n for n in graph.nodes() if n.attr['label'].endswith('Start')]
-    if len(starts) == 1:
-        graph.add_subgraph([starts[0]], rank='source')
-    # Remap node and edge styles. This should be the last step as it makes all
-    # node and edge predicate functions obsolete.
-    for n in graph.nodes():
-        category  = node_category(n)
-        fillcolor = node_color[category]
-        color     = edge_color[category]
-        # Compute whether to use black or white node font color.
-        rgb = [int(fillcolor.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)]
-        y = 0.2126 * (rgb[0]/255)**2.2 + \
-            0.7151 * (rgb[1]/255)**2.2 + \
-            0.0721 * (rgb[2]/255)**2.2
-        if y < 0.20:
-            fontcolor = '#ffffff'
+            with Gdot.subgraph(name='pinned' + str(r)) as s:
+                s.node(str(r))
+                for p in ps:
+                     s.node(str(p))
+                s.attr(rank='same')
+
+global_attr = {'fontname' : 'helvetica'}
+
+def draw_sea(graph_id, graph, tempdir, args):
+    """
+    Draw a sea-of-nodes graph by processing the graph data structure,
+    translating it into a Graphviz graph, and invoking 'dot' to produce a PDF
+    file.
+    """
+    ((short_group_name, graph_name), G) = graph
+    # Process the graph.
+    process_sea(G, args)
+    # Filter the graph nodes according to the highlighting specification.
+    highlight(G, None, args)
+    # Translate the graph into the Graphviz format.
+    Gdot = graphviz.Digraph(strict=False, engine='dot', format='pdf',
+                            graph_attr=global_attr, node_attr=global_attr,
+                            edge_attr=global_attr)
+    translate_sea(G, Gdot, args)
+    # Produce a PDF file.
+    emit_graph('sea', graph_id, Gdot, tempdir, args)
+
+def find_root_block(CFG):
+    # Try to find block containing 'Root' node.
+    for b in CFG.nodes():
+        for (n, _) in CFG.nodes[b]['nodelist']:
+            if n['name'] == 'Root':
+                return b
+    return 0
+
+def schedule(nodelist):
+    # Map from node id to nodelist item.
+    nodelist_item = {}
+    for (n, ins) in nodelist:
+        nodelist_item[n['id']] = (n, ins)
+    # Set of nodes that contribute dependencies.
+    local = set([n['id'] for (n, _) in nodelist])
+    # Create local dependency graph.
+    DG = nx.DiGraph()
+    for (n, ins) in nodelist:
+        idx = n['id']
+        DG.add_node(idx)
+        DG.nodes[idx]['name'] = n['name']
+        preds = set(ins).intersection(local)
+        preds.discard(idx)
+        if n['name'] == 'Phi':
+            preds = set()
+        for p in preds:
+            DG.add_edge(p, idx)
+    scheduled_nodelist = []
+    for n in nx.lexicographical_topological_sort(DG):
+        scheduled_nodelist.append(nodelist_item[n])
+    return scheduled_nodelist
+
+def process_cfg(G, CFG, args):
+    """
+    Process the CFG, applying analysis and simplifications to make it more
+    understandable.
+    """
+    # Show extra node information on a per-node basis.
+    if args.extend_node_info:
+        for n in G.nodes():
+            add_extra_info(G, n)
+    # Compute list of nodes in each block.
+    for b in list(CFG.nodes()):
+        nodelist = []
+        for n in CFG.nodes[b]['nodes']:
+            node   = G.nodes[n]
+            inputs = {}
+            for p in G.predecessors(n):
+                for ind in G.get_edge_data(p, n).keys():
+                    inputs[ind] = p
+            pos_inputs = []
+            for i in range(0, max(inputs.keys(), default=0) + 1):
+                pos_inputs.append(inputs.get(i, -1))
+            nodelist.append((node, pos_inputs))
+        # TODO: schedule the node list of each block.
+        CFG.nodes[b]['nodelist'] = nodelist
+    # Find relative frequency of each block.
+    for b in list(CFG.nodes()):
+        nodelist = CFG.nodes[b]['nodelist']
+        if len(nodelist) > 0:
+            CFG.nodes[b]['frequency'] = float(nodelist[0][0]['frequency'])
         else:
-            fontcolor = '#000000'
-        n.attr['fillcolor'] = fillcolor
-        n.attr['color'] = color
-        n.attr['fontcolor'] = fontcolor
-    for e in graph.edges():
-        category = edge_category(e)
-        color = edge_color[category]
-        e.attr['color'] = color
-        penwidth = 1
-        if category == 'control' and e.attr['style'] == 'dashed':
-            e.attr['penwidth'] = 1
-        elif category in ['mixed', 'control']:
-            e.attr['penwidth'] = 2
-        elif category == 'data':
-            e.attr['style'] = ''
-        if len(e.attr['headlabel']) == 0:
-            e.attr['fontcolor'] = color
+            CFG.nodes[b]['frequency'] = 0.0
+    # Remove root block.
+    root = find_root_block(CFG)
+    CFG.remove_node(root)
+    return
 
-def matches_field(field, filter):
-    """
-    Whether a field (id, method, or phase) matches a filter specification.
-    """
-    return filter == '*' or re.match('.*' + filter + '.*', str(field))
-
-def split_filter(filter):
-    """
-    Split filter into its (id, method, phase, nodes) components.
-    """
-    components = filter.split(';')
-    if len(components) != 4:
-        assert False
-    return components
-
-def matches(graph_tuple, filter):
-    """
-    Whether a (id, method, phase) graph tuple matches a filter specification.
-    """
-    (id, method, phase) = graph_tuple
-    components = split_filter(filter)
-    return matches_field(id,     components[0]) and \
-           matches_field(method, components[1]) and \
-           matches_field(phase,  components[2])
-
-def filtered_nodes(filter):
-    """
-    Set of filtered nodes, or None if all nodes are included.
-    """
-    nodes = split_filter(filter)[3]
-    if nodes == '' or nodes == '*':
-        return None
+def pred_str(p):
+    if p == -1:
+        return '_'
     else:
-        return nodes
+        return str(p)
 
-def draw(graph_args):
+def block_label(CFG, b, args):
+    textcolor = '#000000'
+    def font_color(text, color=textcolor):
+        return '<FONT COLOR="' + color + '">' + text + '</FONT>'
+    block_color = adjust(textcolor, block_distance(CFG, b))
+    begin = '<' + \
+        '<TABLE border="0"><TR><TD>' + \
+        font_color('<B>B' + str(b) + ':</B>', block_color) + '</TD></TR>'
+    end = '</TABLE>>'
+    nodes = ''
+    for (n, ins) in CFG.nodes[b]['nodelist']:
+        distance = 0
+        if n['status'] == 'neighbor':
+            distance = n['distance']
+        color = adjust(textcolor, distance)
+        extra_text = ''
+        if 'extra' in n:
+            extra_text = '<br align="left"/>(' + n['extra'] + \
+                ')<br align="left"/>'
+        location = ''
+        loc_info = []
+        if args.show_bcis and 'bci' in n:
+            loc_info.append('b' + n['bci'])
+        if args.show_lines and 'line' in n:
+            loc_info.append('l' + n['line'])
+        if len(loc_info) > 0:
+            location += '<TD  valign="top">@' + ','.join(loc_info) + '</TD>'
+        nodeline = \
+            '<TD align="right" valign="top">' + \
+            font_color(str(n['id']) + ':', color) + '</TD>' + \
+            '<TD align="left">' + \
+            font_color(html.escape(n['name']) + ' ' + \
+                       ' '.join([pred_str(p) for p in ins]) + extra_text,
+                       color) + '</TD>' + \
+            location
+        nodes += '<TR>' + nodeline + '</TR>'
+    return begin + nodes + end
+
+def block_distance(CFG, b):
+    return min([n.get('distance', 0) for (n, _) in CFG.nodes[b]['nodelist']],
+               default=1)
+
+def translate_cfg(CFG, CFGdot, args):
     """
-    Draw the given BGV graph by running Seafoam, post-processing the generated
-    DOT file, and finally invoking Graphviz (dot) to produce a PDF file.
+    Translates the CFG from its generic graph format into its GraphViz form.
     """
-    (graph, bgv, tempdir, args) = graph_args
-    (graph_id, short_group_name, graph_name) = graph
-    dot = Path.joinpath(dotdir(args, tempdir),
-                        str(graph_id)).with_suffix('.dot')
-    seafoam_command = ['seafoam', os.fspath(bgv) + ':' + str(graph_id),
-                       'render', '--out', os.fspath(dot)]
-    nodes = filtered_nodes(args.filter)
-    if nodes != None:
-        seafoam_command += ['--spotlight', nodes]
-    # Run seafoam.
-    if args.verbose:
-            print("running " + ' '.join(seafoam_command) + " ...")
-    result = subprocess.run(seafoam_command, capture_output=True, text=True)
+    # Do not use the full color scale, the extremes are too dark.
+    slack = 0.2
+    norm = matplotlib.colors.Normalize(vmin=(-slack), vmax=(1 + slack))
+    mapper = cm.ScalarMappable(norm=norm, cmap=cm.coolwarm)
+    for b in CFG.nodes:
+        distance = block_distance(CFG, b)
+        freq = CFG.nodes[b]['frequency']
+        fillcolor = '#ffffff'
+        color = adjust('#000000', distance)
+        if args.color:
+            fillcolor = adjust(matplotlib.colors.to_hex(mapper.to_rgba(freq)),
+                               distance)
+            color = fillcolor
+        CFGdot.node(str(b),
+                    shape='rectangle',
+                    style='filled',
+                    fillcolor=fillcolor,
+                    color=color,
+                    label=block_label(CFG, b, args))
+    for e in CFG.edges:
+        (src, dst) = e
+        distance = max([block_distance(CFG, b) for b in [src, dst]])
+        color = adjust('#000000', distance)
+        CFGdot.edge(str(src), str(dst),
+                    color=color)
+    return
+
+def draw_cfg(graph_id, graph, tempdir, args):
+    """
+    Draw a control-flow-graph by processing the graph data structure,
+    translating it into a Graphviz graph, and invoking 'dot' to produce a PDF
+    file.
+    """
+    ((short_group_name, graph_name), G, CFG) = graph
+    # Process the graph.
+    process_cfg(G, CFG, args)
+    # Filter the graph nodes according to the highlighting specification.
+    highlight(G, CFG, args)
+    # Translate the graph into the Graphviz format.
+    CFGdot = graphviz.Digraph(strict=True, engine='dot', format='pdf',
+                              graph_attr=global_attr, node_attr=global_attr,
+                              edge_attr=global_attr)
+    translate_cfg(CFG, CFGdot, args)
+    # Produce a PDF file.
+    emit_graph('cfg', graph_id, CFGdot, tempdir, args)
+
+def emit_graph(graph_type, graph_id, Gdot, tempdir, args):
+    basename = str(graph_id) + '-' + graph_type
+    # Produce a PDF file.
+    dot = Path.joinpath(dotdir(args, tempdir), basename).with_suffix('.dot')
     outdir = Path(args.outdir)
-    if args.log:
-        for (output, ext) in [(result.stdout, '.out'), (result.stderr, '.err')]:
-            if len(output) > 0:
-                log = Path.joinpath(outdir, str(graph_id)).with_suffix(ext)
-                with open(log, 'w') as f:
-                    f.write(output)
-    if not dot.is_file():
-        sys.stderr.write("could not draw graph " + str(graph_id))
-        if len(result.stderr) > 0:
-            sys.stderr.write(": " + result.stderr)
-        else:
-            sys.stderr.write('\n')
-        return
-    graph = pygraphviz.AGraph(os.fspath(dot))
-    # Post-process and update the DOT file.
+    pdf = Path.joinpath(outdir, basename).with_suffix('.pdf')
     if args.verbose:
-            print("post-processing DOT file " + os.fspath(dot) + " ...")
-    post_process(graph, args)
-    graph.write(os.fspath(dot))
-    # Finally draw the graph into a PDF file.
-    pdf = Path.joinpath(outdir, str(graph_id)).with_suffix('.pdf')
-    if args.verbose:
-            print("creating PDF file " + os.fspath(pdf) + " ...")
-    graph.draw(os.fspath(pdf), prog='dot')
+        if args.dot:
+            print("creating DOT file " + os.fspath(dot) + " ...")
+        print("creating PDF file " + os.fspath(pdf) + " ...")
+    Gdot.render(filename=dot)
+    # Graphviz produces a PDF with the DOT file name suffixed with '.pdf'.
+    dot.with_suffix('.dot.pdf').rename(pdf)
 
 def bgvdir(args, tempdir):
     """
@@ -727,14 +843,15 @@ def add_feature_argument(parser, feature, help_msg, default):
     """
     help_string = help_msg + " (default: " + str(default) + ")"
     feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_lower = feature.replace('-', '_')
     feature_parser.add_argument('--' + feature,
-                                dest=feature,
+                                dest=feature_lower,
                                 action='store_true',
                                 help=help_string)
     feature_parser.add_argument('--no-' + feature,
-                                dest=feature,
+                                dest=feature_lower,
                                 action='store_false')
-    parser.set_defaults(**{feature:default})
+    parser.set_defaults(**{feature_lower:default})
 
 def main():
     parser = argparse.ArgumentParser(
@@ -748,26 +865,32 @@ def main():
                         help="output directory (default: %(default)s)")
     add_feature_argument(parser,
                          'list',
-                         "list id, method, and compiler phase of each graph",
+                         "list id, method, and compiler phase of each graph, and terminate",
                          False)
     parser.add_argument('--filter',
-                        default=';;;',
-                        help="""filtered PDF files and nodes within (default: %(default)s)
-FILTER is of the form "i;m;p;n1,n2,...,ni" where
-- i is a regex specification of a (method, compiler phase) id (empty for all ids)
-- m is a regex specification of a method (empty for all methods)
-- p is a regex specification of a compiler phase (empty for all phases)
-- n1,n2,...,ni is a comma-separated list of node ids (empty for all nodes)
-""")
+                        default='True',
+                        help="""
+Predicate telling whether graph g should be processed (default: %(default)s)
+The predicate is an arbitrary Python expression combining the following elements:
+""" + '\n'.join(filter_symbols.values()))
+    parser.add_argument('--highlight',
+                        default='True',
+                        help="""
+Predicate telling whether node n should be processed (default: %(default)s)
+The predicate is an arbitrary Python expression combining the following elements:
+""" + '\n'.join(highlight_symbols.values()))
+    parser.add_argument('--neighborhood',
+                        default='1',
+                        help="Distance of the neighborhood around the highlighted nodes (default: %(default)s)")
+    add_feature_argument(parser,
+                         'preserve-layout',
+                         "preserve position of hidden nodes when highlighting",
+                         False)
     parser.add_argument('-j', '--jobs',
                         metavar='N',
                         type=int,
                         default=multiprocessing.cpu_count(),
                         help="maximum number of parallel jobs (default: %(default)s)")
-    add_feature_argument(parser,
-                         'bgv',
-                         "output BGV file corresponding to the input XML file",
-                         False)
     add_feature_argument(parser,
                          'dot',
                          "output DOT files for each graph",
@@ -785,30 +908,65 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                          "print debug information to the standard output",
                          False)
     add_feature_argument(parser,
-                         'align_pinned',
-                         "align pinned nodes vertically",
+                         'remove-secondary',
+                         "remove root, frame pointer, return address, and I/O nodes",
+                         True)
+    add_feature_argument(parser,
+                         'inline',
+                         "inline constants and parameter nodes",
+                         True)
+    add_feature_argument(parser,
+                         'remove-self',
+                         "remove self-loops",
+                         True)
+    add_feature_argument(parser,
+                         'collapse-edges',
+                         "merge edges between same source and destination",
+                         True)
+    add_feature_argument(parser,
+                         'use-aliases',
+                         "use shorter names for some nodes",
+                         True)
+    add_feature_argument(parser,
+                         'extend-node-info',
+                         "show additional node information",
+                         True)
+    add_feature_argument(parser,
+                         'show-bcis',
+                         "show node BCIs",
                          False)
     add_feature_argument(parser,
-                         'fold_projs',
+                         'show-lines',
+                         "show node location lines",
+                         False)
+    add_feature_argument(parser,
+                         'align-pinned',
+                         "align pinned nodes vertically",
+                         True)
+    add_feature_argument(parser,
+                         'fold-projs',
                          "fold projection nodes into edges",
                          True)
     add_feature_argument(parser,
-                         'fold_constants',
+                         'fold-constants',
                          "fold constant nodes into their users",
                          True)
     add_feature_argument(parser,
-                         'control_centric',
+                         'control-centric',
                          "increase weight of control edges",
+                         True)
+    add_feature_argument(parser,
+                         'color',
+                         "color nodes and edges",
                          True)
 
     args = parser.parse_args()
 
-    # Create temporary directory to store all intermediate files and to run
-    # seafoam under the right configuration (specified in 'c2.rb' in the
-    # script's directory).
-    tempdir = Path(tempfile.mkdtemp(prefix = 'ideal2pdf-'))
-    if args.verbose:
-        print("creating temporary directory " + os.fspath(tempdir) + " ...")
+    # Create temporary directory to store all intermediate files.
+    if not args.list:
+        tempdir = Path(tempfile.mkdtemp(prefix = 'ideal2pdf-'))
+        if args.verbose:
+            print("creating temporary directory " + os.fspath(tempdir) + " ...")
 
     try:
         # Parse XML file.
@@ -817,18 +975,33 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
         tree = et.parse(args.XML_FILE)
         root = tree.getroot()
 
-        # Convert XML to BGV.
+        # Convert XML to a map from id to ((method, phase), NetworkX graph,
+        # maybe CFG) tuples.
         if args.verbose:
-            print("converting XML to BGV ...")
-        bgv_buffer, graphs = xml2bgv(root, args)
+            print("converting XML to graphs ...")
+        graphs = xml2graphs(root, args)
 
         # If asked for, list the graphs (id, method, phase).
-        if args.list:
-            table = [('id', 'method', 'phase')] + graphs
+        if args.verbose or args.list:
+            table = [('id', 'method', 'phase')] + \
+                [(graph_id, method, phase)
+                 for (graph_id, ((method, phase), _, __)) in graphs.items()]
             ws = [max(map(len, map(str, c))) for c in zip(*table)]
             for r in table:
-                if r[0] == 'id' or matches(r, args.filter):
-                    print('  '.join((str(v).ljust(w) for v, w in zip(r, ws))))
+                print('  '.join((str(v).ljust(w) for v, w in zip(r, ws))))
+        # If asked explicitly, terminate at this point.
+        if args.list:
+            return
+
+        # Complete the basic attributes in the parsed graphs.
+        for (_graph_id, (_, G, __)) in graphs.items():
+            # Add id as an attribute (can be decoupled e.g. after inlining).
+            for node in G.nodes:
+                G.nodes[node]['id'] = node
+            # Add category attribute to each edge. This needs to be kept for
+            # each edge, as it might otherwise get lost when e.g. folding projs.
+            for (src, dst, ind) in G.edges:
+                G.edges[src, dst, ind]['category'] = G.nodes[src]['category']
 
         # Create outdir if it does not exist.
         outdir = Path(args.outdir)
@@ -837,29 +1010,8 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                 print("creating output directory " + args.outdir + " ...")
             outdir.mkdir(parents=True)
 
-        # Dump BGV file.
-        xml_base = Path(args.XML_FILE).stem
-        bgv = Path.joinpath(bgvdir(args, tempdir), xml_base).with_suffix('.bgv')
         if args.verbose:
-            print("writing BGV file " + os.fspath(bgv) + " ...")
-        with open(bgv, 'wb') as f:
-            f.write(bgv_buffer.getbuffer())
-
-        # Create temporary working directory and place seafoam's configuration
-        # file ('c2.rb' in this script's directory).
-        seafoam_configdir = Path.joinpath(Path(tempdir), '.seafoam')
-        seafoam_configdir.mkdir(parents=True)
-        if args.verbose:
-            print("creating Seafoam configuration directory " + \
-                  os.fspath(seafoam_configdir) + " ...")
-        config = Path.joinpath(Path(__file__).parent.absolute(), 'c2.rb')
-        seafoam_config = os.fspath(Path.joinpath(seafoam_configdir, 'config'))
-        shutil.copy(config, seafoam_config)
-        original_workdir = os.fspath(Path().absolute())
-        os.chdir(tempdir)
-
-        if args.verbose:
-            print("IGV palette definition:")
+            print("palette definition (IGV filter format):")
             for (cat, color) in node_color.items():
                 print("var " + cat + \
                       "NodeColor = java.awt.Color.decode(\"" + color + "\");")
@@ -867,16 +1019,19 @@ FILTER is of the form "i;m;p;n1,n2,...,ni" where
                 print("var " + cat + \
                       "EdgeColor = java.awt.Color.decode(\"" + color + "\");")
 
-        # Do the rest of the work in parallel. The list conversion is just to
-        # force evaluation.
+        # Do the rest of the work in parallel.
         ex = concurrent.futures.ProcessPoolExecutor(max_workers=int(args.jobs))
-        list(ex.map(draw, [(graph, bgv, tempdir, args) for graph in graphs
-                           if matches(graph, args.filter)]))
-        os.chdir(original_workdir)
+        jobs = []
+        for (graph_id, (name, G, CFG)) in graphs.items():
+            jobs.append(['sea', graph_id, (name, G), tempdir, args])
+            if CFG != None:
+                jobs.append(['cfg', graph_id, (name, G, CFG), tempdir, args])
+        # The list conversion is just to force evaluation.
+        list(ex.map(draw, jobs))
 
     finally:
         # Clean up.
-        if args.clean:
+        if args.clean and not args.list:
             if args.verbose:
                 print("cleaning temporary directory " + os.fspath(tempdir))
             shutil.rmtree(tempdir)
