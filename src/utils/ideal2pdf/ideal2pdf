@@ -426,7 +426,8 @@ def process_sea(G, args):
 highlight_symbols = {'n' : 'int n',
                      'name' : 'str name(int)',
                      'type' : 'str type(int)',
-                     'category' : 'str category(int)'}
+                     'category' : 'str category(int)',
+                     'is_cfg' : 'bool is_cfg(int)'}
 def highlight(G, CFG, args):
     """
     Filter the graph nodes according to the highlighting specification. Compute
@@ -437,6 +438,7 @@ def highlight(G, CFG, args):
     name     = lambda n : G.nodes[n]['name']
     type     = lambda n : G.nodes[n]['type']
     category = lambda n : G.nodes[n]['category']
+    is_cfg   = lambda n : 'cfg' in G.nodes[n]
     visited = set()
     for n in G.nodes:
         loc = locals()
@@ -500,17 +502,46 @@ def blend(hex1, w, hex2):
                for (c1, c2) in zip(to_rgb(hex1), to_rgb(hex2))]
     return to_hex(blended)
 
-def adjust(color, distance):
+def adjust(color, distance, background_color='#ffffff'):
     if distance == 0:
         return color
     else:
-        return blend(color, 0.2, '#ffffff')
+        return blend(color, 0.2, background_color)
+
+def cfg_preorder(G, source):
+    visited = set()
+    dfs = []
+    stack = [source]
+    while stack:
+        n = stack.pop()
+        if n in visited:
+            continue
+        visited.add(n)
+        dfs.append(n)
+        for s in G.successors(n):
+            if 'cfg' in G.nodes[s]:
+                stack.append(s)
+    return dfs
 
 def translate_sea(G, Gdot, args):
     """
     Translates the graph from its generic graph format into its GraphViz form.
     """
-    for n in G.nodes:
+    # Find source if available.
+    source = next((n for n in G.nodes() if 'source' in G.nodes[n]), None)
+    if args.control_centric and source != None:
+        # The node declaration order affects GraphViz's ranking algorithm.
+        # Declare first CFG nodes in DFS order to lead GraphViz towards a
+        # natural CFG structure (with back-edges flowing upwards).
+        nodelist = []
+        dfs = cfg_preorder(G, source)
+        nodelist.extend(dfs)
+        for n in G.nodes:
+            if not 'cfg' in G.nodes[n]:
+                nodelist.append(n)
+    else:
+        nodelist = G.nodes
+    for n in nodelist:
         distance = 0
         if G.nodes[n]['status'] == 'neighbor':
             distance = G.nodes[n]['distance']
@@ -595,13 +626,11 @@ def translate_sea(G, Gdot, args):
                   **index_label_attrs,
                   **simple_label_attrs,
                   **other_attrs)
-    if args.control_centric:
+    if args.control_centric and source != None:
         # Mark start node as graph source (if available).
-        source = next((n for n in G.nodes() if 'source' in G.nodes[n]), None)
-        if source != None:
-            with Gdot.subgraph(name='source') as s:
-                s.node(str(source))
-                s.attr(rank='source')
+        with Gdot.subgraph(name='source') as s:
+            s.node(str(source))
+            s.attr(rank='source')
     if args.align_pinned:
         # Force vertical alignment of pinned nodes and their regions.
         pinned = {}
@@ -676,6 +705,10 @@ def process_cfg(G, CFG, args):
     Process the CFG, applying analysis and simplifications to make it more
     understandable.
     """
+    # Mark CFG nodes.
+    for n in G.nodes:
+        if is_cfg(G, n):
+            G.nodes[n]['cfg'] = True
     # Show extra node information on a per-node basis.
     if args.extend_node_info:
         for n in G.nodes():
@@ -713,11 +746,11 @@ def pred_str(p):
     else:
         return str(p)
 
-def block_label(CFG, b, args):
+def block_label(CFG, b, backcolor, args):
     textcolor = '#000000'
     def font_color(text, color=textcolor):
         return '<FONT COLOR="' + color + '">' + text + '</FONT>'
-    block_color = adjust(textcolor, block_distance(CFG, b))
+    block_color = adjust(textcolor, block_distance(CFG, b), backcolor)
     begin = '<' + \
         '<TABLE border="0"><TR><TD>' + \
         font_color('<B>B' + str(b) + ':</B>', block_color) + '</TD></TR>'
@@ -727,7 +760,7 @@ def block_label(CFG, b, args):
         distance = 0
         if n['status'] == 'neighbor':
             distance = n['distance']
-        color = adjust(textcolor, distance)
+        color = adjust(textcolor, distance, backcolor)
         extra_text = ''
         if 'extra' in n:
             extra_text = '<br align="left"/>(' + n['extra'] + \
@@ -777,7 +810,7 @@ def translate_cfg(CFG, CFGdot, args):
                     style='filled',
                     fillcolor=fillcolor,
                     color=color,
-                    label=block_label(CFG, b, args))
+                    label=block_label(CFG, b, fillcolor, args))
     for e in CFG.edges:
         (src, dst) = e
         distance = max([block_distance(CFG, b) for b in [src, dst]])
@@ -856,109 +889,122 @@ def add_feature_argument(parser, feature, help_msg, default):
 def main():
     parser = argparse.ArgumentParser(
         description="Draws graphs in XML graph files as PDF documents.",
-        formatter_class=argparse.RawTextHelpFormatter)
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False)
 
-    parser.add_argument('XML_FILE',
-                        help="XML graph file emitted by the HotSpot JVM")
-    parser.add_argument('--outdir',
-                        default=os.getcwd(),
-                        help="output directory (default: %(default)s)")
-    add_feature_argument(parser,
-                         'list',
-                         "list id, method, and compiler phase of each graph, and terminate",
-                         False)
-    parser.add_argument('--filter',
-                        default='True',
-                        help="""
-Predicate telling whether graph g should be processed (default: %(default)s)
-The predicate is an arbitrary Python expression combining the following elements:
-""" + '\n'.join(filter_symbols.values()))
-    parser.add_argument('--highlight',
-                        default='True',
-                        help="""
-Predicate telling whether node n should be processed (default: %(default)s)
-The predicate is an arbitrary Python expression combining the following elements:
-""" + '\n'.join(highlight_symbols.values()))
-    parser.add_argument('--neighborhood',
-                        default='1',
-                        help="Distance of the neighborhood around the highlighted nodes (default: %(default)s)")
-    add_feature_argument(parser,
-                         'preserve-layout',
-                         "preserve position of hidden nodes when highlighting",
-                         False)
-    parser.add_argument('-j', '--jobs',
-                        metavar='N',
-                        type=int,
-                        default=multiprocessing.cpu_count(),
-                        help="maximum number of parallel jobs (default: %(default)s)")
-    add_feature_argument(parser,
+    io = parser.add_argument_group('input/output options')
+    io.add_argument('XML_FILE',
+                    help="XML graph file emitted by the HotSpot JVM")
+    io.add_argument('--outdir',
+                    metavar='DIR',
+                    default=os.getcwd(),
+                    help="output directory (default: %(default)s)")
+    add_feature_argument(io,
                          'dot',
                          "output DOT files for each graph",
                          False)
-    add_feature_argument(parser,
+    add_feature_argument(io,
                          'log',
                          "output log files (.out and .err) for each graph",
                          False)
-    add_feature_argument(parser,
+    add_feature_argument(io,
                          'clean',
                          "remove intermediate files",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(io,
                          'verbose',
                          "print debug information to the standard output",
                          False)
-    add_feature_argument(parser,
+    io.add_argument('--jobs',
+                    metavar='N',
+                    type=int,
+                    default=multiprocessing.cpu_count(),
+                    help="maximum number of parallel jobs (default: %(default)s)")
+    io.add_argument('--help',
+                    action='help',
+                    default=argparse.SUPPRESS,
+                    help='Show this help message and exit')
+    list_filter = parser.add_argument_group('listing and filtering options')
+    add_feature_argument(list_filter,
+                         'list',
+                         "list properties of each graph and terminate",
+                         False)
+    list_filter.add_argument('--filter',
+                             metavar='EXP',
+                             default='True',
+                             help=
+"""predicate telling whether to process graph g (default: %(default)s)
+-- arbitrary Python expression combining the following elements:
+""" + '\n'.join(filter_symbols.values()))
+    list_filter.add_argument('--highlight',
+                             metavar='EXP',
+                             default='True',
+                             help=
+"""predicate telling whether to process node n (default: %(default)s)
+-- arbitrary Python expression combining the following elements:
+""" + '\n'.join(highlight_symbols.values()))
+    list_filter.add_argument('--neighborhood',
+                             metavar='N',
+                             default='1',
+                             help="distance of the highlighted neighborhood (default: %(default)s)")
+    add_feature_argument(list_filter,
+                         'preserve-layout',
+                         "preserve original node position when highlighting",
+                         False)
+    layout = parser.add_argument_group('graph layout and style options')
+    add_feature_argument(layout,
                          'remove-secondary',
-                         "remove root, frame pointer, return address, and I/O nodes",
+                         "remove root, FP, RA, and I/O nodes",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'inline',
                          "inline constants and parameter nodes",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'remove-self',
                          "remove self-loops",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'collapse-edges',
                          "merge edges between same source and destination",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'use-aliases',
                          "use shorter names for some nodes",
                          True)
-    add_feature_argument(parser,
-                         'extend-node-info',
-                         "show additional node information",
-                         True)
-    add_feature_argument(parser,
-                         'show-bcis',
-                         "show node BCIs",
-                         False)
-    add_feature_argument(parser,
-                         'show-lines',
-                         "show node location lines",
-                         False)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'align-pinned',
                          "align pinned nodes vertically",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'fold-projs',
                          "fold projection nodes into edges",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'fold-constants',
                          "fold constant nodes into their users",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'control-centric',
                          "increase weight of control edges",
                          True)
-    add_feature_argument(parser,
+    add_feature_argument(layout,
                          'color',
                          "color nodes and edges",
                          True)
+    info = parser.add_argument_group('graph information options')
+    add_feature_argument(info,
+                         'extend-node-info',
+                         "show additional node information",
+                         True)
+    add_feature_argument(info,
+                         'show-bcis',
+                         "show node BCIs",
+                         False)
+    add_feature_argument(info,
+                         'show-lines',
+                         "show node location lines",
+                         False)
 
     args = parser.parse_args()
 
