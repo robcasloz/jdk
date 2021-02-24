@@ -34,16 +34,16 @@ To list the id, method, and compiler phase of each graph, run:
 ./ideal2pdf foo.xml --list
 ```
 
-By default, `ideal2pdf` draws all graphs in the XML graph file, including all
-nodes in each graph. To select only a graph with id `i`, method `m`, and
-compiler phase `p`, run:
+By default, ideal2pdf draws all graphs in the XML graph file, including all
+nodes in each graph. Even if this operation is parallelized, it can be very
+costly for large XML graph files. To select only a graph with id `i`, method
+`m`, and compiler phase `p`, run:
 
 ```
 ./ideal2pdf foo.xml --filter "g == i and method(g) == 'm' and phase(g) == 'p'"
 ```
 
-By default, `ideal2pdf` shows all nodes in the selected graphs. To select a
-subset `n1`, `n2`, ..., `ni` of nodes to be shown, run:
+To select a subset `n1`, `n2`, ..., `ni` of nodes to be shown, run:
 
 ```
 ./ideal2pdf foo.xml --highlight "n in [n1, n2, ..., nj]"
