@@ -34,6 +34,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.xml.parsers.ParserConfigurationException;
@@ -529,6 +530,8 @@ public class Parser implements GraphParser {
         }
         try {
             XMLReader reader = createReader();
+            reader.setProperty("http://apache.org/xml/properties/locale",
+                               new Locale("en", "US"));
             reader.setContentHandler(new XMLParser(xmlDocument, monitor));
             reader.parse(new InputSource(Channels.newInputStream(channel)));
         } catch (SAXException ex) {
