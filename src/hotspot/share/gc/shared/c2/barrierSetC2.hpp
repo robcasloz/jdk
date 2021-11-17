@@ -304,6 +304,9 @@ public:
 
   static int arraycopy_payload_base_offset(bool is_array);
 
+  virtual void print_stats()  const { tty->print_cr("--- No C2BarrierSet stats ---"); };
+  virtual void gather_stats() const { };
+
 #ifndef PRODUCT
   virtual void dump_barrier_data(const MachNode* mach, outputStream* st) const {
     st->print("%x", mach->barrier_data());

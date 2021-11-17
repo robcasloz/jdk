@@ -87,6 +87,8 @@
 #endif
 #ifdef COMPILER2
 #include "code/compiledIC.hpp"
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "opto/compile.hpp"
 #include "opto/indexSet.hpp"
 #include "opto/runtime.hpp"
@@ -266,6 +268,10 @@ void print_statistics() {
     IndexSet::print_statistics();
   }
 #endif // ASSERT
+  if (PrintBarrierSetStatistics) {
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    bs->print_stats();
+  }
 #else // COMPILER2
 #if INCLUDE_JVMCI
 #ifndef COMPILER1
