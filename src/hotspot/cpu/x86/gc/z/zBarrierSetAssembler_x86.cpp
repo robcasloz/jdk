@@ -930,7 +930,7 @@ void ZBarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm,
 
   // Resolve global handle
   __ movptr(obj, Address(obj, -JNIHandles::TypeTag::global));
-  __ testptr(obj, load_bad_mask_from_jni_env(jni_env));
+  __ testptr(obj, load_bad_mask_from_thread(jni_env));
   __ jcc(Assembler::notZero, slowpath);
   __ jmp(uncolor);
 
@@ -938,7 +938,7 @@ void ZBarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm,
 
   // Resolve weak handle
   __ movptr(obj, Address(obj, -JNIHandles::TypeTag::weak_global));
-  __ testptr(obj, mark_bad_mask_from_jni_env(jni_env));
+  __ testptr(obj, mark_bad_mask_from_thread(jni_env));
   __ jcc(Assembler::notZero, slowpath);
 
   __ bind(uncolor);

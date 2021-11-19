@@ -79,7 +79,10 @@
           "0: Disabled "                                                    \
           "1: Attempt contiguous reservation starting at a higher address " \
           "N: Force that many reservations, if possible")                   \
-          range(0, ZMaxVirtualReservations)
+          range(0, ZMaxVirtualReservations)                                 \
+                                                                            \
+  product(bool, ZVerifyElidedBarriers, false, DIAGNOSTIC,                   \
+          "Verify elided barriers")                                         \
 
 // end of GC_Z_FLAGS
 
