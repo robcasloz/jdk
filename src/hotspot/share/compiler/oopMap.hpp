@@ -62,7 +62,7 @@ private:
 
 public:
   // Constants
-  enum { type_bits                = 2,
+  enum { type_bits                = 3,
          register_bits            = BitsPerShort - type_bits };
 
   enum { type_shift               = 0,
@@ -78,6 +78,7 @@ public:
          narrowoop_value,
          callee_saved_value,
          derived_oop_value,
+         indirect_oop,
          unused_value = -1          // Only used as a sentinel value
   };
 
@@ -87,6 +88,10 @@ public:
     set_reg_type(reg, t);
     set_content_reg(reg2);
   }
+  OopMapValue (VMReg reg, short offset) {
+    set_reg_type(offset, indirect_oop);
+    set_content_reg(reg);
+  }
 
  private:
   void set_reg_type(VMReg p, oop_types t) {
@@ -95,11 +100,22 @@ public:
     assert(type() == t, "sanity check" );
   }
 
+  void set_reg_type(short s, oop_types t) {
+    assert(t == indirect_oop, "sanity");
+    set_value((s << register_shift) | t);
+    assert(reg_as_offset() == s, "sanity check");
+    assert(type() == t, "sanity check");
+  }
+
+  void set_content_offset(short offset) {
+    _content_reg = offset;
+  }
+
   void set_content_reg(VMReg r) {
     if (is_callee_saved()) {
       // This can never be a stack location, so we don't need to transform it.
       assert(r->is_reg(), "Trying to callee save a stack location");
-    } else if (is_derived_oop()) {
+    } else if (is_derived_oop() || is_indirect_oop()) {
       assert (r->is_valid(), "must have a valid VMReg");
     } else {
       assert (!r->is_valid(), "valid VMReg not allowed");
@@ -111,14 +127,14 @@ public:
   // Archiving
   void write_on(CompressedWriteStream* stream) {
     stream->write_int(value());
-    if(is_callee_saved() || is_derived_oop()) {
+    if (is_callee_saved() || is_derived_oop() || is_indirect_oop()) {
       stream->write_int(checked_cast<int>(content_reg()->value()));
     }
   }
 
   void read_from(CompressedReadStream* stream) {
     set_value(checked_cast<unsigned short>(stream->read_int()));
-    if (is_callee_saved() || is_derived_oop()) {
+    if (is_callee_saved() || is_derived_oop() || is_indirect_oop()) {
       set_content_reg(VMRegImpl::as_VMReg(stream->read_int(), true));
     }
   }
@@ -128,8 +144,10 @@ public:
   bool is_narrowoop()         { return mask_bits(value(), type_mask_in_place) == narrowoop_value; }
   bool is_callee_saved()      { return mask_bits(value(), type_mask_in_place) == callee_saved_value; }
   bool is_derived_oop()       { return mask_bits(value(), type_mask_in_place) == derived_oop_value; }
+  bool is_indirect_oop()      { return mask_bits(value(), type_mask_in_place) == indirect_oop; }
 
   VMReg reg() const { return VMRegImpl::as_VMReg(checked_cast<int>(mask_bits(value(), register_mask_in_place) >> register_shift)); }
+  short reg_as_offset() const { return mask_bits(value(), register_mask_in_place) >> register_shift; }
   oop_types type() const      { return (oop_types)mask_bits(value(), type_mask_in_place); }
 
   static bool legal_vm_reg_name(VMReg p) {
@@ -198,6 +216,7 @@ class OopMap: public ResourceObj {
   void set_narrowoop(VMReg local);
   void set_callee_saved( VMReg local, VMReg caller_machine_register );
   void set_derived_oop ( VMReg local, VMReg derived_from_local_register );
+  void set_indirect_oop(VMReg local, short offset);
 
   int heap_size() const;
   void copy_data_to(address addr) const;
