@@ -777,6 +777,14 @@
           "more than this threshold")                                       \
           range(0, 100)                                                     \
                                                                             \
+  product(bool, UseDomBarrierElimination, true,                             \
+          "Reduce GC barrier cost")                                         \
+                                                                            \
+  product(bool, UseSafepointAttachedBarriers, true,                         \
+          "Reduce GC barrier cost")                                         \
+                                                                            \
+  product(bool, TraceBarrierElimination, false,                             \
+          "Trace safepoint attached barrier optimization")                  \
 
 // end of C2_FLAGS
 
