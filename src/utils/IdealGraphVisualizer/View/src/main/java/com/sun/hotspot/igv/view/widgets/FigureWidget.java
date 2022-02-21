@@ -46,6 +46,7 @@ import javax.swing.event.MenuListener;
 import org.netbeans.api.visual.action.PopupMenuProvider;
 import org.netbeans.api.visual.action.WidgetAction;
 import org.netbeans.api.visual.layout.LayoutFactory;
+import org.netbeans.api.visual.layout.LayoutFactory.SerialAlignment;
 import org.netbeans.api.visual.model.ObjectState;
 import org.netbeans.api.visual.widget.LabelWidget;
 import org.netbeans.api.visual.widget.Widget;
@@ -106,7 +107,10 @@ public class FigureWidget extends Widget implements Properties.Provider, PopupMe
         outer.setLayout(LayoutFactory.createOverlayLayout());
 
         middleWidget = new Widget(scene);
-        middleWidget.setLayout(LayoutFactory.createVerticalFlowLayout(LayoutFactory.SerialAlignment.CENTER, 0));
+        SerialAlignment textAlign = scene.getModel().getShowCFG() ?
+            LayoutFactory.SerialAlignment.LEFT_TOP :
+            LayoutFactory.SerialAlignment.CENTER;
+        middleWidget.setLayout(LayoutFactory.createVerticalFlowLayout(textAlign, 0));
         middleWidget.setBackground(f.getColor());
         middleWidget.setOpaque(true);
         middleWidget.getActions().addAction(new DoubleClickAction(this));
