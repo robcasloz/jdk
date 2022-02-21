@@ -24,12 +24,14 @@
 package com.sun.hotspot.igv.graph;
 
 import com.sun.hotspot.igv.data.InputBlock;
+import com.sun.hotspot.igv.data.InputBlockEdge;
 import com.sun.hotspot.igv.data.InputEdge;
 import com.sun.hotspot.igv.data.InputGraph;
 import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.data.Properties;
 import com.sun.hotspot.igv.data.Properties.StringPropertyMatcher;
 import java.awt.Font;
+import java.awt.Color;
 import java.util.*;
 
 /**
@@ -44,9 +46,11 @@ public class Diagram {
     private int curId;
     private String nodeText;
     private String shortNodeText;
+    private String tinyNodeText;
     private final Font font;
     private final Font slotFont;
     private final Font boldFont;
+    private boolean cfg = false;
 
     public Font getFont() {
         return font;
@@ -60,6 +64,14 @@ public class Diagram {
         return boldFont;
     }
 
+    public boolean isCFG() {
+        return cfg;
+    }
+
+    public void setCFG(boolean cfg) {
+        this.cfg = cfg;
+    }
+
     private Diagram() {
         figures = new ArrayList<>();
         blocks = new LinkedHashMap<>(8);
@@ -68,6 +80,7 @@ public class Diagram {
         this.font = new Font("Arial", Font.PLAIN, 12);
         this.slotFont = new Font("Arial", Font.PLAIN, 10);
         this.boldFont = this.font.deriveFont(Font.BOLD);
+        this.cfg = false;
     }
 
     public Block getBlock(InputBlock b) {
@@ -83,6 +96,10 @@ public class Diagram {
         return shortNodeText;
     }
 
+    public String getTinyNodeText() {
+        return tinyNodeText;
+    }
+
     public void updateBlocks() {
         blocks.clear();
         for (InputBlock b : graph.getBlocks()) {
@@ -92,7 +109,7 @@ public class Diagram {
     }
 
     public Diagram getNext() {
-        return Diagram.createDiagram(graph.getNext(), nodeText, shortNodeText);
+        return Diagram.createDiagram(graph.getNext(), nodeText, shortNodeText, tinyNodeText);
     }
 
     public Collection<Block> getBlocks() {
@@ -100,7 +117,7 @@ public class Diagram {
     }
 
     public Diagram getPrev() {
-        return Diagram.createDiagram(graph.getPrev(), nodeText, shortNodeText);
+        return Diagram.createDiagram(graph.getPrev(), nodeText, shortNodeText, tinyNodeText);
     }
 
     public List<Figure> getFigures() {
@@ -137,7 +154,8 @@ public class Diagram {
     }
 
     public static Diagram createDiagram(InputGraph graph, String nodeText,
-                                        String shortNodeText) {
+                                        String shortNodeText,
+                                        String tinyNodeText) {
         if (graph == null) {
             return null;
         }
@@ -146,6 +164,7 @@ public class Diagram {
         d.graph = graph;
         d.nodeText = nodeText;
         d.shortNodeText = shortNodeText;
+        d.tinyNodeText = tinyNodeText;
 
         d.updateBlocks();
 
@@ -156,7 +175,25 @@ public class Diagram {
             f.getSource().addSourceNode(n);
             f.getProperties().add(n.getProperties());
             f.setSubgraphs(n.getSubgraphs());
+            f.setBlock(graph.getBlock(n));
             figureHash.put(n.getId(), f);
+        }
+
+        // Add delimiter (in and out) nodes.
+        Hashtable<InputBlock, Figure> inDelimiterHash  = new Hashtable<>(),
+                                      outDelimiterHash = new Hashtable<>();
+        for (InputBlock b : graph.getBlocks()) {
+            Figure in = d.createFigure();
+            in.setType(Figure.Type.IN_DELIMITER);
+            in.setBlock(b);
+            in.getProperties().add(new Properties("name", "B" + b.getName() + "-in"));
+            inDelimiterHash.put(b, in);
+
+            Figure out = d.createFigure();
+            out.setType(Figure.Type.OUT_DELIMITER);
+            out.setBlock(b);
+            out.getProperties().add(new Properties("name", "B" + b.getName() + "-out"));
+            outDelimiterHash.put(b, out);
         }
 
         for (InputEdge e : graph.getEdges()) {
@@ -190,18 +227,40 @@ public class Diagram {
             }
         }
 
+        // Create connections for delimiter nodes. Create slots on-demand.
+        for (InputBlockEdge e : graph.getBlockEdges()) {
+            Figure fromFigure = outDelimiterHash.get(e.getFrom());
+            Figure toFigure = inDelimiterHash.get(e.getTo());
+            assert fromFigure != null && toFigure != null;
+            int outputSlots = fromFigure.getOutputSlots().size();
+            OutputSlot outputSlot = fromFigure.createOutputSlot(outputSlots);
+            // This prevents DiagramScene::processOutputSlot() from offsetting
+            // the Y-coordinates in CFG edges. Same for inputSlot below.
+            outputSlot.setShortName(e.getFrom().toString());
+            int inputSlots = toFigure.getInputSlots().size();
+            InputSlot inputSlot = toFigure.createInputSlot(inputSlots);
+            inputSlot.setShortName(e.getTo().toString());
+
+            // TODO: define connection types in an enumeration, not as strings.
+            Connection c = d.createConnection(inputSlot, outputSlot, e.toString(), "cfg");
+            c.setStyle(Connection.ConnectionStyle.BOLD);
+            c.setColor(Color.BLUE);
+        }
 
         return d;
     }
 
     public void removeAllFigures(Set<Figure> figuresToRemove) {
         for (Figure f : figuresToRemove) {
-            freeFigure(f);
+            if (f.getType() == Figure.Type.REGULAR) {
+                freeFigure(f);
+            }
         }
 
         ArrayList<Figure> newFigures = new ArrayList<>();
         for (Figure f : this.figures) {
-            if (!figuresToRemove.contains(f)) {
+            if (!figuresToRemove.contains(f) ||
+                f.getType() != Figure.Type.REGULAR) {
                 newFigures.add(f);
             }
         }
@@ -228,8 +287,10 @@ public class Diagram {
     }
 
     public void removeFigure(Figure succ) {
-
         assert this.figures.contains(succ);
+        if (succ.getType() != Figure.Type.REGULAR) {
+            return;
+        }
         freeFigure(succ);
         this.figures.remove(succ);
     }

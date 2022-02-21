@@ -32,6 +32,10 @@ import java.awt.Point;
  */
 public interface Vertex extends Comparable<Vertex> {
 
+    public enum Type {
+        REGULAR, IN_DELIMITER, OUT_DELIMITER
+    }
+
     public Dimension getSize();
 
     public Point getPosition();
@@ -41,4 +45,6 @@ public interface Vertex extends Comparable<Vertex> {
     public boolean isRoot();
 
     public Cluster getCluster();
+
+    public Type getType();
 }

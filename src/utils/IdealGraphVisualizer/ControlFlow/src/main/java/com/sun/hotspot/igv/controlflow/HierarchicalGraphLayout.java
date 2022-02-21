@@ -139,6 +139,10 @@ public class HierarchicalGraphLayout<N, E> extends GraphLayout<N, E> {
         public Port getSlot() {
             return slot;
         }
+
+        public Type getType() {
+            return Type.REGULAR;
+        }
     }
 
     protected void performGraphLayout(UniversalGraph<N, E> graph) {

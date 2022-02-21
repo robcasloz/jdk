@@ -101,6 +101,10 @@ public class InputBlock {
         return Collections.unmodifiableSet(successors);
     }
 
+    public void setNodes(List<InputNode> nodes) {
+        this.nodes = nodes;
+    }
+
     @Override
     public String toString() {
         return "Block " + this.getName();

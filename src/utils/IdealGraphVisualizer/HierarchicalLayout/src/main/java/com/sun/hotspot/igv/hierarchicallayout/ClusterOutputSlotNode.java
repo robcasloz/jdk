@@ -142,4 +142,9 @@ public class ClusterOutputSlotNode implements Vertex {
     public int compareTo(Vertex o) {
         return toString().compareTo(o.toString());
     }
+
+    public Type getType() {
+        return Type.REGULAR;
+    }
+
 }

@@ -57,17 +57,31 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     private String[] lines;
     private int heightCash = -1;
     private int widthCash = -1;
+    private Type type;
+    private InputBlock block;
 
     public int getHeight() {
         if (heightCash == -1) {
-            BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            Graphics g = image.getGraphics();
-            g.setFont(diagram.getFont().deriveFont(Font.BOLD));
-            FontMetrics metrics = g.getFontMetrics();
-            String nodeText = diagram.getNodeText();
-            heightCash = nodeText.split("\n").length * metrics.getHeight() + INSET;
+            updateHeight();
         }
         return heightCash;
+    }
+
+    private void updateHeight() {
+        if (getType() != Type.REGULAR) {
+            heightCash = 0;
+            return;
+        }
+        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        Graphics g = image.getGraphics();
+        g.setFont(diagram.getFont().deriveFont(Font.BOLD));
+        FontMetrics metrics = g.getFontMetrics();
+        String nodeText = diagram.getNodeText();
+        int lines = nodeText.split("\n").length;
+        if (hasInputList() && lines > 1) {
+            lines++;
+        }
+        heightCash = lines * metrics.getHeight() + INSET;
     }
 
     public static <T> List<T> getAllBefore(List<T> inputList, T tIn) {
@@ -91,6 +105,16 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     public int getWidth() {
         if (widthCash == -1) {
+            updateWidth();
+        }
+        return widthCash;
+    }
+
+    public void setWidth(int width) {
+        widthCash = width;
+    }
+
+    private void updateWidth() {
             int max = 0;
             BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
             Graphics g = image.getGraphics();
@@ -105,8 +129,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
             widthCash = max + INSET;
             widthCash = Math.max(widthCash, Figure.getSlotsWidth(inputSlots));
             widthCash = Math.max(widthCash, Figure.getSlotsWidth(outputSlots));
-        }
-        return widthCash;
     }
 
     protected Figure(Diagram diagram, int id) {
@@ -121,6 +143,7 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
         this.position = new Point(0, 0);
         this.color = Color.WHITE;
+        this.type = Type.REGULAR;
     }
 
     public int getId() {
@@ -133,6 +156,30 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     public Color getColor() {
         return color;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
+    }
+
+    public Type getType() {
+        return type;
+    }
+
+    public boolean isDelimiter() {
+        return type == Type.IN_DELIMITER || type == Type.OUT_DELIMITER;
+    }
+
+    public boolean hasInputList() {
+        return diagram.isCFG() && !getPredecessors().isEmpty();
+    }
+
+    public void setBlock(InputBlock block) {
+        this.block = block;
+    }
+
+    public InputBlock getBlock() {
+        return block;
     }
 
     public List<Figure> getPredecessors() {
@@ -274,26 +321,46 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     public String[] getLines() {
         if (lines == null) {
             updateLines();
-            // Set the "label" property of each input node, so that by default
-            // search is done on the node label (without line breaks). See also
-            // class NodeQuickSearch in the View module.
-            for (InputNode n : getSource().getSourceNodes()) {
-                String label = n.getProperties().resolveString(diagram.getNodeText());
-                n.getProperties().setProperty("label", label.replaceAll("\\R", " "));
-            }
         }
         return lines;
     }
 
     public void updateLines() {
         String[] strings = diagram.getNodeText().split("\n");
-        String[] result = new String[strings.length];
+        List<String> result = new ArrayList<>(strings.length + 1);
 
         for (int i = 0; i < strings.length; i++) {
-            result[i] = getProperties().resolveString(strings[i]);
+            result.add(getProperties().resolveString(strings[i]));
         }
 
-        lines = result;
+        if (hasInputList()) {
+            String inputList = " ← ";
+            // TODO: do we want to list predecessors or inputs (include empty slots)?
+            List<String> inputs = new ArrayList<String>(getPredecessors().size());
+            for (Figure p : getPredecessors()) {
+                inputs.add(p.getProperties().resolveString(diagram.getTinyNodeText()));
+            }
+            inputList += String.join("  ", inputs);
+            if (result.size() == 1) {
+                // Single-line node, append input list to line.
+                result.set(0, result.get(0) + inputList);
+            } else {
+                // Multi-line node, add yet another line for input list.
+                result.add(inputList);
+            }
+        }
+
+        lines = result.toArray(new String[0]);
+        // Set the "label" property of each input node, so that by default
+        // search is done on the node label (without line breaks). See also
+        // class NodeQuickSearch in the View module.
+        for (InputNode n : getSource().getSourceNodes()) {
+            String label = n.getProperties().resolveString(diagram.getNodeText());
+            n.getProperties().setProperty("label", label.replaceAll("\\R", " "));
+        }
+        // Update figure dimensions, as these are affected by the node text.
+        updateWidth();
+        updateHeight();
     }
 
     @Override
@@ -313,28 +380,35 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     @Override
     public String toString() {
+        if (getType() == Type.IN_DELIMITER) {
+            return "Figure (" + getBlock() + "-in)";
+        }
+        if (getType() == Type.OUT_DELIMITER) {
+            return "Figure (" + getBlock() + "-out)";
+        }
         return idString;
     }
 
+    public InputNode getFirstSourceNode() {
+        return getSource().getSourceNodes().get(0);
+    }
+
     public Cluster getCluster() {
-        if (getSource().getSourceNodes().size() == 0) {
-            assert false : "Should never reach here, every figure must have at least one source node!";
-            return null;
-        } else {
-            final InputBlock inputBlock = diagram.getGraph().getBlock(getSource().getSourceNodes().get(0));
-            assert inputBlock != null;
-            Cluster result = diagram.getBlock(inputBlock);
-            assert result != null;
-            return result;
-        }
+        assert this.isDelimiter() || !getSource().getSourceNodes().isEmpty() :
+            "Every non-delimiter figure must have at least one source node!";
+        final InputBlock inputBlock = this.isDelimiter() ? this.block : diagram.getGraph().getBlock(getFirstSourceNode());
+        assert inputBlock != null;
+        Cluster result = diagram.getBlock(inputBlock);
+        assert result != null;
+        return result;
     }
 
     @Override
     public boolean isRoot() {
 
         List<InputNode> sourceNodes = source.getSourceNodes();
-        if (sourceNodes.size() > 0 && sourceNodes.get(0).getProperties().get("name") != null) {
-            return source.getSourceNodes().get(0).getProperties().get("name").equals("Root");
+        if (sourceNodes.size() > 0 && getFirstSourceNode().getProperties().get("name") != null) {
+            return getFirstSourceNode().getProperties().get("name").equals("Root");
         } else {
             return false;
         }

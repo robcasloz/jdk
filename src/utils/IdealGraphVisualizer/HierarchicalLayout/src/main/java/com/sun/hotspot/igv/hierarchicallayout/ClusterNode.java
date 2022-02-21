@@ -230,4 +230,8 @@ public class ClusterNode implements Vertex {
     public Set<? extends Vertex> getSubNodes() {
         return subNodes;
     }
+
+    public Type getType() {
+        return Type.REGULAR;
+    }
 }

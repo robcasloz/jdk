@@ -32,6 +32,8 @@ import com.sun.hotspot.igv.data.Properties;
 import com.sun.hotspot.igv.data.services.Scheduler;
 import com.sun.hotspot.igv.graph.*;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalClusterLayoutManager;
+import com.sun.hotspot.igv.hierarchicallayout.HierarchicalCFGLayoutManager;
+import com.sun.hotspot.igv.hierarchicallayout.LinearLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalLayoutManager;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.selectioncoordinator.SelectionCoordinator;
@@ -518,15 +520,30 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
         Diagram d = getModel().getDiagramToView();
 
-        if (d.getGraph().getBlocks().isEmpty()) {
-            Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
-            d.getGraph().clearBlocks();
-            s.schedule(d.getGraph());
-            d.getGraph().ensureNodesInBlocks();
-            d.updateBlocks();
+        Map<InputBlock, Integer> maxWidth = new HashMap<>();
+        for (InputBlock b : d.getGraph().getBlocks()) {
+            maxWidth.put(b, 10);
+        }
+        for (Figure f : d.getFigures()) {
+            // Update node text, since it might differ across views.
+            f.updateLines();
+            // Compute max regular node width in each block.
+            if (f.getType() != Figure.Type.REGULAR) {
+                continue;
+            }
+            if (f.getWidth() > maxWidth.get(f.getBlock())) {
+                maxWidth.put(f.getBlock(), f.getWidth());
+            }
         }
 
         for (Figure f : d.getFigures()) {
+
+            // Set the width of delimiter nodes to the maximum width in the
+            // blocks so that the input and output slots are distributed evenly.
+            if (getModel().getShowCFG() && f.getType() != Figure.Type.REGULAR) {
+                f.setWidth(maxWidth.get(f.getBlock()));
+            }
+
             FigureWidget w = new FigureWidget(f, hoverAction, selectAction, this, mainLayer);
             w.getActions().addAction(ActionFactory.createPopupMenuAction(w));
             w.getActions().addAction(selectAction);
@@ -552,7 +569,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        if (getModel().getShowBlocks()) {
+        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
             for (InputBlock bn : d.getGraph().getBlocks()) {
                 BlockWidget w = new BlockWidget(this, d, bn);
                 w.setVisible(false);
@@ -580,6 +597,15 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private boolean isVisible(Connection c) {
         FigureWidget w1 = getWidget(c.getInputSlot().getFigure());
         FigureWidget w2 = getWidget(c.getOutputSlot().getFigure());
+
+        // TODO: define connection types in an enumeration, not as strings.
+        boolean isCFGConn = c.getType().equals("cfg");
+
+        if (getModel().getShowCFG()) {
+            return isCFGConn;
+        } else if (isCFGConn) {
+            return false;
+        }
 
         if (w1.isVisible() && w2.isVisible()) {
             return true;
@@ -616,7 +642,37 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             m.setManager(manager);
             m.setSubManager(new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS));
             m.doLayout(new LayoutGraph(edges, figures));
-        } else {
+        } else if (getModel().getShowCFG()) {
+            HierarchicalCFGLayoutManager m = new HierarchicalCFGLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
+            HierarchicalLayoutManager manager = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
+            manager.setMaxLayerLength(9);
+            manager.setMinLayerDifference(1);
+            m.setManager(manager);
+            Map<InputNode, Figure> nodeFig = new HashMap<InputNode, Figure>();
+            for (Figure f : figures) {
+                InputNode n = f.getFirstSourceNode();
+                if (n != null) {
+                    nodeFig.put(n, f);
+                }
+            }
+            // Compute global ranking among figures given by in-block order.
+            // TODO: this could be chached if it is computed for all the figures
+            // in the diagram (not just the visible ones).
+            Map<Figure, Integer> figureRank =
+                new HashMap<Figure, Integer>(figures.size());
+            int r = 0;
+            for (InputBlock b : getModel().getGraphToView().getBlocks()) {
+                for (InputNode n : b.getNodes()) {
+                    Figure f = nodeFig.get(n);
+                    if (f != null) {
+                        figureRank.put(f, r);
+                        r++;
+                    }
+                }
+            }
+            m.setSubManager(new LinearLayoutManager(figureRank));
+            m.doLayout(new LayoutGraph(edges, figures));
+        } else if (getModel().getShowSea()) {
             HierarchicalLayoutManager manager = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
             manager.setMaxLayerLength(10);
             manager.doLayout(new LayoutGraph(edges, figures));
@@ -656,7 +712,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        if (getModel().getShowBlocks()) {
+        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
             for (Block b : diagram.getBlocks()) {
                 BlockWidget w = getWidget(b.getInputBlock());
                 if (w != null && w.isVisible()) {
@@ -723,7 +779,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        if (getModel().getShowBlocks()) {
+        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
             for (Block b : diagram.getBlocks()) {
                 BlockWidget w = getWidget(b.getInputBlock());
                 if (w != null && w.isVisible()) {
@@ -1042,7 +1098,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        if (getModel().getShowBlocks()) {
+        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
             for (InputBlock b : diagram.getGraph().getBlocks()) {
                 BlockWidget w = getWidget(b);
                 if (w.isVisible()) {
@@ -1056,7 +1112,12 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
             FigureWidget w = getWidget(f);
             w.setBoundary(false);
-            if (!hiddenAfter) {
+            if (f.getType() != Figure.Type.REGULAR) {
+                w.setVisible(false);
+                if (getModel().getShowCFG()) {
+                    visibleBlocks.add(f.getBlock());
+                }
+            } else if (!hiddenAfter) {
                 // Figure is shown
                 w.setVisible(true);
                 for (InputNode n : f.getSource().getSourceNodes()) {
@@ -1102,7 +1163,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        if (getModel().getShowBlocks()) {
+        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
             for (InputBlock b : diagram.getGraph().getBlocks()) {
 
                 boolean visibleAfter = visibleBlocks.contains(b);
