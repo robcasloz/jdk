@@ -30,6 +30,7 @@ import com.sun.hotspot.igv.data.InputGraph;
 import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.data.services.Scheduler;
 import java.util.*;
+import java.util.function.Predicate;
 import org.openide.ErrorManager;
 import org.openide.util.lookup.ServiceProvider;
 import com.ibm.wala.util.graph.Graph;
@@ -290,13 +291,17 @@ public class ServerCompilerScheduler implements Scheduler {
                 String blockName = b.getName();
                 for (Node n : blockNodes.get(blockName)) {
                     Node global = inputNodeToNode.get(n.inputNode);
+                    Predicate<Node> excludePredecessors =
+                        node -> isPhi(node) || node.isBlockStart;
                     for (Node p : global.preds) {
-                        if (p.block == b && p != global && !isPhi(n)) {
+                        if (p.block == b && p != global &&
+                            !excludePredecessors.test(n)) {
                             n.preds.add(inputNodeToLocalNode.get(p.inputNode));
                         }
                     }
                     for (Node s : global.succs) {
-                        if (s.block == b && s != global && !isPhi(s)) {
+                        if (s.block == b && s != global &&
+                            !excludePredecessors.test(s)) {
                             n.succs.add(inputNodeToLocalNode.get(s.inputNode));
                         }
                     }
