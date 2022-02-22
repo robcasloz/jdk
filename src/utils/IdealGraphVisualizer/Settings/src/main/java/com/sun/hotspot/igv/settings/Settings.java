@@ -36,6 +36,8 @@ public class Settings {
     public static final String NODE_TEXT_DEFAULT = "[idx] [name]";
     public static final String NODE_SHORT_TEXT = "nodeShortText";
     public static final String NODE_SHORT_TEXT_DEFAULT = "[idx] [name]";
+    public static final String NODE_TINY_TEXT = "nodeTinyText";
+    public static final String NODE_TINY_TEXT_DEFAULT = "[idx]";
     public static final String NODE_WIDTH = "nodeWidth";
     public static final String NODE_WIDTH_DEFAULT = "100";
     public static final String PORT = "port";
