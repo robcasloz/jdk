@@ -43,7 +43,8 @@ public class BlockWidget extends Widget {
 
     public static final int BORDER = 20;
     public static final Color BACKGROUND_COLOR = new Color(235, 235, 255);
-    private static final Font titleFont = new Font("Serif", Font.PLAIN, 14).deriveFont(Font.BOLD);
+    private static final Font titleFont = new Font("Arial", Font.BOLD, 14);
+    public static final Color TITLE_COLOR = new Color(42, 42, 171);
     private InputBlock blockNode;
     private Diagram diagram;
 
@@ -70,8 +71,7 @@ public class BlockWidget extends Widget {
             g.drawRect(r.x, r.y, r.width, r.height);
         }
 
-        Color titleColor = Color.BLACK;
-        g.setColor(titleColor);
+        g.setColor(TITLE_COLOR);
         g.setFont(titleFont);
 
         String s = "B" + blockNode.getName();
