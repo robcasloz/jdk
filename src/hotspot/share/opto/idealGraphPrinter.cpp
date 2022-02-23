@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -808,6 +808,10 @@ void IdealGraphPrinter::print(const char *name, Node *node) {
 
       head(SUCCESSORS_ELEMENT);
       for (uint s = 0; s < block->_num_succs; s++) {
+        if (block->_succs[s] == C->cfg()->get_root_block()) {
+          // Skip control-flow edges into the root block for clarity.
+          continue;
+        }
         begin_elem(SUCCESSOR_ELEMENT);
         print_attr(BLOCK_NAME_PROPERTY, block->_succs[s]->_pre_order);
         end_elem();
