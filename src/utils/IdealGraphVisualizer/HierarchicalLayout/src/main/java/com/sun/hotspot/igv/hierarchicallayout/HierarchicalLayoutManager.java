@@ -390,6 +390,13 @@ public class HierarchicalLayoutManager implements LayoutManager {
                         } else {
                             if (reversedLinks.contains(e.link)) {
                                 Collections.reverse(points);
+
+                                if (selfEdges.contains(e)) {
+                                    // For self edges, it is enough with the
+                                    // start and end points computed by the
+                                    // ReverseEdges step.
+                                    points.clear();
+                                }
                             }
                             if (reversedLinkStartPoints.containsKey(e.link)) {
                                 for (Point p1 : reversedLinkStartPoints.get(e.link)) {
