@@ -82,7 +82,7 @@ public class BlockConnection implements Connection {
 
     @Override
     public String toString() {
-        return "BlockConnection('" + label + "', " + getFrom().getVertex() + " to " + getTo().getVertex() + ")";
+        return "BlockConnection('" + label + "', " + getFromCluster() + " to " + getToCluster() + ")";
     }
 
     @Override

@@ -48,7 +48,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
     private LayoutManager subManager = new HierarchicalLayoutManager(combine);
     private LayoutManager manager = new HierarchicalLayoutManager(combine);
     private static final boolean TRACE = false;
-    public static boolean DELIMITER_NODES = false;
 
     public HierarchicalCFGLayoutManager(HierarchicalLayoutManager.Combine combine) {
         this.combine = combine;
@@ -76,30 +75,13 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
         assert graph.verify();
 
-        HashMap<Cluster, List<Vertex>> lists = new HashMap<Cluster, List<Vertex>>();
-        HashMap<Cluster, List<Link>> listsConnection = new HashMap<Cluster, List<Link>>();
-        HashMap<Cluster, HashMap<Port, ClusterInputSlotNode>> clusterInputSlotHash = new HashMap<Cluster, HashMap<Port, ClusterInputSlotNode>>();
-        HashMap<Cluster, HashMap<Port, ClusterOutputSlotNode>> clusterOutputSlotHash = new HashMap<Cluster, HashMap<Port, ClusterOutputSlotNode>>();
-
         HashMap<Cluster, ClusterNode> clusterNodes = new HashMap<Cluster, ClusterNode>();
-        HashMap<Cluster, Set<ClusterInputSlotNode>> clusterInputSlotSet = new HashMap<Cluster, Set<ClusterInputSlotNode>>();
-        HashMap<Cluster, Set<ClusterOutputSlotNode>> clusterOutputSlotSet = new HashMap<Cluster, Set<ClusterOutputSlotNode>>();
         Set<Link> clusterEdges = new HashSet<Link>();
-        Set<Link> interClusterEdges = new HashSet<Link>();
-        HashMap<Link, ClusterOutgoingConnection> linkClusterOutgoingConnection = new HashMap<Link, ClusterOutgoingConnection>();
-        HashMap<Link, InterClusterConnection> linkInterClusterConnection = new HashMap<Link, InterClusterConnection>();
-        HashMap<Link, ClusterIngoingConnection> linkClusterIngoingConnection = new HashMap<Link, ClusterIngoingConnection>();
         Set<ClusterNode> clusterNodeSet = new HashSet<ClusterNode>();
 
         Set<Cluster> cluster = graph.getClusters();
         int z = 0;
         for (Cluster c : cluster) {
-            lists.put(c, new ArrayList<Vertex>());
-            listsConnection.put(c, new ArrayList<Link>());
-            clusterInputSlotHash.put(c, new HashMap<Port, ClusterInputSlotNode>());
-            clusterOutputSlotHash.put(c, new HashMap<Port, ClusterOutputSlotNode>());
-            clusterOutputSlotSet.put(c, new TreeSet<ClusterOutputSlotNode>());
-            clusterInputSlotSet.put(c, new TreeSet<ClusterInputSlotNode>());
             ClusterNode cn = new ClusterNode(c, "" + z);
             clusterNodes.put(c, cn);
             clusterNodeSet.add(cn);
@@ -117,7 +99,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
                     ClusterEdge e = new ClusterEdge(start, end);
                     System.out.println("e: " + e);
                     clusterEdges.add(e);
-                    interClusterEdges.add(e);
                 }
             }
         }
@@ -126,75 +107,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             Cluster c = v.getCluster();
             assert c != null : "Cluster of vertex " + v + " is null!";
             clusterNodes.get(c).addSubNode(v);
-        }
-
-        for (Link l : graph.getLinks()) {
-            if (l.getFrom() == null || l.getTo() == null) {
-                continue;
-            }
-            Port fromPort = l.getFrom();
-            Port toPort = l.getTo();
-            Vertex fromVertex = fromPort.getVertex();
-            Vertex toVertex = toPort.getVertex();
-            Cluster fromCluster = fromVertex.getCluster();
-            Cluster toCluster = toVertex.getCluster();
-
-            Port samePort = null;
-            if (combine == HierarchicalLayoutManager.Combine.SAME_INPUTS) {
-                samePort = toPort;
-            } else if (combine == HierarchicalLayoutManager.Combine.SAME_OUTPUTS) {
-                samePort = fromPort;
-            }
-
-            assert listsConnection.containsKey(fromCluster);
-            assert listsConnection.containsKey(toCluster);
-
-            if (fromCluster == toCluster) {
-                listsConnection.get(fromCluster).add(l);
-                clusterNodes.get(fromCluster).addSubEdge(l);
-            } else {
-                ClusterInputSlotNode inputSlotNode = null;
-                ClusterOutputSlotNode outputSlotNode = null;
-
-                if (samePort != null) {
-                    outputSlotNode = clusterOutputSlotHash.get(fromCluster).get(samePort);
-                    inputSlotNode = clusterInputSlotHash.get(toCluster).get(samePort);
-                }
-
-                if (outputSlotNode == null) {
-                    outputSlotNode = new ClusterOutputSlotNode(clusterNodes.get(fromCluster), "Out " + fromCluster.toString() + " " + samePort.toString());
-                    clusterOutputSlotSet.get(fromCluster).add(outputSlotNode);
-                    ClusterOutgoingConnection conn = new ClusterOutgoingConnection(outputSlotNode, l);
-                    outputSlotNode.setOutgoingConnection(conn);
-                    clusterNodes.get(fromCluster).addSubEdge(conn);
-                    if (samePort != null) {
-                        clusterOutputSlotHash.get(fromCluster).put(samePort, outputSlotNode);
-                    }
-
-                    linkClusterOutgoingConnection.put(l, conn);
-                } else {
-                    linkClusterOutgoingConnection.put(l, outputSlotNode.getOutgoingConnection());
-                }
-
-                if (inputSlotNode == null) {
-                    inputSlotNode = new ClusterInputSlotNode(clusterNodes.get(toCluster), "In " + toCluster.toString() + " " + samePort.toString());
-                    clusterInputSlotSet.get(toCluster).add(inputSlotNode);
-                }
-
-                ClusterIngoingConnection conn = new ClusterIngoingConnection(inputSlotNode, l);
-                inputSlotNode.setIngoingConnection(conn);
-                clusterNodes.get(toCluster).addSubEdge(conn);
-                if (samePort != null) {
-                    clusterInputSlotHash.get(toCluster).put(samePort, inputSlotNode);
-                }
-
-                linkClusterIngoingConnection.put(l, conn);
-
-
-                InterClusterConnection interConn = new InterClusterConnection(outputSlotNode, inputSlotNode);
-                linkInterClusterConnection.put(l, interConn);
-                clusterEdges.add(interConn);
-            }
         }
 
         Timing t = null;
@@ -210,13 +122,13 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             n.updateSize();
         }
 
-        Set<Vertex> roots = new LayoutGraph(interClusterEdges).findRootVertices();
+        Set<Vertex> roots = new LayoutGraph(clusterEdges).findRootVertices();
         for (Vertex v : roots) {
             assert v instanceof ClusterNode;
             ((ClusterNode) v).setRoot(true);
         }
 
-        manager.doLayout(new LayoutGraph(clusterEdges, clusterNodeSet), DELIMITER_NODES ? interClusterEdges : new HashSet<Link>());
+        manager.doLayout(new LayoutGraph(clusterEdges, clusterNodeSet), new HashSet<Link>());
 
         for (Cluster c : cluster) {
             ClusterNode n = clusterNodes.get(c);
@@ -242,17 +154,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
                 }
             }
             System.out.println("input link: " + l.getFromCluster() + "->" + l.getToCluster() + ": " + l.getControlPoints());
-        }
-
-        //for (Link l : clusterEdges) {
-            // Find corresponding link in graph.getLinks() and set control points.
-        //    System.out.println("cluster edge link: " + l + ": " + l.getControlPoints());
-        //}
-
-        for (Link l : graph.getLinks()) {
-            if (linkInterClusterConnection.containsKey(l)) {
-                l.setControlPoints(linkInterClusterConnection.get(l).getControlPoints());
-            }
         }
     }
 

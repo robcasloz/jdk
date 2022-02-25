@@ -763,9 +763,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        for (BlockConnection c : diagram.getBlockConnections()) {
-            SceneAnimator anim = animator;
-            processOutputSlot(lastLineCache, null, Collections.singletonList(c), 0, null, null, offx2, offy2, anim);
+        if (getModel().getShowCFG()) {
+            for (BlockConnection c : diagram.getBlockConnections()) {
+                SceneAnimator anim = animator;
+                processOutputSlot(lastLineCache, null, Collections.singletonList(c), 0, null, null, offx2, offy2, anim);
+            }
         }
 
         for (Figure f : diagram.getFigures()) {

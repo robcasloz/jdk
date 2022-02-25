@@ -50,7 +50,7 @@ public class Diagram {
     private final Font font;
     private final Font slotFont;
     private final Font boldFont;
-    private boolean cfg = false;
+    private boolean cfg = false;     // TODO: can we get rid of this?
     private Set<BlockConnection> blockConnections;
 
     public Font getFont() {
@@ -212,7 +212,7 @@ public class Diagram {
             }
         }
 
-        // Create block connections.
+        // Create block connections for all blocks.
         for (Block b : d.getBlocks()) {
             for (InputBlock s : b.getInputBlock().getSuccessors()) {
                 Block bs = d.getBlock(s);
@@ -287,7 +287,8 @@ public class Diagram {
     }
 
     public Set<BlockConnection> getBlockConnections() {
-        return cfg ? blockConnections : new HashSet<>();
+        assert (cfg);
+        return blockConnections;
     }
 
     public Figure getRootFigure() {
