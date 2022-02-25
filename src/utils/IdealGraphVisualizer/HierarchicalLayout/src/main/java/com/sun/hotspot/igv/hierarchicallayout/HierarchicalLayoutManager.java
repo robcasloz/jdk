@@ -65,6 +65,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
     private int minLayerDifference;
     // Algorithm global datastructures
     private Set<Link> reversedLinks;
+    private Set<LayoutEdge> selfEdges;
     private List<LayoutNode> nodes;
     private HashMap<Vertex, LayoutNode> vertexToLayoutNode;
     private HashMap<Link, List<Point>> reversedLinkStartPoints;
@@ -108,7 +109,9 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         public LayoutNode from;
         public LayoutNode to;
+        // Horizontal distance relative to start of 'from'.
         public int relativeFrom;
+        // Horizontal distance relative to start of 'to'.
         public int relativeTo;
         public Link link;
         public boolean vip;
@@ -207,12 +210,15 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         vertexToLayoutNode = new HashMap<>();
         reversedLinks = new HashSet<>();
+        selfEdges = new HashSet<>();
         reversedLinkStartPoints = new HashMap<>();
         reversedLinkEndPoints = new HashMap<>();
         bottomEdgeHash = new HashMap<>();
         nodes = new ArrayList<>();
         splitStartPoints = new HashMap<>();
         splitEndPoints = new HashMap<>();
+
+        if (TRACE) printLayoutGraph();
 
         // #############################################################
         // Step 1: Build up data structure
@@ -238,11 +244,34 @@ public class HierarchicalLayoutManager implements LayoutManager {
             }
         }
 
+        print("reversedLinks: " + reversedLinks);
+        print("reversedLinkStartPoints: " + reversedLinkStartPoints);
+        print("reversedLinkEndPoints: " + reversedLinkEndPoints);
+
         if (TRACE) printLayoutGraph();
+
+        // Now get self-edges out of the way.
+        for (LayoutNode node : nodes) {
+            ArrayList<LayoutEdge> succs = new ArrayList<>(node.succs);
+            for (LayoutEdge e : succs) {
+                assert e.from == node;
+                if (e.to == node) {
+                    print("Removed self-edge " + e + " temporarily");
+                    selfEdges.add(e);
+                    node.succs.remove(e);
+                    node.preds.remove(e);
+                }
+            }
+        }
 
         // #############################################################
         // STEP 3: Assign layers
         new AssignLayers().start();
+
+        print("layerCount: " + layerCount);
+        for (LayoutNode n : nodes) {
+            print("layer of " + n + ": " + n.layer);
+        }
 
         if (TRACE) printLayoutGraph();
 
@@ -269,6 +298,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
         new AssignYCoordinates().start();
 
         if (TRACE) printLayoutGraph();
+
+        // Put self-edges back.
+        for (LayoutEdge e : selfEdges) {
+            e.from.succs.add(e);
+            e.to.preds.add(e);
+        }
 
         // #############################################################
         // STEP 8: Write back to interface
@@ -1135,7 +1170,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     HashMap<Integer, LayoutNode> topNodeHash = new HashMap<>();
                     HashMap<Integer, HashMap<Integer, LayoutNode>> bottomNodeHash = new HashMap<>();
                     for (LayoutEdge e : succs) {
-                        assert e.from.layer < e.to.layer;
+                        assert e.from.layer <= e.to.layer; // Not strict inequality because e could be a self-edge.
                         if (e.from.layer != e.to.layer - 1) {
                             if (maxLayerLength != -1 && e.to.layer - e.from.layer > maxLayerLength/* && e.to.preds.size() > 1 && e.from.succs.size() > 1*/) {
                                 assert maxLayerLength > 2;
@@ -1479,18 +1514,6 @@ public class HierarchicalLayoutManager implements LayoutManager {
         @Override
         protected void run() {
 
-            // Remove self-edges
-            for (LayoutNode node : nodes) {
-                ArrayList<LayoutEdge> succs = new ArrayList<>(node.succs);
-                for (LayoutEdge e : succs) {
-                    assert e.from == node;
-                    if (e.to == node) {
-                        node.succs.remove(e);
-                        node.preds.remove(e);
-                    }
-                }
-            }
-
             // Reverse inputs of roots
             for (LayoutNode node : nodes) {
                 if (node.vertex.isRoot()) {
@@ -1518,17 +1541,27 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
                 SortedSet<Integer> reversedDown = new TreeSet<>();
 
+                boolean hasSelfEdge = false;
                 for (LayoutEdge e : node.succs) {
                     if (reversedLinks.contains(e.link)) {
                         reversedDown.add(e.relativeFrom);
+                        if (e.from == e.to) {
+                            hasSelfEdge = true;
+                        }
                     }
                 }
 
+                // Whether the node has non-self reversed edges going downwards.
+                // If so, reversed edges going upwards are drawn to the left.
+                boolean hasReversedDown =
+                    reversedDown.size() > 0 &&
+                    !(reversedDown.size() == 1 && hasSelfEdge);
+
                 SortedSet<Integer> reversedUp = null;
-                if (reversedDown.size() == 0) {
-                    reversedUp = new TreeSet<>(Collections.reverseOrder());
-                } else {
+                if (hasReversedDown) {
                     reversedUp = new TreeSet<>();
+                } else {
+                    reversedUp = new TreeSet<>(Collections.reverseOrder());
                 }
 
                 for (LayoutEdge e : node.preds) {
@@ -1537,11 +1570,18 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     }
                 }
 
+                print(node + ", reversedDown: " + reversedDown + ", reversedUp: " + reversedUp);
+
+                print("processing edges going down (reversedDown)");
+
                 final int offset = X_OFFSET + DUMMY_WIDTH;
 
                 int curX = 0;
                 int curWidth = node.width + reversedDown.size() * offset;
                 for (int pos : reversedDown) {
+                    print("pos: " + pos);
+                    print("curX: " + curX);
+                    print("curWidth: " + curWidth);
                     ArrayList<LayoutEdge> reversedSuccs = new ArrayList<>();
                     for (LayoutEdge e : node.succs) {
                         if (e.relativeFrom == pos && reversedLinks.contains(e.link)) {
@@ -1555,6 +1595,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     startPoints.add(new Point(pos, curX));
                     startPoints.add(new Point(pos, reversedDown.size() * offset));
                     for (LayoutEdge e : reversedSuccs) {
+                        print("reversedLinkStartPoints[" + e.link + "] = " + startPoints);
                         reversedLinkStartPoints.put(e.link, startPoints);
                     }
 
@@ -1566,27 +1607,38 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 }
                 node.width += reversedDown.size() * offset;
 
-                if (reversedDown.size() == 0) {
-                    curX = offset;
-                } else {
+                print("processing edges going up (reversedUp)");
+
+                if (hasReversedDown) {
                     curX = -offset;
+                } else {
+                    curX = offset;
                 }
 
                 curX = 0;
                 int minX = 0;
-                if (reversedDown.size() != 0) {
+                if (hasReversedDown) {
                     minX = -offset * reversedUp.size();
                 }
 
                 int oldNodeHeight = node.height;
                 for (int pos : reversedUp) {
+                    print("pos: " + pos);
+                    print("curX: " + curX);
+                    print("curWidth: " + curWidth);
+
+                    if (hasReversedDown) {
+                        print("(same node has edges going down, change direction)");
+                    } else if ((reversedDown.size()) == 1 && hasSelfEdge) {
+                        print("(same node has one edge going down, but it is actually a self-loop, so not change direction)");
+                    }
                     ArrayList<LayoutEdge> reversedPreds = new ArrayList<>();
                     for (LayoutEdge e : node.preds) {
                         if (e.relativeTo == pos && reversedLinks.contains(e.link)) {
-                            if (reversedDown.size() == 0) {
-                                e.relativeTo = node.width + offset;
-                            } else {
+                            if (hasReversedDown) {
                                 e.relativeTo = curX - offset;
+                            } else {
+                                e.relativeTo = node.width + offset;
                             }
 
                             reversedPreds.add(e);
@@ -1595,16 +1647,14 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     node.height += offset;
                     ArrayList<Point> endPoints = new ArrayList<>();
 
-                    if (reversedDown.size() == 0) {
-
-                        curX += offset;
-                        node.width += offset;
-                        endPoints.add(new Point(node.width, node.height));
-
-                    } else {
+                    if (hasReversedDown) {
                         curX -= offset;
                         node.width += offset;
                         endPoints.add(new Point(curX, node.height));
+                    } else {
+                        curX += offset;
+                        node.width += offset;
+                        endPoints.add(new Point(node.width, node.height));
                     }
 
                     node.outOffsets.put(pos - minX, curX);
@@ -1614,6 +1664,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     endPoints.add(new Point(pos, node.height));
                     endPoints.add(new Point(pos, oldNodeHeight));
                     for (LayoutEdge e : reversedPreds) {
+                        print("reversedLinkEndPoints[" + e.link + "] = " + endPoints);
                         reversedLinkEndPoints.put(e.link, endPoints);
                     }
                 }
@@ -1784,6 +1835,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
             List<Link> links = new ArrayList<>(graph.getLinks());
             links.sort(linkComparator);
             for (Link l : links) {
+                print("link: " + l.getFrom() + ", rel. pos:" + l.getFrom().getRelativePosition() + " to " + l.getTo()
+                        + ", rel. pos: " + l.getTo().getRelativePosition());
                 LayoutEdge edge = new LayoutEdge();
                 assert vertexToLayoutNode.containsKey(l.getFrom().getVertex());
                 assert vertexToLayoutNode.containsKey(l.getTo().getVertex());
@@ -1795,7 +1848,6 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 edge.vip = l.isVIP();
                 edge.from.succs.add(edge);
                 edge.to.preds.add(edge);
-                //assert edge.from != edge.to; // No self-loops allowed
             }
 
             for (Link l : importantLinks) {
@@ -1813,9 +1865,6 @@ public class HierarchicalLayoutManager implements LayoutManager {
             }
             System.out.println("vertexToLayoutNode: " + vertexToLayoutNode);
             System.out.println("linksToFollow: " + linksToFollow);
-            for (LayoutNode n : nodes) {
-                System.out.println("n: " + n + ", succs: " + n.succs);
-            }
         }
 
         @Override
@@ -1838,6 +1887,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 }
 
             }
+        }
+    }
+
+    private void print(String msg) {
+        if (TRACE) {
+            System.out.println(msg);
         }
     }
 

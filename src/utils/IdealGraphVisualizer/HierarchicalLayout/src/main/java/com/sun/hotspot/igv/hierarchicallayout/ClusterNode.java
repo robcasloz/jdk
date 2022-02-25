@@ -61,6 +61,10 @@ public class ClusterNode implements Vertex {
         this.name = name;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public void addSubNode(Vertex v) {
         subNodes.add(v);
     }
@@ -88,6 +92,11 @@ public class ClusterNode implements Vertex {
             public Vertex getVertex() {
                 return widget;
             }
+
+            @Override
+            public String toString() {
+                return "ClusterInput(" + name + ")";
+            }
         };
 
         outputSlot = new Port() {
@@ -98,6 +107,11 @@ public class ClusterNode implements Vertex {
 
             public Vertex getVertex() {
                 return widget;
+            }
+
+            @Override
+            public String toString() {
+                return "ClusterOutput(" + name + ")";
             }
         };
     }

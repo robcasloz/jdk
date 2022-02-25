@@ -85,7 +85,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         }
         int z = 0;
         for (Cluster c : clusters) {
-            ClusterNode cn = new ClusterNode(c, "" + z);
+            ClusterNode cn = new ClusterNode(c, c.toString());
             clusterNodes.put(c, cn);
             clusterNodeSet.add(cn);
             z++;
@@ -98,7 +98,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
             for (Cluster succ : c.getSuccessors()) {
                 ClusterNode end = clusterNodes.get(succ);
-                if (end != null && start != end) {
+                if (end != null) {
                     ClusterEdge e = new ClusterEdge(start, end);
                     System.out.println("e: " + e);
                     clusterEdges.add(e);
