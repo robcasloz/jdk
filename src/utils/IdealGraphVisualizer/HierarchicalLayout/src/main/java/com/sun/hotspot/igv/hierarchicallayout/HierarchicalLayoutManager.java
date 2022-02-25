@@ -1612,7 +1612,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     node.yOffset += offset;
                     curWidth -= offset;
                 }
-                node.width += reversedDown.size() * offset;
+
+                int widthFactor = reversedDown.size();
+                if (hasSelfEdge) {
+                    widthFactor--;
+                }
+                node.width += widthFactor * offset;
 
                 print("processing edges going up (reversedUp)");
 
@@ -1654,13 +1659,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     node.height += offset;
                     ArrayList<Point> endPoints = new ArrayList<>();
 
+                    node.width += offset;
                     if (hasReversedDown) {
                         curX -= offset;
-                        node.width += offset;
                         endPoints.add(new Point(curX, node.height));
                     } else {
                         curX += offset;
-                        node.width += offset;
                         endPoints.add(new Point(node.width, node.height));
                     }
 
