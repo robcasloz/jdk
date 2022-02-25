@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,24 +21,36 @@
  * questions.
  *
  */
-package com.sun.hotspot.igv.layout;
+package com.sun.hotspot.igv.graph;
 
-import java.awt.Dimension;
-import java.awt.Point;
+import com.sun.hotspot.igv.data.InputNode;
+import com.sun.hotspot.igv.data.Properties;
+import com.sun.hotspot.igv.data.Source;
+import com.sun.hotspot.igv.layout.Port;
+import com.sun.hotspot.igv.layout.Vertex;
+import com.sun.hotspot.igv.util.StringUtils;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
-/**
- *
- * @author Thomas Wuerthinger
- */
-public interface Vertex extends Comparable<Vertex> {
+public abstract class BlockSlot implements Port {
 
-    public Dimension getSize();
+    private Block block;
 
-    public Point getPosition();
+    protected BlockSlot(Block block) {
+        this.block = block;
+    }
 
-    public void setPosition(Point p);
+    @Override
+    public Vertex getVertex() {
+        return null;
+    }
 
-    public boolean isRoot();
-
-    public Cluster getCluster();
+    public abstract int getPosition();
 }

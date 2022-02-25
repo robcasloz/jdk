@@ -54,7 +54,7 @@ public class SplitFilter extends AbstractFilter {
         for (Figure f : list) {
 
             for (InputSlot is : f.getInputSlots()) {
-                for (Connection c : is.getConnections()) {
+                for (FigureConnection c : is.getConnections()) {
                     OutputSlot os = c.getOutputSlot();
                     if (f.getSource().getSourceNodes().size() > 0) {
                         os.getSource().addSourceNodes(f.getSource());
@@ -71,7 +71,7 @@ public class SplitFilter extends AbstractFilter {
                 }
             }
             for (OutputSlot os : f.getOutputSlots()) {
-                for (Connection c : os.getConnections()) {
+                for (FigureConnection c : os.getConnections()) {
                     InputSlot is = c.getInputSlot();
                     if (f.getSource().getSourceNodes().size() > 0) {
                         is.getSource().addSourceNodes(f.getSource());

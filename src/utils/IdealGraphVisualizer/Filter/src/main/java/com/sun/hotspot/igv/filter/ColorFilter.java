@@ -78,7 +78,7 @@ public class ColorFilter extends AbstractFilter {
         ConnectionStyle style = rule.getLineStyle();
 
         for (OutputSlot s : f.getOutputSlots()) {
-            for (Connection c : s.getConnections()) {
+            for (FigureConnection c : s.getConnections()) {
                 if (color != null) {
                     c.setColor(color);
                 }

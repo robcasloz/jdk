@@ -52,15 +52,15 @@ public class RemoveSelfLoopsFilter extends AbstractFilter {
 
             for (InputSlot is : f.getInputSlots()) {
 
-                List<Connection> toRemove = new ArrayList<>();
-                for (Connection c : is.getConnections()) {
+                List<FigureConnection> toRemove = new ArrayList<>();
+                for (FigureConnection c : is.getConnections()) {
 
                     if (c.getOutputSlot().getFigure() == f) {
                         toRemove.add(c);
                     }
                 }
 
-                for (Connection c : toRemove) {
+                for (FigureConnection c : toRemove) {
 
                     c.remove();
 

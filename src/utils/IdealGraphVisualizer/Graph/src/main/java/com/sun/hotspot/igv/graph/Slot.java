@@ -47,7 +47,7 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
 
     private int wantedIndex;
     private Source source;
-    protected List<Connection> connections;
+    protected List<FigureConnection> connections;
     private InputNode associatedNode;
     private Color color;
     private String text;
@@ -178,13 +178,13 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
         color = c;
     }
 
-    public List<Connection> getConnections() {
+    public List<FigureConnection> getConnections() {
         return Collections.unmodifiableList(connections);
     }
 
     public void removeAllConnections() {
-        List<Connection> connectionsCopy = new ArrayList<>(this.connections);
-        for (Connection c : connectionsCopy) {
+        List<FigureConnection> connectionsCopy = new ArrayList<>(this.connections);
+        for (FigureConnection c : connectionsCopy) {
             c.remove();
         }
     }

@@ -25,6 +25,7 @@ package com.sun.hotspot.igv.hierarchicallayout;
 
 import com.sun.hotspot.igv.layout.Link;
 import com.sun.hotspot.igv.layout.Port;
+import com.sun.hotspot.igv.layout.Cluster;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,14 @@ public class InterClusterConnection implements Link {
 
     public Port getFrom() {
         return outputSlot;
+    }
+
+    public Cluster getFromCluster() {
+        return null;
+    }
+
+    public Cluster getToCluster() {
+        return null;
     }
 
     public void setControlPoints(List<Point> p) {

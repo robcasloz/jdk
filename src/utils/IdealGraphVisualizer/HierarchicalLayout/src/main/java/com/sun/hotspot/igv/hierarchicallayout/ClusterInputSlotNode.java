@@ -143,8 +143,4 @@ public class ClusterInputSlotNode implements Vertex {
         return toString().compareTo(o.toString());
     }
 
-    public Type getType() {
-        return Type.REGULAR;
-    }
-
 }

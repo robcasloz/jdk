@@ -158,8 +158,4 @@ public class BlockWidget extends LabelWidget implements Vertex {
             }
         }
     }
-
-        public Type getType() {
-        return Type.REGULAR;
-    }
 }

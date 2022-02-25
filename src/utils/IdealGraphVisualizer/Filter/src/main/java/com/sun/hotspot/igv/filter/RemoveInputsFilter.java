@@ -58,9 +58,9 @@ public class RemoveInputsFilter extends AbstractFilter {
                 for (InputSlot is : f.getInputSlots()) {
                     if (z >= r.getStartingIndex() && z <= r.getEndIndex() && is.getConnections().size() > 0) {
                         StringBuilder sb = new StringBuilder();
-                        List<Connection> conns = is.getConnections();
+                        List<FigureConnection> conns = is.getConnections();
                         for (int i = 0; i < conns.size(); i++) {
-                            Connection c = conns.get(i);
+                            FigureConnection c = conns.get(i);
                             OutputSlot os = c.getOutputSlot();
                             Figure pred = os.getFigure();
                             if (i != 0) {

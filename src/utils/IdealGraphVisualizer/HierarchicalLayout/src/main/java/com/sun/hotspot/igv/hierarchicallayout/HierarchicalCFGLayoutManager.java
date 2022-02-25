@@ -48,6 +48,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
     private LayoutManager subManager = new HierarchicalLayoutManager(combine);
     private LayoutManager manager = new HierarchicalLayoutManager(combine);
     private static final boolean TRACE = false;
+    public static boolean DELIMITER_NODES = false;
 
     public HierarchicalCFGLayoutManager(HierarchicalLayoutManager.Combine combine) {
         this.combine = combine;
@@ -107,13 +108,14 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
         // Add cluster edges
         for (Cluster c : cluster) {
-
+            System.out.println("c: " + c);
             ClusterNode start = clusterNodes.get(c);
 
             for (Cluster succ : c.getSuccessors()) {
                 ClusterNode end = clusterNodes.get(succ);
                 if (end != null && start != end) {
                     ClusterEdge e = new ClusterEdge(start, end);
+                    System.out.println("e: " + e);
                     clusterEdges.add(e);
                     interClusterEdges.add(e);
                 }
@@ -127,7 +129,9 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         }
 
         for (Link l : graph.getLinks()) {
-
+            if (l.getFrom() == null || l.getTo() == null) {
+                continue;
+            }
             Port fromPort = l.getFrom();
             Port toPort = l.getTo();
             Vertex fromVertex = fromPort.getVertex();
@@ -212,7 +216,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             ((ClusterNode) v).setRoot(true);
         }
 
-        manager.doLayout(new LayoutGraph(clusterEdges, clusterNodeSet), interClusterEdges);
+        manager.doLayout(new LayoutGraph(clusterEdges, clusterNodeSet), DELIMITER_NODES ? interClusterEdges : new HashSet<Link>());
 
         for (Cluster c : cluster) {
             ClusterNode n = clusterNodes.get(c);
@@ -225,6 +229,25 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             t.stop();
             t.print();
         }
+
+        for (Link l : graph.getLinks()) {
+            // Find corresponding link in graph.getLinks() and set control points.
+            // TODO: create map.
+            for (Link cl : clusterEdges) {
+                if (l.getFromCluster() == cl.getFromCluster() &&
+                    l.getToCluster() == cl.getToCluster()) {
+                    System.out.println("found!");
+                    l.setControlPoints(cl.getControlPoints());
+                    break;
+                }
+            }
+            System.out.println("input link: " + l.getFromCluster() + "->" + l.getToCluster() + ": " + l.getControlPoints());
+        }
+
+        //for (Link l : clusterEdges) {
+            // Find corresponding link in graph.getLinks() and set control points.
+        //    System.out.println("cluster edge link: " + l + ": " + l.getControlPoints());
+        //}
 
         for (Link l : graph.getLinks()) {
             if (linkInterClusterConnection.containsKey(l)) {

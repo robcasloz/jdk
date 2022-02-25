@@ -69,6 +69,14 @@ public class HierarchicalGraphLayout<N, E> extends GraphLayout<N, E> {
             return to.getSlot();
         }
 
+        public Cluster getFromCluster() {
+            return null;
+        }
+
+        public Cluster getToCluster() {
+            return null;
+        }
+
         public List<Point> getControlPoints() {
             return new ArrayList<Point>();
         }
@@ -138,10 +146,6 @@ public class HierarchicalGraphLayout<N, E> extends GraphLayout<N, E> {
 
         public Port getSlot() {
             return slot;
-        }
-
-        public Type getType() {
-            return Type.REGULAR;
         }
     }
 

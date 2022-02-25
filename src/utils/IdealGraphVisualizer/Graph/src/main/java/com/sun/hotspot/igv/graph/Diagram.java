@@ -51,6 +51,7 @@ public class Diagram {
     private final Font slotFont;
     private final Font boldFont;
     private boolean cfg = false;
+    private Set<BlockConnection> blockConnections;
 
     public Font getFont() {
         return font;
@@ -81,6 +82,7 @@ public class Diagram {
         this.slotFont = new Font("Arial", Font.PLAIN, 10);
         this.boldFont = this.font.deriveFont(Font.BOLD);
         this.cfg = false;
+        this.blockConnections = new HashSet<>();
     }
 
     public Block getBlock(InputBlock b) {
@@ -131,10 +133,10 @@ public class Diagram {
         return f;
     }
 
-    public Connection createConnection(InputSlot inputSlot, OutputSlot outputSlot, String label, String type) {
+    public FigureConnection createConnection(InputSlot inputSlot, OutputSlot outputSlot, String label) {
         assert inputSlot.getFigure().getDiagram() == this;
         assert outputSlot.getFigure().getDiagram() == this;
-        return new Connection(inputSlot, outputSlot, label, type);
+        return new FigureConnection(inputSlot, outputSlot, label);
     }
 
     public Map<InputNode, Set<Figure>> calcSourceToFigureRelation() {
@@ -179,23 +181,6 @@ public class Diagram {
             figureHash.put(n.getId(), f);
         }
 
-        // Add delimiter (in and out) nodes.
-        Hashtable<InputBlock, Figure> inDelimiterHash  = new Hashtable<>(),
-                                      outDelimiterHash = new Hashtable<>();
-        for (InputBlock b : graph.getBlocks()) {
-            Figure in = d.createFigure();
-            in.setType(Figure.Type.IN_DELIMITER);
-            in.setBlock(b);
-            in.getProperties().add(new Properties("name", "B" + b.getName() + "-in"));
-            inDelimiterHash.put(b, in);
-
-            Figure out = d.createFigure();
-            out.setType(Figure.Type.OUT_DELIMITER);
-            out.setBlock(b);
-            out.getProperties().add(new Properties("name", "B" + b.getName() + "-out"));
-            outDelimiterHash.put(b, out);
-        }
-
         for (InputEdge e : graph.getEdges()) {
 
             int from = e.getFrom();
@@ -218,7 +203,7 @@ public class Diagram {
             }
             InputSlot inputSlot = toFigure.getInputSlots().get(toIndex);
 
-            Connection c = d.createConnection(inputSlot, outputSlot, e.getLabel(), e.getType());
+            FigureConnection c = d.createConnection(inputSlot, outputSlot, e.getLabel());
 
             if (e.getState() == InputEdge.State.NEW) {
                 c.setStyle(Connection.ConnectionStyle.BOLD);
@@ -227,24 +212,15 @@ public class Diagram {
             }
         }
 
-        // Create connections for delimiter nodes. Create slots on-demand.
-        for (InputBlockEdge e : graph.getBlockEdges()) {
-            Figure fromFigure = outDelimiterHash.get(e.getFrom());
-            Figure toFigure = inDelimiterHash.get(e.getTo());
-            assert fromFigure != null && toFigure != null;
-            int outputSlots = fromFigure.getOutputSlots().size();
-            OutputSlot outputSlot = fromFigure.createOutputSlot(outputSlots);
-            // This prevents DiagramScene::processOutputSlot() from offsetting
-            // the Y-coordinates in CFG edges. Same for inputSlot below.
-            outputSlot.setShortName(e.getFrom().toString());
-            int inputSlots = toFigure.getInputSlots().size();
-            InputSlot inputSlot = toFigure.createInputSlot(inputSlots);
-            inputSlot.setShortName(e.getTo().toString());
-
-            // TODO: define connection types in an enumeration, not as strings.
-            Connection c = d.createConnection(inputSlot, outputSlot, e.toString(), "cfg");
-            c.setStyle(Connection.ConnectionStyle.BOLD);
-            c.setColor(Color.BLUE);
+        // Create block connections.
+        for (Block b : d.getBlocks()) {
+            for (InputBlock s : b.getInputBlock().getSuccessors()) {
+                Block bs = d.getBlock(s);
+                BlockConnection c = new BlockConnection(b, bs, b + "->" + bs);
+                c.setStyle(Connection.ConnectionStyle.BOLD);
+                c.setColor(Color.BLUE);
+                d.blockConnections.add(c);
+            }
         }
 
         return d;
@@ -252,15 +228,12 @@ public class Diagram {
 
     public void removeAllFigures(Set<Figure> figuresToRemove) {
         for (Figure f : figuresToRemove) {
-            if (f.getType() == Figure.Type.REGULAR) {
-                freeFigure(f);
-            }
+            freeFigure(f);
         }
 
         ArrayList<Figure> newFigures = new ArrayList<>();
         for (Figure f : this.figures) {
-            if (!figuresToRemove.contains(f) ||
-                f.getType() != Figure.Type.REGULAR) {
+            if (!figuresToRemove.contains(f)) {
                 newFigures.add(f);
             }
         }
@@ -288,9 +261,6 @@ public class Diagram {
 
     public void removeFigure(Figure succ) {
         assert this.figures.contains(succ);
-        if (succ.getType() != Figure.Type.REGULAR) {
-            return;
-        }
         freeFigure(succ);
         this.figures.remove(succ);
     }
@@ -303,9 +273,9 @@ public class Diagram {
         return graph;
     }
 
-    public Set<Connection> getConnections() {
+    public Set<FigureConnection> getConnections() {
 
-        Set<Connection> connections = new HashSet<>();
+        Set<FigureConnection> connections = new HashSet<>();
         for (Figure f : figures) {
 
             for (InputSlot s : f.getInputSlots()) {
@@ -314,6 +284,10 @@ public class Diagram {
         }
 
         return connections;
+    }
+
+    public Set<BlockConnection> getBlockConnections() {
+        return cfg ? blockConnections : new HashSet<>();
     }
 
     public Figure getRootFigure() {
@@ -339,7 +313,7 @@ public class Diagram {
         System.out.println("Diagram statistics");
 
         List<Figure> tmpFigures = getFigures();
-        Set<Connection> connections = getConnections();
+        Set<FigureConnection> connections = getConnections();
 
         System.out.println("Number of figures: " + tmpFigures.size());
         System.out.println("Number of connections: " + connections.size());

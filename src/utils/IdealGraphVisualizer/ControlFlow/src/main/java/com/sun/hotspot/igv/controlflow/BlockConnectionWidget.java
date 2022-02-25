@@ -26,6 +26,7 @@ package com.sun.hotspot.igv.controlflow;
 import com.sun.hotspot.igv.data.InputBlockEdge;
 import com.sun.hotspot.igv.layout.Link;
 import com.sun.hotspot.igv.layout.Port;
+import com.sun.hotspot.igv.layout.Cluster;
 import java.awt.BasicStroke;
 import java.awt.Point;
 import java.awt.Stroke;
@@ -74,6 +75,14 @@ public class BlockConnectionWidget extends ConnectionWidget implements Link {
 
     public Port getFrom() {
         return outputSlot;
+    }
+
+    public Cluster getFromCluster() {
+        return null;
+    }
+
+    public Cluster getToCluster() {
+        return null;
     }
 
     public void setBold(boolean bold) {

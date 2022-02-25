@@ -57,7 +57,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     private String[] lines;
     private int heightCash = -1;
     private int widthCash = -1;
-    private Type type;
     private InputBlock block;
 
     public int getHeight() {
@@ -68,10 +67,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     }
 
     private void updateHeight() {
-        if (getType() != Type.REGULAR) {
-            heightCash = 0;
-            return;
-        }
         BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
         Graphics g = image.getGraphics();
         g.setFont(diagram.getFont().deriveFont(Font.BOLD));
@@ -143,7 +138,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
         this.position = new Point(0, 0);
         this.color = Color.WHITE;
-        this.type = Type.REGULAR;
     }
 
     public int getId() {
@@ -156,18 +150,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     public Color getColor() {
         return color;
-    }
-
-    public void setType(Type type) {
-        this.type = type;
-    }
-
-    public Type getType() {
-        return type;
-    }
-
-    public boolean isDelimiter() {
-        return type == Type.IN_DELIMITER || type == Type.OUT_DELIMITER;
     }
 
     public boolean hasInputList() {
@@ -268,8 +250,8 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
         assert inputSlots.contains(s) || outputSlots.contains(s);
 
-        List<Connection> connections = new ArrayList<>(s.getConnections());
-        for (Connection c : connections) {
+        List<FigureConnection> connections = new ArrayList<>(s.getConnections());
+        for (FigureConnection c : connections) {
             c.remove();
         }
 
@@ -380,12 +362,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     @Override
     public String toString() {
-        if (getType() == Type.IN_DELIMITER) {
-            return "Figure (" + getBlock() + "-in)";
-        }
-        if (getType() == Type.OUT_DELIMITER) {
-            return "Figure (" + getBlock() + "-out)";
-        }
         return idString;
     }
 
@@ -394,13 +370,16 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     }
 
     public Cluster getCluster() {
-        assert this.isDelimiter() || !getSource().getSourceNodes().isEmpty() :
-            "Every non-delimiter figure must have at least one source node!";
-        final InputBlock inputBlock = this.isDelimiter() ? this.block : diagram.getGraph().getBlock(getFirstSourceNode());
-        assert inputBlock != null;
-        Cluster result = diagram.getBlock(inputBlock);
-        assert result != null;
-        return result;
+        if (getSource().getSourceNodes().size() == 0) {
+            assert false : "Should never reach here, every figure must have at least one source node!";
+            return null;
+        } else {
+            final InputBlock inputBlock = diagram.getGraph().getBlock(getFirstSourceNode());
+            assert inputBlock != null;
+            Cluster result = diagram.getBlock(inputBlock);
+            assert result != null;
+            return result;
+        }
     }
 
     @Override

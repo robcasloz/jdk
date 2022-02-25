@@ -37,7 +37,7 @@ import java.util.*;
  */
 public class HierarchicalLayoutManager implements LayoutManager {
 
-    public static final boolean TRACE = false;
+    public static final boolean TRACE = true;
     public static final boolean CHECK = false;
     public static final int SWEEP_ITERATIONS = 1;
     public static final int CROSSING_ITERATIONS = 2;
@@ -100,7 +100,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         @Override
         public String toString() {
-            return "Node " + vertex;
+            return "LayoutNode(" + vertex + ")";
         }
     }
 
@@ -112,6 +112,11 @@ public class HierarchicalLayoutManager implements LayoutManager {
         public int relativeTo;
         public Link link;
         public boolean vip;
+
+        @Override
+        public String toString() {
+            return "LayoutEdge(" + from + ", " + to + ")";
+        }
     }
 
     private abstract class AlgorithmPart {
@@ -183,8 +188,19 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
     }
 
+    private void printLayoutGraph() {
+        for (LayoutNode n : nodes) {
+            System.out.println("n: " + n + ", succs: " + n.succs);
+        }
+    }
+
     @Override
     public void doLayout(LayoutGraph graph, Set<? extends Link> importantLinks) {
+
+        System.out.println("HierarchicalLayoutManager::doLayout(");
+        System.out.println("\tgraph: " + graph);
+        System.out.println("\timportantLinks: " + importantLinks);
+        System.out.println("\t)");
 
         this.importantLinks = importantLinks;
         this.graph = graph;
@@ -201,6 +217,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
         // #############################################################
         // Step 1: Build up data structure
         new BuildDatastructure().start();
+
+        if (TRACE) printLayoutGraph();
 
         // #############################################################
         // STEP 2: Reverse edges, handle backedges
@@ -220,29 +238,44 @@ public class HierarchicalLayoutManager implements LayoutManager {
             }
         }
 
+        if (TRACE) printLayoutGraph();
+
         // #############################################################
         // STEP 3: Assign layers
         new AssignLayers().start();
+
+        if (TRACE) printLayoutGraph();
 
         // #############################################################
         // STEP 4: Create dummy nodes
         new CreateDummyNodes().start();
 
+        if (TRACE) printLayoutGraph();
+
         // #############################################################
         // STEP 5: Crossing Reduction
         new CrossingReduction().start();
+
+        if (TRACE) printLayoutGraph();
 
         // #############################################################
         // STEP 7: Assign X coordinates
         new AssignXCoordinates().start();
 
+        if (TRACE) printLayoutGraph();
+
         // #############################################################
         // STEP 6: Assign Y coordinates
         new AssignYCoordinates().start();
 
+        if (TRACE) printLayoutGraph();
+
         // #############################################################
         // STEP 8: Write back to interface
         new WriteResult().start();
+
+        if (TRACE) printLayoutGraph();
+
     }
 
     private class WriteResult extends AlgorithmPart {
@@ -1777,6 +1810,11 @@ public class HierarchicalLayoutManager implements LayoutManager {
                         linksToFollow.add(e.link);
                     }
                 }
+            }
+            System.out.println("vertexToLayoutNode: " + vertexToLayoutNode);
+            System.out.println("linksToFollow: " + linksToFollow);
+            for (LayoutNode n : nodes) {
+                System.out.println("n: " + n + ", succs: " + n.succs);
             }
         }
 

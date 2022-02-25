@@ -74,7 +74,7 @@ public class LinearLayoutManager implements LayoutManager {
         public int xOffset;
         public int yOffset;
         public int bottomYOffset;
-        public Vertex vertex; // Only used for non-dummy nodes, otherwise null
+        public Vertex vertex;
 
         public List<LayoutEdge> preds = new ArrayList<>();
         public List<LayoutEdge> succs = new ArrayList<>();
@@ -740,15 +740,8 @@ public class LinearLayoutManager implements LayoutManager {
 
                 int maxXOffset = 0;
                 for (LayoutNode n : layers[i]) {
-                    if (n.vertex == null || n.vertex.getType() != Vertex.Type.REGULAR) {
-                        // Dummy node
-                        n.y = curY;
-                        n.height = maxHeight + baseLine + bottomBaseLine;
-
-                    } else {
-                        n.y = curY + baseLine + (maxHeight - (n.height - n.yOffset - n.bottomYOffset)) / 2 - n.yOffset;
-                    }
-
+                    assert (n.vertex != null);
+                    n.y = curY + baseLine + (maxHeight - (n.height - n.yOffset - n.bottomYOffset)) / 2 - n.yOffset;
                     for (LayoutEdge e : n.succs) {
                         int curXOffset = Math.abs(n.x - e.to.x);
                         maxXOffset = Math.max(curXOffset, maxXOffset);
@@ -772,19 +765,13 @@ public class LinearLayoutManager implements LayoutManager {
 
         @Override
         protected void run() {
+            // TODO: start from 0?
             int i = 1, max = -1;
             for (LayoutNode n : nodes) {
                 n.layer = i;
                 i++;
                 if (i > max) {
                     max = i;
-                }
-            }
-            for (LayoutNode n : nodes) {
-                if (n.vertex.getType() == Vertex.Type.IN_DELIMITER) {
-                    n.layer = 0;
-                } else if (n.vertex.getType() == Vertex.Type.OUT_DELIMITER) {
-                    n.layer = max;
                 }
             }
             layerCount = max + 1;

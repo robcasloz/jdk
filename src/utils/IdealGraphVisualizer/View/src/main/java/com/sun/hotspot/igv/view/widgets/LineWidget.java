@@ -23,6 +23,7 @@
  */
 package com.sun.hotspot.igv.view.widgets;
 
+import com.sun.hotspot.igv.graph.FigureConnection;
 import com.sun.hotspot.igv.graph.Connection;
 import com.sun.hotspot.igv.graph.Figure;
 import com.sun.hotspot.igv.graph.InputSlot;
@@ -138,8 +139,11 @@ public class LineWidget extends Widget implements PopupMenuProvider {
             public void select(Widget arg0, Point arg1, boolean arg2) {
                 Set<Figure> set = new HashSet<>();
                 for (Connection c : LineWidget.this.connections) {
-                    set.add(c.getInputSlot().getFigure());
-                    set.add(c.getOutputSlot().getFigure());
+                    if (c instanceof FigureConnection) {
+                        FigureConnection fc = (FigureConnection) c;
+                        set.add(fc.getInputSlot().getFigure());
+                        set.add(fc.getOutputSlot().getFigure());
+                    }
                 }
                 LineWidget.this.scene.setSelectedObjects(set);
             }
@@ -242,10 +246,13 @@ public class LineWidget extends Widget implements PopupMenuProvider {
         Set<Object> highlightedObjects = new HashSet<>(scene.getHighlightedObjects());
         Set<Object> highlightedObjectsChange = new HashSet<>();
         for (Connection c : connections) {
-            highlightedObjectsChange.add(c.getInputSlot().getFigure());
-            highlightedObjectsChange.add(c.getInputSlot());
-            highlightedObjectsChange.add(c.getOutputSlot().getFigure());
-            highlightedObjectsChange.add(c.getOutputSlot());
+            if (c instanceof FigureConnection) {
+                FigureConnection fc = (FigureConnection) c;
+                highlightedObjectsChange.add(fc.getInputSlot().getFigure());
+                highlightedObjectsChange.add(fc.getInputSlot());
+                highlightedObjectsChange.add(fc.getOutputSlot().getFigure());
+                highlightedObjectsChange.add(fc.getOutputSlot());
+            }
         }
         if(b) {
             highlightedObjects.addAll(highlightedObjectsChange);
@@ -316,10 +323,12 @@ public class LineWidget extends Widget implements PopupMenuProvider {
         menu.addSeparator();
 
         for (Connection c : connections) {
-            InputSlot s = c.getInputSlot();
-            menu.add(scene.createGotoAction(s.getFigure()));
+            if (c instanceof FigureConnection) {
+                FigureConnection fc = (FigureConnection) c;
+                InputSlot s = fc.getInputSlot();
+                menu.add(scene.createGotoAction(s.getFigure()));
+            }
         }
-
         final LineWidget w = this;
         menu.addPopupMenuListener(new PopupMenuListener() {
 

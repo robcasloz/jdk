@@ -34,7 +34,11 @@ public interface Link {
 
     public Port getFrom();
 
+    public Cluster getFromCluster();
+
     public Port getTo();
+
+    public Cluster getToCluster();
 
     public boolean isVIP();
 
