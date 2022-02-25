@@ -639,6 +639,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             HierarchicalLayoutManager manager = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
             manager.setMaxLayerLength(9);
             manager.setMinLayerDifference(1);
+            manager.setLayoutSelfEdges(true);
+            manager.setXOffset(25);
+            manager.setLayerOffset(25);
             m.setManager(manager);
             Map<InputNode, Figure> nodeFig = new HashMap<InputNode, Figure>();
             for (Figure f : figures) {

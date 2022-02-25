@@ -63,6 +63,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
     private int layerOffset;
     private int maxLayerLength;
     private int minLayerDifference;
+    private boolean layoutSelfEdges;
     // Algorithm global datastructures
     private Set<Link> reversedLinks;
     private Set<LayoutEdge> selfEdges;
@@ -170,7 +171,16 @@ public class HierarchicalLayoutManager implements LayoutManager {
         this.layerOffset = LAYER_OFFSET;
         this.maxLayerLength = MAX_LAYER_LENGTH;
         this.minLayerDifference = MIN_LAYER_DIFFERENCE;
+        this.layoutSelfEdges = false;
         this.linksToFollow = new HashSet<>();
+    }
+
+    public void setXOffset(int xOffset) {
+        this.xOffset = xOffset;
+    }
+
+    public void setLayerOffset(int layerOffset) {
+        this.layerOffset = layerOffset;
     }
 
     public int getMaxLayerLength() {
@@ -183,6 +193,10 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
     public void setMinLayerDifference(int v) {
         minLayerDifference = v;
+    }
+
+    public void setLayoutSelfEdges(boolean layoutSelfEdges) {
+        this.layoutSelfEdges = layoutSelfEdges;
     }
 
     @Override
@@ -225,6 +239,20 @@ public class HierarchicalLayoutManager implements LayoutManager {
         new BuildDatastructure().start();
 
         if (TRACE) printLayoutGraph();
+
+        if (!layoutSelfEdges) {
+            // Remove self-edges
+            for (LayoutNode node : nodes) {
+                ArrayList<LayoutEdge> succs = new ArrayList<>(node.succs);
+                for (LayoutEdge e : succs) {
+                    assert e.from == node;
+                    if (e.to == node) {
+                        node.succs.remove(e);
+                        node.preds.remove(e);
+                    }
+                }
+            }
+        }
 
         // #############################################################
         // STEP 2: Reverse edges, handle backedges
@@ -954,7 +982,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
             for (LayoutNode n : layers[index]) {
                 n.x = x;
-                x += n.width + X_OFFSET;
+                x += n.width + xOffset;
             }
         }
 
@@ -1581,7 +1609,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
                 print("processing edges going down (reversedDown)");
 
-                final int offset = X_OFFSET + DUMMY_WIDTH;
+                final int offset = xOffset + DUMMY_WIDTH;
 
                 int curX = 0;
                 int curWidth = node.width + reversedDown.size() * offset;
