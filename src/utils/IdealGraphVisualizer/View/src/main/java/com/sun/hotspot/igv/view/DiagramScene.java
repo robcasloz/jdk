@@ -1132,6 +1132,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
+        if (getModel().getShowCFG()) {
+            visibleBlocks.addAll(diagram.getGraph().getBlocks());
+        }
+
         if (getModel().getShowNodeHull()) {
             List<FigureWidget> boundaries = new ArrayList<>();
             for (Figure f : diagram.getFigures()) {
