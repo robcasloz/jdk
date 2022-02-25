@@ -26,7 +26,6 @@ package com.sun.hotspot.igv.graph;
 import com.sun.hotspot.igv.layout.Port;
 import java.awt.Color;
 import java.awt.Point;
-import java.util.ArrayList;
 import java.util.List;
 
 /**

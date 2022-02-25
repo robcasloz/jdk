@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.TreeSet;
+import java.util.SortedSet;
 import com.sun.hotspot.igv.layout.Cluster;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.layout.LayoutManager;
@@ -53,14 +54,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         this.combine = combine;
     }
 
-    public void doLayout(LayoutGraph graph) {
-        doLayout(graph, new HashSet<Vertex>(), new HashSet<Vertex>(), new HashSet<Link>());
-    }
-
-    public void doLayout(LayoutGraph graph, Set<? extends Link> importantLinks) {
-        doLayout(graph);
-    }
-
     public void setSubManager(LayoutManager manager) {
         this.subManager = manager;
     }
@@ -69,9 +62,15 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         this.manager = manager;
     }
 
-    public void doLayout(LayoutGraph graph, Set<? extends Vertex> firstLayerHint, Set<? extends Vertex> lastLayerHint, Set<? extends Link> importantLinks) {
+    public void doLayout(LayoutGraph graph, Set<? extends Link> importantLinks) {
+        doLayout(graph);
+    }
+
+    public void doLayout(LayoutGraph graph) {
 
         System.out.println("HierarchicalCFGLayoutManager::doLayout()");
+        System.out.println("\tgraph: " + graph);
+        System.out.println("");
 
         assert graph.verify();
 
@@ -79,9 +78,13 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         Set<Link> clusterEdges = new HashSet<Link>();
         Set<ClusterNode> clusterNodeSet = new HashSet<ClusterNode>();
 
-        Set<Cluster> cluster = graph.getClusters();
+        SortedSet<Cluster> clusters = new TreeSet<Cluster>();
+        for (Link l : graph.getLinks()) {
+            clusters.add(l.getFromCluster());
+            clusters.add(l.getToCluster());
+        }
         int z = 0;
-        for (Cluster c : cluster) {
+        for (Cluster c : clusters) {
             ClusterNode cn = new ClusterNode(c, "" + z);
             clusterNodes.put(c, cn);
             clusterNodeSet.add(cn);
@@ -89,7 +92,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         }
 
         // Add cluster edges
-        for (Cluster c : cluster) {
+        for (Cluster c : clusters) {
             System.out.println("c: " + c);
             ClusterNode start = clusterNodes.get(c);
 
@@ -116,7 +119,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             t.start();
         }
 
-        for (Cluster c : cluster) {
+        for (Cluster c : clusters) {
             ClusterNode n = clusterNodes.get(c);
             subManager.doLayout(new LayoutGraph(n.getSubEdges(), n.getSubNodes()), new HashSet<Link>());
             n.updateSize();
@@ -130,7 +133,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
         manager.doLayout(new LayoutGraph(clusterEdges, clusterNodeSet), new HashSet<Link>());
 
-        for (Cluster c : cluster) {
+        for (Cluster c : clusters) {
             ClusterNode n = clusterNodes.get(c);
             c.setBounds(new Rectangle(n.getPosition(), n.getSize()));
         }
