@@ -156,6 +156,9 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
                     break;
                 }
             }
+            // TODO: this is broken for self-loops, see factorial-large.xml.
+            // Need to instrument HierarchicalLayoutManager to deal with those.
+            assert(l.getControlPoints() != null);
             System.out.println("input link: " + l.getFromCluster() + "->" + l.getToCluster() + ": " + l.getControlPoints());
         }
     }
