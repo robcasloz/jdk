@@ -1135,10 +1135,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
         }
 
-        if (getModel().getShowCFG()) {
-            visibleBlocks.addAll(diagram.getGraph().getBlocks());
-        }
-
         if (getModel().getShowNodeHull()) {
             List<FigureWidget> boundaries = new ArrayList<>();
             for (Figure f : diagram.getFigures()) {
@@ -1169,6 +1165,22 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             for (FigureWidget w : boundaries) {
                 if (w.isBoundary()) {
                     w.setVisible(true);
+                }
+            }
+        }
+
+        if (getModel().getShowCFG()) {
+            // Blockless figures and artificial blocks are hidden in this view.
+            for (Figure f : diagram.getFigures()) {
+                if (f.getBlock().isArtificial()) {
+                    FigureWidget w = getWidget(f);
+                    w.setVisible(false);
+                }
+            }
+            visibleBlocks.clear();
+            for (InputBlock b : diagram.getGraph().getBlocks()) {
+                if (!b.isArtificial()) {
+                    visibleBlocks.add(b);
                 }
             }
         }

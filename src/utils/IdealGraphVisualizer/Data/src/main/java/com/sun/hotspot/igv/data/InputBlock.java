@@ -35,6 +35,7 @@ public class InputBlock {
     private String name;
     private InputGraph graph;
     private Set<InputBlock> successors;
+    private boolean artificial;
 
     @Override
     public int hashCode() {
@@ -77,6 +78,7 @@ public class InputBlock {
         this.name = name;
         nodes = new ArrayList<>();
         successors = new LinkedHashSet<>(2);
+        artificial = false;
     }
 
     public String getName() {
@@ -114,5 +116,13 @@ public class InputBlock {
         if (!successors.contains(b)) {
             successors.add(b);
         }
+    }
+
+    void setArtificial(boolean artificial) {
+        this.artificial = artificial;
+    }
+
+    public boolean isArtificial() {
+        return artificial;
     }
 }

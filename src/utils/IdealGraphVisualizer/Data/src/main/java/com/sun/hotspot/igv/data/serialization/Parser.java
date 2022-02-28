@@ -261,7 +261,7 @@ public class Parser implements GraphParser {
                     for (InputNode n : graph.getNodes()) {
                         if (graph.getBlock(n) == null) {
                             if (noBlock == null) {
-                                noBlock = graph.addBlock("(no block)");
+                                noBlock = graph.addArtificialBlock();
                             }
 
                             noBlock.addNode(n.getId());
