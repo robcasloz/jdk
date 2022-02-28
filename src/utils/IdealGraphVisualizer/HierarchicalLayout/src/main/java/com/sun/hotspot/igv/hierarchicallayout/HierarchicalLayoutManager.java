@@ -454,7 +454,11 @@ public class HierarchicalLayoutManager implements LayoutManager {
                         Point p = new Point(e.from.x + e.relativeFrom, e.from.y + e.from.height - e.from.bottomYOffset + e.link.getFrom().getRelativePosition().y);
                         points.add(p);
                         if (e.from.outOffsets.containsKey(e.relativeFrom)) {
-                            points.add(new Point(p.x, p.y + e.from.outOffsets.get(e.relativeFrom) + e.link.getFrom().getRelativePosition().y));
+                            Point pOffset = new Point(p.x, p.y + e.from.outOffsets.get(e.relativeFrom) +
+                                                      e.link.getFrom().getRelativePosition().y + e.from.yOffset);
+                            if (!pOffset.equals(p)) {
+                                points.add(pOffset);
+                            }
                         }
 
                         LayoutNode cur = e.to;
@@ -507,12 +511,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
                             if (reversedLinkStartPoints.containsKey(e.link)) {
                                 for (Point p1 : reversedLinkStartPoints.get(e.link)) {
-                                    points.add(0, new Point(p1.x + other.x, p1.y + other.y));
+                                    points.add(0, new Point(p1.x + other.x + other.xOffset, p1.y + other.y));
                                 }
                             }
                             if (reversedLinkEndPoints.containsKey(e.link)) {
                                 for (Point p1 : reversedLinkEndPoints.get(e.link)) {
-                                    points.add(new Point(p1.x + cur.x, p1.y + cur.y));
+                                    points.add(new Point(p1.x + cur.x + cur.xOffset, p1.y + cur.y));
                                 }
                             }
                             if (reversedLinks.contains(e.link)) {
