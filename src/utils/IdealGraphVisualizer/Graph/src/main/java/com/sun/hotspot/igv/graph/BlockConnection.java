@@ -76,7 +76,8 @@ public class BlockConnection implements Connection {
 
     @Override
     public String getToolTipText() {
-        return "TODO";
+        return "B" + sourceBlock.getInputBlock().getName() + " → " +
+               "B" + destinationBlock.getInputBlock().getName();
     }
 
     @Override
