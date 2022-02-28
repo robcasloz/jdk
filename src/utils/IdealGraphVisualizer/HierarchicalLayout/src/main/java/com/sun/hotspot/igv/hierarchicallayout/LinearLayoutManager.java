@@ -57,6 +57,11 @@ public class LinearLayoutManager implements LayoutManager {
     private int layerCount;
     private Map<? extends Vertex, Integer> vertexRank;
 
+
+    private ArrayList<Integer>[] space;
+    private ArrayList<LayoutNode>[] downProcessingOrder;
+    private ArrayList<LayoutNode>[] upProcessingOrder;
+
     private class LayoutNode {
 
         public int x;
@@ -72,15 +77,6 @@ public class LinearLayoutManager implements LayoutManager {
         public String toString() {
             return "Node " + vertex;
         }
-    }
-
-    private abstract class AlgorithmPart {
-
-        public void start() {
-            run();
-        }
-
-        protected abstract void run();
     }
 
     public LinearLayoutManager(Map<? extends Vertex, Integer> vertexRank) {
@@ -118,50 +114,29 @@ public class LinearLayoutManager implements LayoutManager {
 
         vertexToLayoutNode = new HashMap<>();
         nodes = new ArrayList<>();
-
-        // #############################################################
-        // Step 1: Build up data structure
-        new BuildDatastructure().start();
-
-        // #############################################################
-        // STEP 3: Assign layers
-        new AssignLayers().start();
-
-        // #############################################################
-        // STEP 5: Crossing Reduction
-        new CrossingReduction().start();
-
-        // #############################################################
-        // STEP 7: Assign X coordinates
-        new AssignXCoordinates().start();
-
-        // #############################################################
-        // STEP 6: Assign Y coordinates
-        new AssignYCoordinates().start();
-
-        // #############################################################
-        // STEP 8: Write back to interface
-        new WriteResult().start();
+        runBuildDatastructure();
+        runAssignLayers();
+        runCrossingReduction();
+        runAssignXCoordinates();
+        runAssignYCoordinates();
+        runWriteResult();
     }
 
-    private class WriteResult extends AlgorithmPart {
-        @Override
-        protected void run() {
-            int minX = Integer.MAX_VALUE;
-            int minY = Integer.MAX_VALUE;
-            for (Vertex v : graph.getVertices()) {
-                LayoutNode n = vertexToLayoutNode.get(v);
-                Point p = new Point(n.x, n.y);
-                v.setPosition(p);
-                minX = Math.min(minX, p.x);
-                minY = Math.min(minY, p.y);
-            }
-            for (Vertex v : graph.getVertices()) {
-                Point p = v.getPosition();
-                p.x -= minX;
-                p.y -= minY;
-                v.setPosition(p);
-            }
+    protected void runWriteResult() {
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        for (Vertex v : graph.getVertices()) {
+            LayoutNode n = vertexToLayoutNode.get(v);
+            Point p = new Point(n.x, n.y);
+            v.setPosition(p);
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+        }
+        for (Vertex v : graph.getVertices()) {
+            Point p = v.getPosition();
+            p.x -= minX;
+            p.y -= minY;
+            v.setPosition(p);
         }
     }
 
@@ -203,75 +178,67 @@ public class LinearLayoutManager implements LayoutManager {
         }
     };
 
-    private class AssignXCoordinates extends AlgorithmPart {
-
-        private ArrayList<Integer>[] space;
-        private ArrayList<LayoutNode>[] downProcessingOrder;
-        private ArrayList<LayoutNode>[] upProcessingOrder;
-
-        private void initialPositions() {
-            for (LayoutNode n : nodes) {
-                n.x = space[n.layer].get(n.pos);
-            }
+    private void initialPositions() {
+        for (LayoutNode n : nodes) {
+            n.x = space[n.layer].get(n.pos);
         }
-        @SuppressWarnings("unchecked")
-        private void createArrays() {
-            space = new ArrayList[layers.length];
-            downProcessingOrder = new ArrayList[layers.length];
-            upProcessingOrder = new ArrayList[layers.length];
-        }
+    }
+    @SuppressWarnings("unchecked")
+    private void createArrays() {
+        space = new ArrayList[layers.length];
+        downProcessingOrder = new ArrayList[layers.length];
+        upProcessingOrder = new ArrayList[layers.length];
+    }
 
-        @Override
-        protected void run() {
-            createArrays();
+    protected void runAssignXCoordinates() {
+        createArrays();
 
-            for (int i = 0; i < layers.length; i++) {
-                space[i] = new ArrayList<>();
-                downProcessingOrder[i] = new ArrayList<>();
-                upProcessingOrder[i] = new ArrayList<>();
+        for (int i = 0; i < layers.length; i++) {
+            space[i] = new ArrayList<>();
+            downProcessingOrder[i] = new ArrayList<>();
+            upProcessingOrder[i] = new ArrayList<>();
 
-                int curX = 0;
-                for (LayoutNode n : layers[i]) {
-                    space[i].add(curX);
-                    curX += n.width + xOffset;
-                    downProcessingOrder[i].add(n);
-                    upProcessingOrder[i].add(n);
-                }
-
-                Collections.sort(downProcessingOrder[i], nodeProcessingDownComparator);
-                Collections.sort(upProcessingOrder[i], nodeProcessingUpComparator);
+            int curX = 0;
+            for (LayoutNode n : layers[i]) {
+                space[i].add(curX);
+                curX += n.width + xOffset;
+                downProcessingOrder[i].add(n);
+                upProcessingOrder[i].add(n);
             }
 
-            initialPositions();
-
-            sweepDown();
-            adjustSpace();
-            sweepUp();
+            Collections.sort(downProcessingOrder[i], nodeProcessingDownComparator);
+            Collections.sort(upProcessingOrder[i], nodeProcessingUpComparator);
         }
 
-        private void adjustSpace() {
-            for (int i = 0; i < layers.length; i++) {
-                for (LayoutNode n : layers[i]) {
-                    space[i].add(n.x);
-                }
+        initialPositions();
+
+        sweepDown();
+        adjustSpace();
+        sweepUp();
+    }
+
+    private void adjustSpace() {
+        for (int i = 0; i < layers.length; i++) {
+            for (LayoutNode n : layers[i]) {
+                space[i].add(n.x);
             }
         }
+    }
 
-        private void sweepUp() {
-            for (int i = layers.length - 1; i >= 0; i--) {
-                NodeRow r = new NodeRow(space[i]);
-                for (LayoutNode n : upProcessingOrder[i]) {
-                    r.insert(n, n.x);
-                }
+    private void sweepUp() {
+        for (int i = layers.length - 1; i >= 0; i--) {
+            NodeRow r = new NodeRow(space[i]);
+            for (LayoutNode n : upProcessingOrder[i]) {
+                r.insert(n, n.x);
             }
         }
+    }
 
-        private void sweepDown() {
-            for (int i = 1; i < layers.length; i++) {
-                NodeRow r = new NodeRow(space[i]);
-                for (LayoutNode n : downProcessingOrder[i]) {
-                    r.insert(n, n.x);
-                }
+    private void sweepDown() {
+        for (int i = 1; i < layers.length; i++) {
+            NodeRow r = new NodeRow(space[i]);
+            for (LayoutNode n : downProcessingOrder[i]) {
+                r.insert(n, n.x);
             }
         }
     }
@@ -328,122 +295,93 @@ public class LinearLayoutManager implements LayoutManager {
         }
     }
 
-    private class CrossingReduction extends AlgorithmPart {
-
-        @SuppressWarnings("unchecked")
-        private void createLayers() {
-            layers = new List[layerCount];
-
-            for (int i = 0; i < layerCount; i++) {
-                layers[i] = new ArrayList<>();
-            }
+    @SuppressWarnings("unchecked")
+    private void createLayers() {
+        layers = new List[layerCount];
+        for (int i = 0; i < layerCount; i++) {
+            layers[i] = new ArrayList<>();
         }
+    }
 
-        @Override
-        protected void run() {
-            createLayers();
+    protected void runCrossingReduction() {
+        createLayers();
 
-            // Generate initial ordering
-            HashSet<LayoutNode> visited = new HashSet<>();
-            for (LayoutNode n : nodes) {
-                layers[n.layer].add(n);
-                visited.add(n);
-            }
-
-            updatePositions();
-            initX();
+        // Generate initial ordering
+        HashSet<LayoutNode> visited = new HashSet<>();
+        for (LayoutNode n : nodes) {
+            layers[n.layer].add(n);
+            visited.add(n);
         }
-
-        private void initX() {
-
-            for (int i = 0; i < layers.length; i++) {
-                updateXOfLayer(i);
-            }
+        updatePositions();
+        for (int i = 0; i < layers.length; i++) {
+            updateXOfLayer(i);
         }
+    }
 
-        private void updateXOfLayer(int index) {
-            int x = 0;
-
-            for (LayoutNode n : layers[index]) {
-                n.x = x;
-                x += n.width + X_OFFSET;
-            }
+    private void updateXOfLayer(int index) {
+        int x = 0;
+        for (LayoutNode n : layers[index]) {
+            n.x = x;
+            x += n.width + X_OFFSET;
         }
+    }
 
-        private void updatePositions() {
-
-            for (int i = 0; i < layers.length; i++) {
-                int z = 0;
-                for (LayoutNode n : layers[i]) {
-                    n.pos = z;
-                    z++;
-                }
+    private void updatePositions() {
+        for (int i = 0; i < layers.length; i++) {
+            int z = 0;
+            for (LayoutNode n : layers[i]) {
+                n.pos = z;
+                z++;
             }
         }
     }
 
-    private class AssignYCoordinates extends AlgorithmPart {
+    protected void runAssignYCoordinates() {
+        int curY = 0;
 
-        @Override
-        protected void run() {
-            int curY = 0;
-
-            for (int i = 0; i < layers.length; i++) {
-                int maxHeight = 0;
-                for (LayoutNode n : layers[i]) {
-                    maxHeight = Math.max(maxHeight, n.height);
-                }
-
-                int maxXOffset = 0;
-                for (LayoutNode n : layers[i]) {
-                    assert (n.vertex != null);
-                    n.y = curY + (maxHeight - n.height) / 2;
-                }
-
-                curY += maxHeight;
-                curY += layerOffset + ((int) (Math.sqrt(maxXOffset) * 1.5));
+        for (int i = 0; i < layers.length; i++) {
+            int maxHeight = 0;
+            for (LayoutNode n : layers[i]) {
+                maxHeight = Math.max(maxHeight, n.height);
             }
+            int maxXOffset = 0;
+            for (LayoutNode n : layers[i]) {
+                assert (n.vertex != null);
+                n.y = curY + (maxHeight - n.height) / 2;
+            }
+            curY += maxHeight;
+            curY += layerOffset + ((int) (Math.sqrt(maxXOffset) * 1.5));
         }
     }
 
-    private class AssignLayers extends AlgorithmPart {
-
-        @Override
-        protected void run() {
-            // TODO: start from 0?
-            int i = 1, max = -1;
-            for (LayoutNode n : nodes) {
-                n.layer = i;
-                i++;
-                if (i > max) {
-                    max = i;
-                }
+    protected void runAssignLayers() {
+        // TODO: start from 0?
+        int i = 1, max = -1;
+        for (LayoutNode n : nodes) {
+            n.layer = i;
+            i++;
+            if (i > max) {
+                max = i;
             }
-            layerCount = max + 1;
         }
+        layerCount = max + 1;
     }
 
-    private class BuildDatastructure extends AlgorithmPart {
+    protected void runBuildDatastructure() {
+        assert (graph.getLinks().isEmpty());
+        List<Vertex> vertices = new ArrayList<>(graph.getVertices());
+        vertices.sort((Vertex a, Vertex b) ->
+                      Integer.compare(vertexRank.getOrDefault(a, Integer.MAX_VALUE),
+                                      vertexRank.getOrDefault(b, Integer.MAX_VALUE)));
 
-        @Override
-        protected void run() {
-            // Set up nodes
-            List<Vertex> vertices = new ArrayList<>(graph.getVertices());
-            vertices.sort((Vertex a, Vertex b) ->
-                          Integer.compare(vertexRank.getOrDefault(a, Integer.MAX_VALUE),
-                                          vertexRank.getOrDefault(b, Integer.MAX_VALUE)));
-
-            for (Vertex v : vertices) {
-                LayoutNode node = new LayoutNode();
-                Dimension size = v.getSize();
-                node.width = (int) size.getWidth();
-                node.height = (int) size.getHeight();
-                node.vertex = v;
-                nodes.add(node);
-                vertexToLayoutNode.put(v, node);
-            }
-
-            assert (graph.getLinks().isEmpty());
+        for (Vertex v : vertices) {
+            LayoutNode node = new LayoutNode();
+            Dimension size = v.getSize();
+            node.width = (int) size.getWidth();
+            node.height = (int) size.getHeight();
+            node.vertex = v;
+            nodes.add(node);
+            vertexToLayoutNode.put(v, node);
         }
     }
 
