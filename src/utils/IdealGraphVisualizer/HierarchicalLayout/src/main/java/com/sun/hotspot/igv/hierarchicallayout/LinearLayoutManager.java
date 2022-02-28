@@ -66,22 +66,12 @@ public class LinearLayoutManager implements LayoutManager {
         public int layer = -1;
         public Vertex vertex;
 
-        public List<LayoutEdge> preds = new ArrayList<>();
-        public List<LayoutEdge> succs = new ArrayList<>();
         public int pos = -1; // Position within layer
 
         @Override
         public String toString() {
             return "Node " + vertex;
         }
-    }
-
-    private class LayoutEdge {
-
-        public LayoutNode from;
-        public LayoutNode to;
-        public int relativeFrom;
-        public int relativeTo;
     }
 
     private abstract class AlgorithmPart {
@@ -207,11 +197,6 @@ public class LinearLayoutManager implements LayoutManager {
         @Override
         protected void printStatistics() {
             System.out.println("Number of nodes: " + nodes.size());
-            int edgeCount = 0;
-            for (LayoutNode n : nodes) {
-                edgeCount += n.succs.size();
-            }
-            System.out.println("Number of edges: " + edgeCount);
             System.out.println("Number of points: " + pointCount);
         }
     }
@@ -234,7 +219,7 @@ public class LinearLayoutManager implements LayoutManager {
             if (n2.vertex == null) {
                 return 1;
             }
-            return n1.preds.size() - n2.preds.size();
+            return 0;
         }
     };
     private static final Comparator<LayoutNode> nodeProcessingUpComparator = new Comparator<LayoutNode>() {
@@ -250,7 +235,7 @@ public class LinearLayoutManager implements LayoutManager {
             if (n2.vertex == null) {
                 return 1;
             }
-            return n1.succs.size() - n2.succs.size();
+            return 0;
         }
     };
 
@@ -308,47 +293,11 @@ public class LinearLayoutManager implements LayoutManager {
             }
         }
 
-        private int calculateOptimalDown(LayoutNode n) {
-            int size = n.preds.size();
-            if (size == 0) {
-                return n.x;
-            }
-            int[] values = new int[size];
-            for (int i = 0; i < size; i++) {
-                LayoutEdge e = n.preds.get(i);
-                values[i] = e.from.x + e.relativeFrom - e.relativeTo;
-            }
-            return median(values);
-        }
-
-        private int calculateOptimalUp(LayoutNode n) {
-            int size = n.succs.size();
-            if (size == 0) {
-                return n.x;
-            }
-            int[] values = new int[size];
-            for (int i = 0; i < size; i++) {
-                LayoutEdge e = n.succs.get(i);
-                values[i] = e.to.x + e.relativeTo - e.relativeFrom;
-            }
-            return median(values);
-        }
-
-        private int median(int[] values) {
-            Arrays.sort(values);
-            if (values.length % 2 == 0) {
-                return (values[values.length / 2 - 1] + values[values.length / 2]) / 2;
-            } else {
-                return values[values.length / 2];
-            }
-        }
-
         private void sweepUp() {
             for (int i = layers.length - 1; i >= 0; i--) {
                 NodeRow r = new NodeRow(space[i]);
                 for (LayoutNode n : upProcessingOrder[i]) {
-                    int optimal = calculateOptimalUp(n);
-                    r.insert(n, optimal);
+                    r.insert(n, n.x);
                 }
             }
         }
@@ -357,8 +306,7 @@ public class LinearLayoutManager implements LayoutManager {
             for (int i = 1; i < layers.length; i++) {
                 NodeRow r = new NodeRow(space[i]);
                 for (LayoutNode n : downProcessingOrder[i]) {
-                    int optimal = calculateOptimalDown(n);
-                    r.insert(n, optimal);
+                    r.insert(n, n.x);
                 }
             }
         }
@@ -507,10 +455,6 @@ public class LinearLayoutManager implements LayoutManager {
                 for (LayoutNode n : layers[i]) {
                     assert (n.vertex != null);
                     n.y = curY + (maxHeight - n.height) / 2;
-                    for (LayoutEdge e : n.succs) {
-                        int curXOffset = Math.abs(n.x - e.to.x);
-                        maxXOffset = Math.max(curXOffset, maxXOffset);
-                    }
                 }
 
                 curY += maxHeight;
@@ -547,9 +491,6 @@ public class LinearLayoutManager implements LayoutManager {
             for (LayoutNode n : nodes) {
                 assert n.layer >= 0;
                 assert n.layer < layerCount;
-                for (LayoutEdge e : n.succs) {
-                    assert e.from.layer < e.to.layer;
-                }
             }
         }
     }
@@ -587,14 +528,6 @@ public class LinearLayoutManager implements LayoutManager {
 
                 LayoutNode node = vertexToLayoutNode.get(v);
                 assert node != null;
-
-                for (LayoutEdge e : node.succs) {
-                    assert e.from == node;
-                }
-
-                for (LayoutEdge e : node.preds) {
-                    assert e.to == node;
-                }
 
             }
         }
