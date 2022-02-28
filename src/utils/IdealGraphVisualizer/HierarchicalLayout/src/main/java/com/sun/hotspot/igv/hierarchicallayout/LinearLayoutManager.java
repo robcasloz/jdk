@@ -50,16 +50,11 @@ public class LinearLayoutManager implements LayoutManager {
     private int layerOffset;
     private int maxLayerLength;
     // Algorithm global datastructures
-    private Set<Link> reversedLinks;
     private List<LayoutNode> nodes;
     private HashMap<Vertex, LayoutNode> vertexToLayoutNode;
-    private HashMap<Link, List<Point>> splitStartPoints;
-    private HashMap<Link, List<Point>> splitEndPoints;
     private LayoutGraph graph;
     private List<LayoutNode>[] layers;
     private int layerCount;
-    private Set<? extends Link> importantLinks;
-    private Set<Link> linksToFollow;
     private Map<? extends Vertex, Integer> vertexRank;
 
     private class LayoutNode {
@@ -69,15 +64,10 @@ public class LinearLayoutManager implements LayoutManager {
         public int width;
         public int height;
         public int layer = -1;
-        public int xOffset;
-        public int yOffset;
-        public int bottomYOffset;
         public Vertex vertex;
 
         public List<LayoutEdge> preds = new ArrayList<>();
         public List<LayoutEdge> succs = new ArrayList<>();
-        public HashMap<Integer, Integer> outOffsets = new HashMap<>();
-        public HashMap<Integer, Integer> inOffsets = new HashMap<>();
         public int pos = -1; // Position within layer
 
         @Override
@@ -92,7 +82,6 @@ public class LinearLayoutManager implements LayoutManager {
         public LayoutNode to;
         public int relativeFrom;
         public int relativeTo;
-        public Link link;
     }
 
     private abstract class AlgorithmPart {
@@ -140,7 +129,6 @@ public class LinearLayoutManager implements LayoutManager {
         this.xOffset = X_OFFSET;
         this.layerOffset = LAYER_OFFSET;
         this.maxLayerLength = MAX_LAYER_LENGTH;
-        this.linksToFollow = new HashSet<>();
     }
 
     public int getMaxLayerLength() {
@@ -163,14 +151,10 @@ public class LinearLayoutManager implements LayoutManager {
         System.out.println("\tgraph: " + graph);
         System.out.println("\timportantLinks: " + importantLinks);
         System.out.println("\t)");
-        this.importantLinks = importantLinks;
         this.graph = graph;
 
         vertexToLayoutNode = new HashMap<>();
-        reversedLinks = new HashSet<>();
         nodes = new ArrayList<>();
-        splitStartPoints = new HashMap<>();
-        splitEndPoints = new HashMap<>();
 
         // #############################################################
         // Step 1: Build up data structure
@@ -203,21 +187,17 @@ public class LinearLayoutManager implements LayoutManager {
 
         @Override
         protected void run() {
-            HashMap<Vertex, Point> vertexPositions = new HashMap<>();
-            for (Vertex v : graph.getVertices()) {
-                LayoutNode n = vertexToLayoutNode.get(v);
-                assert !vertexPositions.containsKey(v);
-                vertexPositions.put(v, new Point(n.x + n.xOffset, n.y + n.yOffset));
-            }
             int minX = Integer.MAX_VALUE;
             int minY = Integer.MAX_VALUE;
-            for (Vertex v : vertexPositions.keySet()) {
-                Point p = vertexPositions.get(v);
+            for (Vertex v : graph.getVertices()) {
+                LayoutNode n = vertexToLayoutNode.get(v);
+                Point p = new Point(n.x, n.y);
+                v.setPosition(p);
                 minX = Math.min(minX, p.x);
                 minY = Math.min(minY, p.y);
             }
-            for (Vertex v : vertexPositions.keySet()) {
-                Point p = vertexPositions.get(v);
+            for (Vertex v : graph.getVertices()) {
+                Point p = v.getPosition();
                 p.x -= minX;
                 p.y -= minY;
                 v.setPosition(p);
@@ -519,25 +499,21 @@ public class LinearLayoutManager implements LayoutManager {
 
             for (int i = 0; i < layers.length; i++) {
                 int maxHeight = 0;
-                int baseLine = 0;
-                int bottomBaseLine = 0;
                 for (LayoutNode n : layers[i]) {
-                    maxHeight = Math.max(maxHeight, n.height - n.yOffset - n.bottomYOffset);
-                    baseLine = Math.max(baseLine, n.yOffset);
-                    bottomBaseLine = Math.max(bottomBaseLine, n.bottomYOffset);
+                    maxHeight = Math.max(maxHeight, n.height);
                 }
 
                 int maxXOffset = 0;
                 for (LayoutNode n : layers[i]) {
                     assert (n.vertex != null);
-                    n.y = curY + baseLine + (maxHeight - (n.height - n.yOffset - n.bottomYOffset)) / 2 - n.yOffset;
+                    n.y = curY + (maxHeight - n.height) / 2;
                     for (LayoutEdge e : n.succs) {
                         int curXOffset = Math.abs(n.x - e.to.x);
                         maxXOffset = Math.max(curXOffset, maxXOffset);
                     }
                 }
 
-                curY += maxHeight + baseLine + bottomBaseLine;
+                curY += maxHeight;
                 curY += layerOffset + ((int) (Math.sqrt(maxXOffset) * 1.5));
             }
         }
@@ -599,7 +575,6 @@ public class LinearLayoutManager implements LayoutManager {
             }
 
             assert (graph.getLinks().isEmpty());
-            assert (importantLinks.isEmpty());
         }
 
         @Override
