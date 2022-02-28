@@ -45,4 +45,8 @@ public interface Connection extends Link {
 
     public String getToolTipText();
 
+    public boolean isAlwaysVisible();
+
+    public boolean hasSlots();
+
 }

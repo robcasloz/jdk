@@ -146,5 +146,16 @@ public class FigureConnection implements Connection {
     public void setControlPoints(List<Point> list) {
         controlPoints = list;
     }
+
+    @Override
+    public boolean isAlwaysVisible() {
+        return false;
+    }
+
+    @Override
+    public boolean hasSlots() {
+        return true;
+    }
+
 }
 

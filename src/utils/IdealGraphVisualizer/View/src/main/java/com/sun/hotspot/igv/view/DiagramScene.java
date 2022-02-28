@@ -496,6 +496,19 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return a;
     }
 
+    public Action createGotoAction(final Block b) {
+        final DiagramScene diagramScene = this;
+        String name = "B" + b.getInputBlock().getName();
+        Action a = new AbstractAction(name) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                diagramScene.gotoBlock(b);
+            }
+        };
+        a.setEnabled(true);
+        return a;
+    }
+
     public void setNewModel(DiagramViewModel model) {
         assert this.model == null : "can set model only once!";
         this.model = model;
@@ -593,11 +606,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     private boolean isVisible(Connection c) {
         if (getModel().getShowCFG()) {
-            return c instanceof BlockConnection;
+            return c.isAlwaysVisible();
         }
-        FigureConnection fc = (FigureConnection) c;
-        FigureWidget w1 = getWidget(fc.getInputSlot().getFigure());
-        FigureWidget w2 = getWidget(fc.getOutputSlot().getFigure());
+        FigureWidget w1 = getWidget(c.getFrom().getVertex());
+        FigureWidget w2 = getWidget(c.getTo().getVertex());
 
         if (w1.isVisible() && w2.isVisible()) {
             return true;
@@ -825,11 +837,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             Point cur = controlPoints.get(controlPointIndex);
             if (cur == null) { // Long connection, has been cut vertically.
                 cur = specialNullPoint;
-            } else if (c instanceof FigureConnection) {
-                FigureConnection fc = (FigureConnection) c;
+            } else if (c.hasSlots()) {
                 if (controlPointIndex == 0 && !s.shouldShowName()) {
                     cur = new Point(cur.x, cur.y - SLOT_OFFSET);
-                } else if (controlPointIndex == controlPoints.size() - 1 && !fc.getInputSlot().shouldShowName()) {
+                } else if (controlPointIndex == controlPoints.size() - 1 &&
+                           !((Slot)c.getTo()).shouldShowName()) {
                     cur = new Point(cur.x, cur.y + SLOT_OFFSET);
                 }
             }
@@ -947,6 +959,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         }
         if (overall != null) {
             centerRectangle(overall);
+        }
+    }
+
+    public void gotoBlock(final Block block) {
+        BlockWidget bw = getWidget(block.getInputBlock());
+        if (bw != null) {
+            centerRectangle(bw.getBounds());
         }
     }
 
