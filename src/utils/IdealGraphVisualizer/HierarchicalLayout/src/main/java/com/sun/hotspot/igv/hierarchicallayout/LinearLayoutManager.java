@@ -53,8 +53,6 @@ public class LinearLayoutManager implements LayoutManager {
     private Set<Link> reversedLinks;
     private List<LayoutNode> nodes;
     private HashMap<Vertex, LayoutNode> vertexToLayoutNode;
-    private HashMap<Link, List<Point>> reversedLinkStartPoints;
-    private HashMap<Link, List<Point>> reversedLinkEndPoints;
     private HashMap<Link, List<Point>> splitStartPoints;
     private HashMap<Link, List<Point>> splitEndPoints;
     private LayoutGraph graph;
@@ -170,8 +168,6 @@ public class LinearLayoutManager implements LayoutManager {
 
         vertexToLayoutNode = new HashMap<>();
         reversedLinks = new HashSet<>();
-        reversedLinkStartPoints = new HashMap<>();
-        reversedLinkEndPoints = new HashMap<>();
         nodes = new ArrayList<>();
         splitStartPoints = new HashMap<>();
         splitEndPoints = new HashMap<>();
@@ -269,12 +265,6 @@ public class LinearLayoutManager implements LayoutManager {
 
                         if (cur.vertex == null && cur.preds.size() == 0) {
 
-                            if (reversedLinkEndPoints.containsKey(e.link)) {
-                                for (Point p1 : reversedLinkEndPoints.get(e.link)) {
-                                    points.add(new Point(p1.x + e.to.x, p1.y + e.to.y));
-                                }
-                            }
-
                             if (splitStartPoints.containsKey(e.link)) {
                                 points.add(0, null);
                                 points.addAll(0, splitStartPoints.get(e.link));
@@ -293,18 +283,6 @@ public class LinearLayoutManager implements LayoutManager {
                             if (reversedLinks.contains(e.link)) {
                                 Collections.reverse(points);
                             }
-                            if (reversedLinkStartPoints.containsKey(e.link)) {
-                                for (Point p1 : reversedLinkStartPoints.get(e.link)) {
-                                    points.add(new Point(p1.x + cur.x, p1.y + cur.y));
-                                }
-                            }
-
-                            if (reversedLinkEndPoints.containsKey(e.link)) {
-                                for (Point p1 : reversedLinkEndPoints.get(e.link)) {
-                                    points.add(0, new Point(p1.x + other.x, p1.y + other.y));
-                                }
-                            }
-
                             assert !linkPositions.containsKey(e.link);
                             linkPositions.put(e.link, points);
                         }
@@ -351,11 +329,6 @@ public class LinearLayoutManager implements LayoutManager {
                         }
 
                         if (cur.succs.isEmpty() && cur.vertex == null) {
-                            if (reversedLinkStartPoints.containsKey(e.link)) {
-                                for (Point p1 : reversedLinkStartPoints.get(e.link)) {
-                                    points.add(0, new Point(p1.x + other.x, p1.y + other.y));
-                                }
-                            }
 
                             if (splitEndPoints.containsKey(e.link)) {
                                 points.add(null);
@@ -372,16 +345,6 @@ public class LinearLayoutManager implements LayoutManager {
                             }
                         } else {
 
-                            if (reversedLinkStartPoints.containsKey(e.link)) {
-                                for (Point p1 : reversedLinkStartPoints.get(e.link)) {
-                                    points.add(0, new Point(p1.x + other.x, p1.y + other.y));
-                                }
-                            }
-                            if (reversedLinkEndPoints.containsKey(e.link)) {
-                                for (Point p1 : reversedLinkEndPoints.get(e.link)) {
-                                    points.add(new Point(p1.x + cur.x, p1.y + cur.y));
-                                }
-                            }
                             if (reversedLinks.contains(e.link)) {
                                 Collections.reverse(points);
                             }
