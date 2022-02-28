@@ -176,20 +176,6 @@ public class LinearLayoutManager implements LayoutManager {
         // Step 1: Build up data structure
         new BuildDatastructure().start();
 
-        for (LayoutNode n : nodes) {
-            ArrayList<LayoutEdge> tmpArr = new ArrayList<>();
-            for (LayoutEdge e : n.succs) {
-                if (importantLinks.contains(e.link)) {
-                    tmpArr.add(e);
-                }
-            }
-
-            for (LayoutEdge e : tmpArr) {
-                e.from.succs.remove(e);
-                e.to.preds.remove(e);
-            }
-        }
-
         // #############################################################
         // STEP 3: Assign layers
         new AssignLayers().start();
@@ -217,148 +203,12 @@ public class LinearLayoutManager implements LayoutManager {
 
         @Override
         protected void run() {
-
             HashMap<Vertex, Point> vertexPositions = new HashMap<>();
-            HashMap<Link, List<Point>> linkPositions = new HashMap<>();
             for (Vertex v : graph.getVertices()) {
                 LayoutNode n = vertexToLayoutNode.get(v);
                 assert !vertexPositions.containsKey(v);
                 vertexPositions.put(v, new Point(n.x + n.xOffset, n.y + n.yOffset));
             }
-
-            for (LayoutNode n : nodes) {
-
-                for (LayoutEdge e : n.preds) {
-                    if (e.link != null) {
-                        ArrayList<Point> points = new ArrayList<>();
-
-                        Point p = new Point(e.to.x + e.relativeTo, e.to.y + e.to.yOffset + e.link.getTo().getRelativePosition().y);
-                        points.add(p);
-                        if (e.to.inOffsets.containsKey(e.relativeTo)) {
-                            points.add(new Point(p.x, p.y + e.to.inOffsets.get(e.relativeTo) + e.link.getTo().getRelativePosition().y));
-                        }
-
-                        LayoutNode cur = e.from;
-                        LayoutNode other = e.to;
-                        LayoutEdge curEdge = e;
-                        while (cur.vertex == null && cur.preds.size() != 0) {
-                            if (points.size() > 1 && points.get(points.size() - 1).x == cur.x + cur.width / 2 && points.get(points.size() - 2).x == cur.x + cur.width / 2) {
-                                points.remove(points.size() - 1);
-                            }
-                            points.add(new Point(cur.x + cur.width / 2, cur.y + cur.height));
-                            if (points.size() > 1 && points.get(points.size() - 1).x == cur.x + cur.width / 2 && points.get(points.size() - 2).x == cur.x + cur.width / 2) {
-                                points.remove(points.size() - 1);
-                            }
-                            points.add(new Point(cur.x + cur.width / 2, cur.y));
-                            assert cur.preds.size() == 1;
-                            curEdge = cur.preds.get(0);
-                            cur = curEdge.from;
-                        }
-
-                        p = new Point(cur.x + curEdge.relativeFrom, cur.y + cur.height - cur.bottomYOffset + (curEdge.link == null ? 0 : curEdge.link.getFrom().getRelativePosition().y));
-                        if (curEdge.from.outOffsets.containsKey(curEdge.relativeFrom)) {
-                            points.add(new Point(p.x, p.y + curEdge.from.outOffsets.get(curEdge.relativeFrom) + (curEdge.link == null ? 0 : curEdge.link.getFrom().getRelativePosition().y)));
-                        }
-                        points.add(p);
-
-                        Collections.reverse(points);
-
-                        if (cur.vertex == null && cur.preds.size() == 0) {
-
-                            if (splitStartPoints.containsKey(e.link)) {
-                                points.add(0, null);
-                                points.addAll(0, splitStartPoints.get(e.link));
-
-                                //checkPoints(points);
-                                if (reversedLinks.contains(e.link)) {
-                                    Collections.reverse(points);
-                                }
-                                assert !linkPositions.containsKey(e.link);
-                                linkPositions.put(e.link, points);
-                            } else {
-                                splitEndPoints.put(e.link, points);
-                            }
-
-                        } else {
-                            if (reversedLinks.contains(e.link)) {
-                                Collections.reverse(points);
-                            }
-                            assert !linkPositions.containsKey(e.link);
-                            linkPositions.put(e.link, points);
-                        }
-                        pointCount += points.size();
-
-                        // No longer needed!
-                        e.link = null;
-                    }
-                }
-
-                for (LayoutEdge e : n.succs) {
-                    if (e.link != null) {
-                        ArrayList<Point> points = new ArrayList<>();
-                        Point p = new Point(e.from.x + e.relativeFrom, e.from.y + e.from.height - e.from.bottomYOffset + e.link.getFrom().getRelativePosition().y);
-                        points.add(p);
-                        if (e.from.outOffsets.containsKey(e.relativeFrom)) {
-                            points.add(new Point(p.x, p.y + e.from.outOffsets.get(e.relativeFrom) + e.link.getFrom().getRelativePosition().y));
-                        }
-
-                        LayoutNode cur = e.to;
-                        LayoutNode other = e.from;
-                        LayoutEdge curEdge = e;
-                        while (cur.vertex == null && !cur.succs.isEmpty()) {
-                            if (points.size() > 1 && points.get(points.size() - 1).x == cur.x + cur.width / 2 && points.get(points.size() - 2).x == cur.x + cur.width / 2) {
-                                points.remove(points.size() - 1);
-                            }
-                            points.add(new Point(cur.x + cur.width / 2, cur.y));
-                            if (points.size() > 1 && points.get(points.size() - 1).x == cur.x + cur.width / 2 && points.get(points.size() - 2).x == cur.x + cur.width / 2) {
-                                points.remove(points.size() - 1);
-                            }
-                            points.add(new Point(cur.x + cur.width / 2, cur.y + cur.height));
-                            if (cur.succs.isEmpty()) {
-                                break;
-                            }
-                            assert cur.succs.size() == 1;
-                            curEdge = cur.succs.get(0);
-                            cur = curEdge.to;
-                        }
-
-                        p = new Point(cur.x + curEdge.relativeTo, cur.y + cur.yOffset + ((curEdge.link == null) ? 0 : curEdge.link.getTo().getRelativePosition().y));
-                        points.add(p);
-                        if (curEdge.to.inOffsets.containsKey(curEdge.relativeTo)) {
-                            points.add(new Point(p.x, p.y + curEdge.to.inOffsets.get(curEdge.relativeTo) + ((curEdge.link == null) ? 0 : curEdge.link.getTo().getRelativePosition().y)));
-                        }
-
-                        if (cur.succs.isEmpty() && cur.vertex == null) {
-
-                            if (splitEndPoints.containsKey(e.link)) {
-                                points.add(null);
-                                points.addAll(splitEndPoints.get(e.link));
-
-                                //checkPoints(points);
-                                if (reversedLinks.contains(e.link)) {
-                                    Collections.reverse(points);
-                                }
-                                assert !linkPositions.containsKey(e.link);
-                                linkPositions.put(e.link, points);
-                            } else {
-                                splitStartPoints.put(e.link, points);
-                            }
-                        } else {
-
-                            if (reversedLinks.contains(e.link)) {
-                                Collections.reverse(points);
-                            }
-                            //checkPoints(points);
-                            assert !linkPositions.containsKey(e.link);
-                            linkPositions.put(e.link, points);
-                        }
-
-                        pointCount += points.size();
-                        e.link = null;
-                    }
-                }
-            }
-
             int minX = Integer.MAX_VALUE;
             int minY = Integer.MAX_VALUE;
             for (Vertex v : vertexPositions.keySet()) {
@@ -366,35 +216,11 @@ public class LinearLayoutManager implements LayoutManager {
                 minX = Math.min(minX, p.x);
                 minY = Math.min(minY, p.y);
             }
-
-            for (Link l : linkPositions.keySet()) {
-                List<Point> points = linkPositions.get(l);
-                for (Point p : points) {
-                    if (p != null) {
-                        minX = Math.min(minX, p.x);
-                        minY = Math.min(minY, p.y);
-                    }
-                }
-
-            }
-
             for (Vertex v : vertexPositions.keySet()) {
                 Point p = vertexPositions.get(v);
                 p.x -= minX;
                 p.y -= minY;
                 v.setPosition(p);
-            }
-
-            for (Link l : linkPositions.keySet()) {
-                List<Point> points = linkPositions.get(l);
-                for (Point p : points) {
-                    if (p != null) {
-                        p.x -= minX;
-                        p.y -= minY;
-                    }
-                }
-                l.setControlPoints(points);
-
             }
         }
 
@@ -752,27 +578,6 @@ public class LinearLayoutManager implements LayoutManager {
         }
     }
 
-    private Comparator<Link> linkComparator = new Comparator<Link>() {
-
-        @Override
-        public int compare(Link l1, Link l2) {
-            int result = l1.getFrom().getVertex().compareTo(l2.getFrom().getVertex());
-            if (result != 0) {
-                return result;
-            }
-            result = l1.getTo().getVertex().compareTo(l2.getTo().getVertex());
-            if (result != 0) {
-                return result;
-            }
-            result = l1.getFrom().getRelativePosition().x - l2.getFrom().getRelativePosition().x;
-            if (result != 0) {
-                return result;
-            }
-            result = l1.getTo().getRelativePosition().x - l2.getTo().getRelativePosition().x;
-            return result;
-        }
-    };
-
     private class BuildDatastructure extends AlgorithmPart {
 
         @Override
@@ -793,36 +598,8 @@ public class LinearLayoutManager implements LayoutManager {
                 vertexToLayoutNode.put(v, node);
             }
 
-            // Set up edges
-            List<Link> links = new ArrayList<>(graph.getLinks());
-            Collections.sort(links, linkComparator);
-            for (Link l : links) {
-                LayoutEdge edge = new LayoutEdge();
-                assert vertexToLayoutNode.containsKey(l.getFrom().getVertex());
-                assert vertexToLayoutNode.containsKey(l.getTo().getVertex());
-                edge.from = vertexToLayoutNode.get(l.getFrom().getVertex());
-                edge.to = vertexToLayoutNode.get(l.getTo().getVertex());
-                edge.relativeFrom = l.getFrom().getRelativePosition().x;
-                edge.relativeTo = l.getTo().getRelativePosition().x;
-                edge.link = l;
-                edge.from.succs.add(edge);
-                edge.to.preds.add(edge);
-                //assert edge.from != edge.to; // No self-loops allowed
-            }
-
-            for (Link l : importantLinks) {
-                if (!vertexToLayoutNode.containsKey(l.getFrom().getVertex())
-                        || vertexToLayoutNode.containsKey(l.getTo().getVertex())) {
-                    continue;
-                }
-                LayoutNode from = vertexToLayoutNode.get(l.getFrom().getVertex());
-                LayoutNode to = vertexToLayoutNode.get(l.getTo().getVertex());
-                for (LayoutEdge e : from.succs) {
-                    if (e.to == to) {
-                        linksToFollow.add(e.link);
-                    }
-                }
-            }
+            assert (graph.getLinks().isEmpty());
+            assert (importantLinks.isEmpty());
         }
 
         @Override
