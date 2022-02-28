@@ -77,37 +77,10 @@ public class LinearLayoutManager implements LayoutManager {
     private abstract class AlgorithmPart {
 
         public void start() {
-            if (CHECK) {
-                preCheck();
-            }
-
-            long start = 0;
-            if (TRACE) {
-                System.out.println("##################################################");
-                System.out.println("Starting part " + this.getClass().getName());
-                start = System.currentTimeMillis();
-            }
             run();
-            if (TRACE) {
-                System.out.println("Timing for " + this.getClass().getName() + " is " + (System.currentTimeMillis() - start));
-                printStatistics();
-            }
-
-            if (CHECK) {
-                postCheck();
-            }
         }
 
         protected abstract void run();
-
-        protected void printStatistics() {
-        }
-
-        protected void postCheck() {
-        }
-
-        protected void preCheck() {
-        }
     }
 
     public LinearLayoutManager(Map<? extends Vertex, Integer> vertexRank) {
@@ -172,9 +145,6 @@ public class LinearLayoutManager implements LayoutManager {
     }
 
     private class WriteResult extends AlgorithmPart {
-
-        private int pointCount;
-
         @Override
         protected void run() {
             int minX = Integer.MAX_VALUE;
@@ -192,12 +162,6 @@ public class LinearLayoutManager implements LayoutManager {
                 p.y -= minY;
                 v.setPosition(p);
             }
-        }
-
-        @Override
-        protected void printStatistics() {
-            System.out.println("Number of nodes: " + nodes.size());
-            System.out.println("Number of points: " + pointCount);
         }
     }
 
@@ -366,13 +330,6 @@ public class LinearLayoutManager implements LayoutManager {
 
     private class CrossingReduction extends AlgorithmPart {
 
-        @Override
-        public void preCheck() {
-            for (LayoutNode n : nodes) {
-                assert n.layer < layerCount;
-            }
-        }
-
         @SuppressWarnings("unchecked")
         private void createLayers() {
             layers = new List[layerCount];
@@ -423,20 +380,6 @@ public class LinearLayoutManager implements LayoutManager {
                 }
             }
         }
-
-        @Override
-        public void postCheck() {
-
-            HashSet<LayoutNode> visited = new HashSet<>();
-            for (int i = 0; i < layers.length; i++) {
-                for (LayoutNode n : layers[i]) {
-                    assert !visited.contains(n);
-                    assert n.layer == i;
-                    visited.add(n);
-                }
-            }
-
-        }
     }
 
     private class AssignYCoordinates extends AlgorithmPart {
@@ -466,13 +409,6 @@ public class LinearLayoutManager implements LayoutManager {
     private class AssignLayers extends AlgorithmPart {
 
         @Override
-        public void preCheck() {
-            for (LayoutNode n : nodes) {
-                assert n.layer == -1;
-            }
-        }
-
-        @Override
         protected void run() {
             // TODO: start from 0?
             int i = 1, max = -1;
@@ -484,14 +420,6 @@ public class LinearLayoutManager implements LayoutManager {
                 }
             }
             layerCount = max + 1;
-        }
-
-        @Override
-        public void postCheck() {
-            for (LayoutNode n : nodes) {
-                assert n.layer >= 0;
-                assert n.layer < layerCount;
-            }
         }
     }
 
@@ -517,24 +445,9 @@ public class LinearLayoutManager implements LayoutManager {
 
             assert (graph.getLinks().isEmpty());
         }
-
-        @Override
-        public void postCheck() {
-
-            assert vertexToLayoutNode.keySet().size() == nodes.size();
-            assert nodes.size() == graph.getVertices().size();
-
-            for (Vertex v : graph.getVertices()) {
-
-                LayoutNode node = vertexToLayoutNode.get(v);
-                assert node != null;
-
-            }
-        }
     }
 
     @Override
     public void doRouting(LayoutGraph graph) {
-        // Do nothing for now
     }
 }
