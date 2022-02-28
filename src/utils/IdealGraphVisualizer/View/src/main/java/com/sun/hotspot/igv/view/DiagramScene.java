@@ -823,11 +823,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             }
 
             Point cur = controlPoints.get(controlPointIndex);
-            if (c instanceof FigureConnection) {
-                FigureConnection fc = (FigureConnection)c;
-                if (cur == null) {
-                    cur = specialNullPoint;
-                } else if (controlPointIndex == 0 && !s.shouldShowName()) {
+            if (cur == null) { // Long connection, has been cut vertically.
+                cur = specialNullPoint;
+            } else if (c instanceof FigureConnection) {
+                FigureConnection fc = (FigureConnection) c;
+                if (controlPointIndex == 0 && !s.shouldShowName()) {
                     cur = new Point(cur.x, cur.y - SLOT_OFFSET);
                 } else if (controlPointIndex == controlPoints.size() - 1 && !fc.getInputSlot().shouldShowName()) {
                     cur = new Point(cur.x, cur.y + SLOT_OFFSET);
