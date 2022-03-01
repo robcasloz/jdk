@@ -139,7 +139,7 @@ public class FigureWidget extends Widget implements Properties.Provider, PopupMe
         dummyBottom.setMinimumSize(new Dimension(Figure.INSET / 2, 1));
         middleWidget.addChild(dummyBottom);
 
-        middleWidget.setPreferredBounds(new Rectangle(0, Figure.SLOT_WIDTH - Figure.OVERLAPPING, f.getWidth(), f.getHeight()));
+        middleWidget.setPreferredBounds(new Rectangle(0, Figure.getVerticalOffset(), f.getWidth(), f.getHeight()));
         this.addChild(middleWidget);
 
         // Initialize node for property sheet

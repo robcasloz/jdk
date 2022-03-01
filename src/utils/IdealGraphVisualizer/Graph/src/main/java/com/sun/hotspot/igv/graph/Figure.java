@@ -38,7 +38,7 @@ import java.util.*;
 public class Figure extends Properties.Entity implements Source.Provider, Vertex {
 
     public static final int INSET = 8;
-    public static int SLOT_WIDTH = 10;
+    public static final int SLOT_WIDTH = 10;
     public static final int OVERLAPPING = 6;
     public static final int SLOT_START = 4;
     public static final int SLOT_OFFSET = 8;
@@ -363,6 +363,10 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     public InputNode getFirstSourceNode() {
         return getSource().getSourceNodes().get(0);
+    }
+
+    public static int getVerticalOffset() {
+        return Figure.SLOT_WIDTH - Figure.OVERLAPPING;
     }
 
     public Cluster getCluster() {

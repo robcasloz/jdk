@@ -23,6 +23,7 @@
  */
 package com.sun.hotspot.igv.layout;
 
+import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.util.Set;
 
@@ -37,4 +38,6 @@ public interface Cluster extends Comparable<Cluster> {
     public void setBounds(Rectangle r);
 
     public Set<? extends Cluster> getSuccessors();
+
+    public Dimension getNodeOffset();
 }

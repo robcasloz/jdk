@@ -52,9 +52,9 @@ public class ClusterNode implements Vertex {
     private boolean root;
     private String name;
     private int border;
-    private int yOffset;
-    private int initialYOffset;
-    private Dimension minSize;
+    private Dimension nodeOffset;
+    private int headerVerticalSpace;
+    private Dimension emptySize;
 
     public ClusterNode(Cluster cluster, String name) {
         this.subNodes = new HashSet<Vertex>();
@@ -63,9 +63,9 @@ public class ClusterNode implements Vertex {
         position = new Point(0, 0);
         this.name = name;
         this.border = 20;
-        this.yOffset = 0;
-        this.initialYOffset = 0;
-        this.minSize = new Dimension(0, 0);
+        this.nodeOffset = new Dimension(0, 0);
+        this.headerVerticalSpace = 0;
+        this.emptySize = new Dimension(0, 0);
     }
 
     public String getName() {
@@ -125,6 +125,11 @@ public class ClusterNode implements Vertex {
 
     private void calculateSize() {
 
+        if (subNodes.isEmpty()) {
+            size = emptySize;
+            return;
+        }
+
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -151,11 +156,12 @@ public class ClusterNode implements Vertex {
             }
         }
 
-        size = new Dimension(maxX - minX, maxY - minY + yOffset);
+        size = new Dimension(maxX - minX, maxY - minY + headerVerticalSpace);
 
         // Normalize coordinates
         for (Vertex n : subNodes) {
-            n.setPosition(new Point(n.getPosition().x - minX, n.getPosition().y - minY + yOffset + initialYOffset));
+            n.setPosition(new Point(n.getPosition().x - minX + nodeOffset.width,
+                                    n.getPosition().y - minY + nodeOffset.height + headerVerticalSpace));
         }
 
         for (Link l : subEdges) {
@@ -170,13 +176,6 @@ public class ClusterNode implements Vertex {
 
         size.width += 2 * border;
         size.height += 2 * border;
-
-        if (size.width < minSize.width) {
-            size.width = minSize.width;
-        }
-        if (size.height < minSize.height) {
-            size.height = minSize.height;
-        }
     }
 
     public Port getInputSlot() {
@@ -250,16 +249,16 @@ public class ClusterNode implements Vertex {
         return border;
     }
 
-    public void setYOffset(int yOffset) {
-        this.yOffset = yOffset;
+    public void setNodeOffset(Dimension nodeOffset) {
+        this.nodeOffset = nodeOffset;
     }
 
-    public void setInitialYOffset(int initialYOffset) {
-        this.initialYOffset = initialYOffset;
+    public void setHeaderVerticalSpace(int headerVerticalSpace) {
+        this.headerVerticalSpace = headerVerticalSpace;
     }
 
-    public void setMinSize(Dimension minSize) {
-        this.minSize = minSize;
+    public void setEmptySize(Dimension emptySize) {
+        this.emptySize = emptySize;
         updateSize();
     }
 
