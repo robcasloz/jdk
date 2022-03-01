@@ -38,6 +38,7 @@ import com.sun.hotspot.igv.graph.Figure;
 import com.sun.hotspot.igv.graph.services.DiagramProvider;
 import com.sun.hotspot.igv.util.LookupHistory;
 import com.sun.hotspot.igv.util.RangeSlider;
+import com.sun.hotspot.igv.settings.Settings;
 import com.sun.hotspot.igv.view.actions.*;
 import java.awt.*;
 import java.awt.event.HierarchyBoundsListener;
@@ -245,21 +246,21 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
 
         seaLayoutAction = new EnableSeaLayoutAction();
         JToggleButton button = new JToggleButton(seaLayoutAction);
-        button.setSelected(true);
+        button.setSelected(Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.SEA_OF_NODES);
         layoutButtons.add(button);
         toolBar.add(button);
         seaLayoutAction.addPropertyChangeListener(this);
 
         blockLayoutAction = new EnableBlockLayoutAction();
         button = new JToggleButton(blockLayoutAction);
-        button.setSelected(false);
+        button.setSelected(Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.CLUSTERED_SEA_OF_NODES);
         layoutButtons.add(button);
         toolBar.add(button);
         blockLayoutAction.addPropertyChangeListener(this);
 
         cfgLayoutAction = new EnableCFGLayoutAction();
         button = new JToggleButton(cfgLayoutAction);
-        button.setSelected(false);
+        button.setSelected(Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.CONTROL_FLOW_GRAPH);
         layoutButtons.add(button);
         toolBar.add(button);
         cfgLayoutAction.addPropertyChangeListener(this);

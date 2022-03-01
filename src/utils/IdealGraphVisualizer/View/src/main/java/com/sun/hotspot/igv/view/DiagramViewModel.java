@@ -190,9 +190,9 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
     public DiagramViewModel(Group g, FilterChain filterChain, FilterChain sequenceFilterChain) {
         super(Arrays.asList("default"));
 
-        this.showSea = true;
-        this.showBlocks = false;
-        this.showCFG = false;
+        this.showSea = Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.SEA_OF_NODES;
+        this.showBlocks = Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.CLUSTERED_SEA_OF_NODES;
+        this.showCFG = Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.CONTROL_FLOW_GRAPH;
         this.showNodeHull = true;
         this.group = g;
         filterGraphs();
