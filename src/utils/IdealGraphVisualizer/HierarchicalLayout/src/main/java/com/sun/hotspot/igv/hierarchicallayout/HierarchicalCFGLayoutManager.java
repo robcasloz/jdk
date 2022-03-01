@@ -23,12 +23,13 @@
  */
 package com.sun.hotspot.igv.hierarchicallayout;
 
-import java.awt.Point;
+import java.awt.Dimension;
 import java.awt.Rectangle;
+import java.awt.Canvas;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Set;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.SortedSet;
@@ -36,7 +37,6 @@ import com.sun.hotspot.igv.layout.Cluster;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.layout.LayoutManager;
 import com.sun.hotspot.igv.layout.Link;
-import com.sun.hotspot.igv.layout.Port;
 import com.sun.hotspot.igv.layout.Vertex;
 
 /**
@@ -45,13 +45,16 @@ import com.sun.hotspot.igv.layout.Vertex;
  */
 public class HierarchicalCFGLayoutManager implements LayoutManager {
 
-    private HierarchicalLayoutManager.Combine combine;
-    private LayoutManager subManager = new HierarchicalLayoutManager(combine);
-    private LayoutManager manager = new HierarchicalLayoutManager(combine);
-    private static final boolean TRACE = false;
+    private static final int BLOCK_BORDER = 5;
+    private FontMetrics fontMetrics;
+    private LayoutManager subManager;
+    private LayoutManager manager;
 
-    public HierarchicalCFGLayoutManager(HierarchicalLayoutManager.Combine combine) {
-        this.combine = combine;
+    public HierarchicalCFGLayoutManager() {
+        // Anticipate block label sizes to dimension blocks appropriately.
+        Canvas canvas = new Canvas();
+        Font font = new Font("Arial", Font.BOLD, 14);
+        fontMetrics = canvas.getFontMetrics(font);
     }
 
     public void setSubManager(LayoutManager manager) {
@@ -68,10 +71,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
     public void doLayout(LayoutGraph graph) {
 
-        System.out.println("HierarchicalCFGLayoutManager::doLayout()");
-        System.out.println("\tgraph: " + graph);
-        System.out.println("");
-
         assert graph.verify();
 
         HashMap<Cluster, ClusterNode> clusterNodes = new HashMap<Cluster, ClusterNode>();
@@ -83,12 +82,16 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             clusters.add(l.getFromCluster());
             clusters.add(l.getToCluster());
         }
-        int z = 0;
         for (Cluster c : clusters) {
             ClusterNode cn = new ClusterNode(c, c.toString());
+            cn.setBorder(BLOCK_BORDER);
+            cn.setYOffset(fontMetrics.getHeight() - BLOCK_BORDER);
+            String blockLabel = "B" + c.toString();
+            Dimension minSize = new Dimension(fontMetrics.stringWidth(blockLabel) + BLOCK_BORDER * 2,
+                                              fontMetrics.getHeight() + BLOCK_BORDER);
+            cn.setMinSize(minSize);
             clusterNodes.put(c, cn);
             clusterNodeSet.add(cn);
-            z++;
         }
 
         // Add cluster edges
@@ -112,13 +115,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             clusterNodes.get(c).addSubNode(v);
         }
 
-        Timing t = null;
-
-        if (TRACE) {
-            new Timing("Child timing");
-            t.start();
-        }
-
         for (Cluster c : clusters) {
             ClusterNode n = clusterNodes.get(c);
             subManager.doLayout(new LayoutGraph(n.getSubEdges(), n.getSubNodes()), new HashSet<Link>());
@@ -138,28 +134,17 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             c.setBounds(new Rectangle(n.getPosition(), n.getSize()));
         }
 
-        // TODO: handle case where blocks are not fully connected
-
-        if (TRACE) {
-            t.stop();
-            t.print();
-        }
-
         for (Link l : graph.getLinks()) {
             // Find corresponding link in graph.getLinks() and set control points.
             // TODO: create map.
             for (Link cl : clusterEdges) {
                 if (l.getFromCluster() == cl.getFromCluster() &&
                     l.getToCluster() == cl.getToCluster()) {
-                    System.out.println("found!");
                     l.setControlPoints(cl.getControlPoints());
                     break;
                 }
             }
-            // TODO: this is broken for self-loops, see factorial-large.xml.
-            // Need to instrument HierarchicalLayoutManager to deal with those.
             assert(l.getControlPoints() != null);
-            System.out.println("input link: " + l.getFromCluster() + "->" + l.getToCluster() + ": " + l.getControlPoints());
         }
     }
 

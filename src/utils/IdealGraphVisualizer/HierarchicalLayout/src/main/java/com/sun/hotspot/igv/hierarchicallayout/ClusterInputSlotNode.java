@@ -87,7 +87,7 @@ public class ClusterInputSlotNode implements Vertex {
 
             public Point getRelativePosition() {
                 Point p = new Point(thisNode.getPosition());
-                p.x += ClusterNode.BORDER;
+                p.x += blockNode.getBorder();
                 p.y = 0;
                 return p;
             }

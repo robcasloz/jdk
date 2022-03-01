@@ -51,7 +51,9 @@ public class ClusterNode implements Vertex {
     private boolean dirty;
     private boolean root;
     private String name;
-    public static final int BORDER = 20;
+    private int border;
+    private int yOffset;
+    private Dimension minSize;
 
     public ClusterNode(Cluster cluster, String name) {
         this.subNodes = new HashSet<Vertex>();
@@ -59,6 +61,9 @@ public class ClusterNode implements Vertex {
         this.cluster = cluster;
         position = new Point(0, 0);
         this.name = name;
+        this.border = 20;
+        this.yOffset = 0;
+        this.minSize = new Dimension(0, 0);
     }
 
     public String getName() {
@@ -118,10 +123,6 @@ public class ClusterNode implements Vertex {
 
     private void calculateSize() {
 
-        if (subNodes.size() == 0) {
-            size = new Dimension(0, 0);
-        }
-
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -148,11 +149,11 @@ public class ClusterNode implements Vertex {
             }
         }
 
-        size = new Dimension(maxX - minX, maxY - minY);
+        size = new Dimension(maxX - minX, maxY - minY + yOffset);
 
         // Normalize coordinates
         for (Vertex n : subNodes) {
-            n.setPosition(new Point(n.getPosition().x - minX, n.getPosition().y - minY));
+            n.setPosition(new Point(n.getPosition().x - minX, n.getPosition().y - minY + yOffset));
         }
 
         for (Link l : subEdges) {
@@ -165,8 +166,15 @@ public class ClusterNode implements Vertex {
 
         }
 
-        size.width += 2 * BORDER;
-        size.height += 2 * BORDER;
+        size.width += 2 * border;
+        size.height += 2 * border;
+
+        if (size.width < minSize.width) {
+            size.width = minSize.width;
+        }
+        if (size.height < minSize.height) {
+            size.height = minSize.height;
+        }
     }
 
     public Port getInputSlot() {
@@ -191,7 +199,7 @@ public class ClusterNode implements Vertex {
         this.position = pos;
         for (Vertex n : subNodes) {
             Point cur = new Point(n.getPosition());
-            cur.translate(pos.x + BORDER, pos.y + BORDER);
+            cur.translate(pos.x + border, pos.y + border);
             n.setPosition(cur);
         }
 
@@ -201,7 +209,7 @@ public class ClusterNode implements Vertex {
             for (Point p : arr) {
                 if (p != null) {
                     Point p2 = new Point(p);
-                    p2.translate(pos.x + BORDER, pos.y + BORDER);
+                    p2.translate(pos.x + border, pos.y + border);
                     newArr.add(p2);
                 } else {
                     newArr.add(null);
@@ -230,6 +238,23 @@ public class ClusterNode implements Vertex {
 
     public boolean isRoot() {
         return root;
+    }
+
+    public void setBorder(int border) {
+        this.border = border;
+    }
+
+    public int getBorder() {
+        return border;
+    }
+
+    public void setYOffset(int yOffset) {
+        this.yOffset = yOffset;
+    }
+
+    public void setMinSize(Dimension minSize) {
+        this.minSize = minSize;
+        updateSize();
     }
 
     public int compareTo(Vertex o) {
