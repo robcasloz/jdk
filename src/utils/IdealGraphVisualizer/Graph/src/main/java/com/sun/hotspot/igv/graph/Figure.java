@@ -42,7 +42,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     public static final int OVERLAPPING = 6;
     public static final int SLOT_START = 4;
     public static final int SLOT_OFFSET = 8;
-    public static final boolean VERTICAL_LAYOUT = true;
     protected List<InputSlot> inputSlots;
     protected List<OutputSlot> outputSlots;
     private Source source;
@@ -347,17 +346,14 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     @Override
     public Dimension getSize() {
-        if (VERTICAL_LAYOUT) {
-            int width = Math.max(getWidth(), Figure.SLOT_WIDTH * (Math.max(inputSlots.size(), outputSlots.size()) + 1));
-            int height = getHeight() + 2 * Figure.SLOT_WIDTH - 2 * Figure.OVERLAPPING;
-
-
-            return new Dimension(width, height);
-        } else {
-            int width = getWidth() + 2 * Figure.SLOT_WIDTH - 2*Figure.OVERLAPPING;
-            int height = Figure.SLOT_WIDTH * (Math.max(inputSlots.size(), outputSlots.size()) + 1);
-            return new Dimension(width, height);
+        int width = Math.max(getWidth(), Figure.SLOT_WIDTH * (Math.max(inputSlots.size(), outputSlots.size()) + 1));
+        int height = getHeight() + 2 * Figure.SLOT_WIDTH - 2 * Figure.OVERLAPPING;
+        if (diagram.isCFG()) {
+            // TODO: embed visible slots (getAssociatedNode() != null) into node
+            // by adjusting SLOT_START and increase height accordingly.
+            height = getHeight();
         }
+        return new Dimension(width, height);
     }
 
     @Override
