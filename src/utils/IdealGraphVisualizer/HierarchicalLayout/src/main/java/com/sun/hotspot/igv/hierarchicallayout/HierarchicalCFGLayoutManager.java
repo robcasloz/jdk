@@ -85,7 +85,8 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         for (Cluster c : clusters) {
             ClusterNode cn = new ClusterNode(c, c.toString());
             cn.setBorder(BLOCK_BORDER);
-            cn.setYOffset(fontMetrics.getHeight() - BLOCK_BORDER);
+            cn.setInitialYOffset(-4);
+            cn.setYOffset(fontMetrics.getHeight());
             String blockLabel = "B" + c.toString();
             Dimension minSize = new Dimension(fontMetrics.stringWidth(blockLabel) + BLOCK_BORDER * 2,
                                               fontMetrics.getHeight() + BLOCK_BORDER);

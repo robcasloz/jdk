@@ -53,6 +53,7 @@ public class ClusterNode implements Vertex {
     private String name;
     private int border;
     private int yOffset;
+    private int initialYOffset;
     private Dimension minSize;
 
     public ClusterNode(Cluster cluster, String name) {
@@ -63,6 +64,7 @@ public class ClusterNode implements Vertex {
         this.name = name;
         this.border = 20;
         this.yOffset = 0;
+        this.initialYOffset = 0;
         this.minSize = new Dimension(0, 0);
     }
 
@@ -153,7 +155,7 @@ public class ClusterNode implements Vertex {
 
         // Normalize coordinates
         for (Vertex n : subNodes) {
-            n.setPosition(new Point(n.getPosition().x - minX, n.getPosition().y - minY + yOffset));
+            n.setPosition(new Point(n.getPosition().x - minX, n.getPosition().y - minY + yOffset + initialYOffset));
         }
 
         for (Link l : subEdges) {
@@ -250,6 +252,10 @@ public class ClusterNode implements Vertex {
 
     public void setYOffset(int yOffset) {
         this.yOffset = yOffset;
+    }
+
+    public void setInitialYOffset(int initialYOffset) {
+        this.initialYOffset = initialYOffset;
     }
 
     public void setMinSize(Dimension minSize) {
