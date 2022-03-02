@@ -67,7 +67,7 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
     @Override
     public Properties getProperties() {
         Properties p = new Properties();
-        if (source.getSourceNodes().size() > 0) {
+        if (hasSourceNodes()) {
             for (InputNode n : source.getSourceNodes()) {
                 p.add(n.getProperties());
             }
@@ -156,6 +156,10 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
 
     public boolean shouldShowName() {
         return getShortName() != null && getShortName().length() > 0;
+    }
+
+    public boolean hasSourceNodes() {
+        return !getSource().getSourceNodes().isEmpty();
     }
 
     public void setText(String s) {

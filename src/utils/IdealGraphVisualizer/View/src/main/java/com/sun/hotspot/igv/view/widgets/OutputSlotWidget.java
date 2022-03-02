@@ -26,7 +26,6 @@ package com.sun.hotspot.igv.view.widgets;
 import com.sun.hotspot.igv.graph.Figure;
 import com.sun.hotspot.igv.graph.OutputSlot;
 import com.sun.hotspot.igv.view.DiagramScene;
-import java.awt.Point;
 import java.util.List;
 import org.netbeans.api.visual.widget.Widget;
 
@@ -41,10 +40,6 @@ public class OutputSlotWidget extends SlotWidget {
     public OutputSlotWidget(OutputSlot slot, DiagramScene scene, Widget parent, FigureWidget fw) {
         super(slot, scene, parent, fw);
         outputSlot = slot;
-        Point p = outputSlot.getRelativePosition();
-        p.y += getSlot().getFigure().getHeight() - Figure.SLOT_START;
-        p.x -= this.calculateClientArea().width / 2;
-        this.setPreferredLocation(p);
     }
 
     public OutputSlot getOutputSlot() {
@@ -57,5 +52,12 @@ public class OutputSlotWidget extends SlotWidget {
         assert slots.contains(getSlot());
         return calculateWidth(slots.size());
 
+    }
+
+    @Override
+    protected int yOffset() {
+        int overlap = getFigureWidget().getFigure().getDiagram().isCFG() ?
+            calculateClientArea().height : Figure.SLOT_START;
+        return getSlot().getFigure().getHeight() - overlap;
     }
 }
