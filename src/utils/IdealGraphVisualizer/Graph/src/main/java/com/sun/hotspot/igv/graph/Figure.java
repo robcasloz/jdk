@@ -344,7 +344,6 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
         if (hasInputList()) {
             String inputList = " ← ";
-            // TODO: do we want to list predecessors or inputs (include empty slots)?
             List<String> inputs = new ArrayList<String>(getPredecessors().size());
             for (Figure p : getPredecessors()) {
                 inputs.add(p.getProperties().resolveString(diagram.getTinyNodeText()));
@@ -375,12 +374,7 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     @Override
     public Dimension getSize() {
         int width = Math.max(getWidth(), Figure.SLOT_WIDTH * (Math.max(inputSlots.size(), outputSlots.size()) + 1));
-        int height = getHeight() + 2 * Figure.SLOT_WIDTH - 2 * Figure.OVERLAPPING;
-        if (diagram.isCFG()) {
-            // TODO: embed visible slots (getAssociatedNode() != null) into node
-            // by adjusting SLOT_START and increase height accordingly.
-            height = getHeight();
-        }
+        int height = getHeight() + (diagram.isCFG() ? 0 : 2 * Figure.SLOT_WIDTH - 2 * Figure.OVERLAPPING);
         return new Dimension(width, height);
     }
 

@@ -50,7 +50,9 @@ public class Diagram {
     private final Font font;
     private final Font slotFont;
     private final Font boldFont;
-    private boolean cfg = false;     // TODO: can we get rid of this?
+    // Whether widgets derived from this diagram should be adapted for the
+    // control-flow graph view.
+    private boolean cfg = false;
     private Set<BlockConnection> blockConnections;
 
     public Font getFont() {

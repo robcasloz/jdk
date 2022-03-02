@@ -662,9 +662,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
                     nodeFig.put(n, f);
                 }
             }
-            // Compute global ranking among figures given by in-block order.
-            // TODO: this could be cached if it is computed for all the figures
-            // in the diagram (not just the visible ones).
+            // Compute global ranking among figures given by in-block order. If
+            // needed, this could be cached as long as it is computed for all
+            // the figures in the model, not just the visible ones.
             Map<Figure, Integer> figureRank =
                 new HashMap<Figure, Integer>(figures.size());
             int r = 0;
