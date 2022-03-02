@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,21 +28,13 @@ import java.awt.Rectangle;
 import java.awt.Canvas;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.TreeSet;
-import java.util.SortedSet;
+import java.util.*;
 import com.sun.hotspot.igv.layout.Cluster;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.layout.LayoutManager;
 import com.sun.hotspot.igv.layout.Link;
 import com.sun.hotspot.igv.layout.Vertex;
 
-/**
- *
- * @author Thomas Wuerthinger
- */
 public class HierarchicalCFGLayoutManager implements LayoutManager {
 
     private static final int BLOCK_BORDER = 5;
@@ -71,17 +63,20 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
     public void doLayout(LayoutGraph graph) {
 
-        assert graph.verify();
-
-        HashMap<Cluster, ClusterNode> clusterNodes = new HashMap<Cluster, ClusterNode>();
-        Set<Link> clusterEdges = new HashSet<Link>();
-        Set<ClusterNode> clusterNodeSet = new HashSet<ClusterNode>();
-
+        // Create set of clusters.
         SortedSet<Cluster> clusters = new TreeSet<Cluster>();
+        // Map from "primitive" cluster edges to their corresponding input
+        // links. Used when writing back edge coordinates into the input links.
+        Map<AbstractMap.SimpleEntry<Cluster,Cluster>, Link> inputLink = new HashMap<>();
         for (Link l : graph.getLinks()) {
             clusters.add(l.getFromCluster());
             clusters.add(l.getToCluster());
+            inputLink.put(new AbstractMap.SimpleEntry<Cluster,Cluster>(l.getFromCluster(), l.getToCluster()), l);
         }
+
+        // Create cluster nodes.
+        Set<ClusterNode> clusterNodeSet = new HashSet<>();
+        Map<Cluster, ClusterNode> clusterNode = new HashMap<>();
         for (Cluster c : clusters) {
             ClusterNode cn = new ClusterNode(c, c.toString());
             cn.setBorder(BLOCK_BORDER);
@@ -91,61 +86,55 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             Dimension emptySize = new Dimension(fontMetrics.stringWidth(blockLabel) + BLOCK_BORDER * 2,
                                                 fontMetrics.getHeight() + BLOCK_BORDER);
             cn.setEmptySize(emptySize);
-            clusterNodes.put(c, cn);
+            clusterNode.put(c, cn);
             clusterNodeSet.add(cn);
         }
 
-        // Add cluster edges
+        // Create cluster edges.
+        Set<ClusterEdge> clusterEdges = new HashSet<>();
         for (Cluster c : clusters) {
-            System.out.println("c: " + c);
-            ClusterNode start = clusterNodes.get(c);
-
+            ClusterNode start = clusterNode.get(c);
             for (Cluster succ : c.getSuccessors()) {
-                ClusterNode end = clusterNodes.get(succ);
+                ClusterNode end = clusterNode.get(succ);
                 if (end != null) {
                     ClusterEdge e = new ClusterEdge(start, end);
-                    System.out.println("e: " + e);
                     clusterEdges.add(e);
                 }
             }
         }
 
+        // Add subnodes to cluster nodes.
         for (Vertex v : graph.getVertices()) {
             Cluster c = v.getCluster();
             assert c != null : "Cluster of vertex " + v + " is null!";
-            clusterNodes.get(c).addSubNode(v);
+            clusterNode.get(c).addSubNode(v);
         }
 
+        // Compute layout for each cluster.
         for (Cluster c : clusters) {
-            ClusterNode n = clusterNodes.get(c);
+            ClusterNode n = clusterNode.get(c);
             subManager.doLayout(new LayoutGraph(n.getSubEdges(), n.getSubNodes()), new HashSet<Link>());
             n.updateSize();
         }
 
+        // Compute root clusters.
         Set<Vertex> roots = new LayoutGraph(clusterEdges).findRootVertices();
         for (Vertex v : roots) {
             assert v instanceof ClusterNode;
             ((ClusterNode) v).setRoot(true);
         }
-
+        // Compute cluster layout.
         manager.doLayout(new LayoutGraph(clusterEdges, clusterNodeSet), new HashSet<Link>());
 
+        // Write results back into input clusters and links.
         for (Cluster c : clusters) {
-            ClusterNode n = clusterNodes.get(c);
+            ClusterNode n = clusterNode.get(c);
             c.setBounds(new Rectangle(n.getPosition(), n.getSize()));
         }
-
-        for (Link l : graph.getLinks()) {
-            // Find corresponding link in graph.getLinks() and set control points.
-            // TODO: create map.
-            for (Link cl : clusterEdges) {
-                if (l.getFromCluster() == cl.getFromCluster() &&
-                    l.getToCluster() == cl.getToCluster()) {
-                    l.setControlPoints(cl.getControlPoints());
-                    break;
-                }
-            }
-            assert(l.getControlPoints() != null);
+        for (ClusterEdge ce : clusterEdges) {
+            assert (ce.getControlPoints() != null);
+            Link l = inputLink.get(new AbstractMap.SimpleEntry<Cluster, Cluster>(ce.getFromCluster(), ce.getToCluster()));
+            l.setControlPoints(ce.getControlPoints());
         }
     }
 
