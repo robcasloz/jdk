@@ -26,10 +26,6 @@ package com.sun.hotspot.igv.graph;
 import com.sun.hotspot.igv.layout.Link;
 import java.awt.Color;
 
-/**
- *
- * @author Thomas Wuerthinger
- */
 public interface Connection extends Link {
 
     public enum ConnectionStyle {

@@ -28,10 +28,6 @@ import java.awt.Color;
 import java.awt.Point;
 import java.util.List;
 
-/**
- *
- * @author Thomas Wuerthinger
- */
 public class BlockConnection implements Connection {
 
     @Override
