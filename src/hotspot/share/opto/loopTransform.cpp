@@ -1594,6 +1594,19 @@ void PhaseIdealLoop::insert_pre_post_loops(IdealLoopTree *loop, Node_List &old_n
   pre_head->set_pre_loop(main_head);
   Node *pre_incr = old_new[incr->_idx];
 
+  // If the pre-loop is peeled, reduction nodes in its body are moved out of
+  // their associated reduction loop. Remove reduction flag from all body nodes
+  // nodes and from the loop itself.
+  // TODO: do we need similar logic in PhaseIdealLoop::do_peeling and
+  //       PhaseIdealLoop::partial_peel?
+  if (peel_only) {
+    for (uint i = 0; i < loop->_body.size(); i++) {
+      Node* n = old_new[loop->_body[i]->_idx];
+      n->remove_flag(Node::Flag_is_reduction);
+    }
+    pre_head->clear_has_reductions();
+  }
+
   // Reduce the pre-loop trip count.
   pre_end->_prob = PROB_FAIR;
 
