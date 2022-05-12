@@ -781,6 +781,9 @@
                                                                             \
   product(bool, VerifyReceiverTypes, trueInDebug, DIAGNOSTIC,               \
           "Verify receiver types at runtime")                               \
+                                                                            \
+  product(bool, RecomputeReductions, false,                                 \
+          "Recompute reduction nodes before each superword analysis")       \
 
 // end of C2_FLAGS
 

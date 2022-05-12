@@ -353,6 +353,7 @@ class SuperWord : public ResourceObj {
   IdealLoopTree* _lpt;             // Current loop tree node
   CountedLoopNode* _lp;            // Current CountedLoopNode
   CountedLoopEndNode* _pre_loop_end; // Current CountedLoopEndNode of pre loop
+  VectorSet      _loop_reductions; // Reduction nodes in the current loop
   Node*          _bb;              // Current basic block
   PhiNode*       _iv;              // Induction var
   bool           _race_possible;   // In cases where SDMU is true
@@ -462,6 +463,15 @@ class SuperWord : public ResourceObj {
 
   // methods
 
+  void remove_reduction(Node* n);
+  bool is_reduction(Node* n);
+  bool is_reduction_loop(CountedLoopNode* n);
+  bool find_reduction_path(IdealLoopTree* lpt, uint input, Node* last, int length, Node* phi);
+  // Whether the given node is a reduction operator.
+  // TODO: make a member of Node or something.
+  static bool is_reduction_operator(const Node* n);
+  // Find and mark reductions in a loop
+  void mark_reductions2(IdealLoopTree* lpt);
   // Extract the superword level parallelism
   bool SLP_extract();
   // Find the adjacent memory references and create pack pairs for them.
