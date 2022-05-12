@@ -149,8 +149,11 @@ public class IRNode {
     public static final String AND = START + "And(I|L)" + MID + END;
     public static final String AND_I = START + "AndI" + MID + END;
     public static final String AND_L = START + "AndL" + MID + END;
+    public static final String AND_REDUCTION_V = START + "AndReductionV" + MID + END;
+    public static final String OR_REDUCTION_V = START + "OrReductionV" + MID + END;
     public static final String XOR_I = START + "XorI" + MID + END;
     public static final String XOR_L = START + "XorL" + MID + END;
+    public static final String XOR_REDUCTION_V = START + "XorReductionV" + MID + END;
     public static final String LSHIFT = START + "LShift(I|L)" + MID + END;
     public static final String LSHIFT_I = START + "LShiftI" + MID + END;
     public static final String LSHIFT_L = START + "LShiftL" + MID + END;
@@ -167,6 +170,8 @@ public class IRNode {
     public static final String ADD_L = START + "AddL" + MID + END;
     public static final String ADD_VD = START + "AddVD" + MID + END;
     public static final String ADD_VI = START + "AddVI" + MID + END;
+    public static final String ADD_REDUCTION_V_I = START + "AddReductionVI" + MID + END;
+    public static final String ADD_REDUCTION_V_L = START + "AddReductionVL" + MID + END;
     public static final String SUB = START + "Sub(I|L|F|D)" + MID + END;
     public static final String SUB_I = START + "SubI" + MID + END;
     public static final String SUB_L = START + "SubL" + MID + END;
@@ -176,6 +181,8 @@ public class IRNode {
     public static final String MUL_I = START + "MulI" + MID + END;
     public static final String MUL_L = START + "MulL" + MID + END;
     public static final String MUL_F = START + "MulF" + MID + END;
+    public static final String MUL_REDUCTION_V_I = START + "MulReductionVI" + MID + END;
+    public static final String MUL_REDUCTION_V_L = START + "MulReductionVL" + MID + END;
     public static final String DIV = START + "Div(I|L|F|D)" + MID + END;
     public static final String DIV_L = START + "DivL" + MID + END;
     public static final String CON_I = START + "ConI" + MID + END;
