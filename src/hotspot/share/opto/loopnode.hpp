@@ -66,7 +66,7 @@ protected:
          InnerLoop           = 1<<4,
          PartialPeelLoop     = 1<<5,
          PartialPeelFailed   = 1<<6,
-         HasReductions       = 1<<7,
+         // TODO: renumber flags
          WasSlpAnalyzed      = 1<<8,
          PassedSlpAnalysis   = 1<<9,
          DoUnrollOnly        = 1<<10,
@@ -107,7 +107,6 @@ public:
   bool is_loop_nest_outer_loop() const { return _loop_flags & LoopNestLongOuterLoop; }
 
   void mark_partial_peel_failed() { _loop_flags |= PartialPeelFailed; }
-  void mark_has_reductions() { _loop_flags |= HasReductions; }
   void mark_was_slp() { _loop_flags |= WasSlpAnalyzed; }
   void mark_passed_slp() { _loop_flags |= PassedSlpAnalysis; }
   void mark_do_unroll_only() { _loop_flags |= DoUnrollOnly; }
@@ -292,7 +291,6 @@ public:
   bool is_pre_loop      () const { return (_loop_flags&PreMainPostFlagsMask) == Pre;    }
   bool is_main_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Main;   }
   bool is_post_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Post;   }
-  bool is_reduction_loop() const { return (_loop_flags&HasReductions) == HasReductions; }
   bool was_slp_analyzed () const { return (_loop_flags&WasSlpAnalyzed) == WasSlpAnalyzed; }
   bool has_passed_slp   () const { return (_loop_flags&PassedSlpAnalysis) == PassedSlpAnalysis; }
   bool is_unroll_only   () const { return (_loop_flags&DoUnrollOnly) == DoUnrollOnly; }
@@ -777,11 +775,6 @@ public:
   bool is_innermost() { return is_loop() && _child == NULL; }
 
   void remove_main_post_loops(CountedLoopNode *cl, PhaseIdealLoop *phase);
-
-#ifdef ASSERT
-  // Tell whether the body contains nodes marked as reductions.
-  bool has_reduction_nodes() const;
-#endif // ASSERT
 
 #ifndef PRODUCT
   void dump_head() const;       // Dump loop head only
@@ -1283,9 +1276,6 @@ public:
 
   // Unroll the loop body one step - make each trip do 2 iterations.
   void do_unroll( IdealLoopTree *loop, Node_List &old_new, bool adjust_min_trip );
-
-  // Mark vector reduction candidates before loop unrolling
-  void mark_reductions( IdealLoopTree *loop );
 
   // Return true if exp is a constant times an induction var
   bool is_scaled_iv(Node* exp, Node* iv, BasicType bt, jlong* p_scale, bool* p_short_scale, int depth = 0);

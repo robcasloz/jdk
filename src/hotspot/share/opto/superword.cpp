@@ -111,11 +111,8 @@ bool SuperWord::transform_loop(IdealLoopTree* lpt, bool do_optimization) {
     return false; // skip malformed counted loop
   }
 
-  if (RecomputeReductions) {
-    mark_reductions2(lpt);
-  } else {
-    assert(!lpt->has_reduction_nodes() || is_reduction_loop(cl),
-           "non-reduction loop contains reduction nodes");
+  if (SuperWordReductions) {
+    mark_reductions(lpt);
   }
 
   if (cl->is_rce_post_loop() && is_reduction_loop(cl)) {
@@ -429,15 +426,15 @@ void SuperWord::unrolling_analysis(int &local_loop_unroll_factor) {
 }
 
 void SuperWord::remove_reduction(Node* n) {
-  n->remove_flag(Node::Flag_is_reduction);
+  _loop_reductions.remove(n->_idx);
 }
 
 bool SuperWord::is_reduction(Node* n) {
-  return RecomputeReductions ? _loop_reductions.test(n->_idx) : n->is_reduction();
+  return _loop_reductions.test(n->_idx);
 }
 
 bool SuperWord::is_reduction_loop(CountedLoopNode* n) {
-  return RecomputeReductions ? !_loop_reductions.is_empty() : n->is_reduction_loop();
+  return !_loop_reductions.is_empty();
 }
 
 bool SuperWord::find_reduction_path(IdealLoopTree* lpt, uint input, Node* last, int length, Node* phi) {
@@ -457,7 +454,7 @@ bool SuperWord::find_reduction_path(IdealLoopTree* lpt, uint input, Node* last, 
       return false;
     }
     current = current->in(input);
-    if (current == NULL) { // do we need this check?
+    if (current == NULL) { // TODO: do we need this check?
       return false;
     }
   }
@@ -471,8 +468,7 @@ bool SuperWord::is_reduction_operator(const Node* n) {
           || opc == Op_MinD || opc == Op_MinF || opc == Op_MaxD || opc == Op_MaxF);
 }
 
-void SuperWord::mark_reductions2(IdealLoopTree* lpt) {
-  if (SuperWordReductions == false) return;
+void SuperWord::mark_reductions(IdealLoopTree* lpt) {
 
   _loop_reductions.clear();
   CountedLoopNode* loop_head = lpt->_head->as_CountedLoop();

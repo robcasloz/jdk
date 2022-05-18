@@ -777,7 +777,7 @@ public:
     Flag_avoid_back_to_back_before   = 1 << 8,
     Flag_avoid_back_to_back_after    = 1 << 9,
     Flag_has_call                    = 1 << 10,
-    Flag_is_reduction                = 1 << 11,
+    // TODO: renumber flags
     Flag_is_scheduled                = 1 << 12,
     Flag_is_expensive                = 1 << 13,
     Flag_is_predicated_vector        = 1 << 14,
@@ -992,10 +992,6 @@ public:
   bool is_macro() const { return (_flags & Flag_is_macro) != 0; }
   // The node is expensive: the best control is set during loop opts
   bool is_expensive() const { return (_flags & Flag_is_expensive) != 0 && in(0) != NULL; }
-
-  // An arithmetic node which accumulates a data in a loop.
-  // It must have the loop's phi as input and provide a def to the phi.
-  bool is_reduction() const { return (_flags & Flag_is_reduction) != 0; }
 
   bool is_predicated_vector() const { return (_flags & Flag_is_predicated_vector) != 0; }
 
