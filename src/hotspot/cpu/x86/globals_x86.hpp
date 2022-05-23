@@ -219,7 +219,10 @@ define_pd_global(intx, InitArrayShortSize, 8*BytesPerLong);
                                                                             \
   product(bool, IntelJccErratumMitigation, true, DIAGNOSTIC,                \
              "Turn off JVM mitigations related to Intel micro code "        \
-             "mitigations for the Intel JCC erratum")
+             "mitigations for the Intel JCC erratum")                       \
+                                                                            \
+  product(bool, UseBranchlessFPMinMax, true,                                \
+          "Implement floating-point min/max using a branchless algorithm")  \
 
 // end of ARCH_FLAGS
 
