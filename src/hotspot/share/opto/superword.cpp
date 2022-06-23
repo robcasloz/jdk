@@ -112,7 +112,13 @@ bool SuperWord::transform_loop(IdealLoopTree* lpt, bool do_optimization) {
   }
 
   if (SuperWordReductions) {
-    mark_reductions(lpt);
+#ifndef PRODUCT
+    if (Verbose) {
+      tty->print("mark_reductions (%d)", do_optimization);
+      lpt->dump();
+    }
+#endif
+    mark_reductions(lpt, do_optimization);
   }
 
   if (cl->is_rce_post_loop() && is_reduction_loop(cl)) {
@@ -438,7 +444,7 @@ bool SuperWord::is_reduction_loop(CountedLoopNode* n) {
 }
 
 bool SuperWord::find_reduction_path(IdealLoopTree* lpt, uint input, Node* last, int length, Node* phi) {
-  Node *current = last;
+  Node* current = last;
   // Test that the current node fits the standard pattern for a reduction operator.
   if (!is_reduction_operator(current)) {
     return false;
@@ -468,7 +474,7 @@ bool SuperWord::is_reduction_operator(const Node* n) {
           || opc == Op_MinD || opc == Op_MinF || opc == Op_MaxD || opc == Op_MaxF);
 }
 
-void SuperWord::mark_reductions(IdealLoopTree* lpt) {
+void SuperWord::mark_reductions(IdealLoopTree* lpt, bool do_optimization) {
 
   _loop_reductions.clear();
   CountedLoopNode* loop_head = lpt->_head->as_CountedLoop();
@@ -516,9 +522,15 @@ void SuperWord::mark_reductions(IdealLoopTree* lpt) {
       continue;
     }
     // Mark all nodes in the found path and the loop as a reduction.
-    Node *current = last;
+    Node* current = last;
     for (int i = 0; i < loop_head->unrolled_count(); i++) {
       _loop_reductions.set(current->_idx);
+      if (do_optimization) {
+        current->add_flag(Node::Flag_is_reduction);
+      }
+      if (TraceSuperWord) {
+        tty->print_cr("reduction: %d", current->_idx);
+      }
       current = current->in(reduction_input);
     }
   }

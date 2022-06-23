@@ -781,6 +781,9 @@
                                                                             \
   product(bool, VerifyReceiverTypes, trueInDebug, DIAGNOSTIC,               \
           "Verify receiver types at runtime")                               \
+                                                                            \
+  product(bool, PreComputeReductions, true,                                 \
+          "Precompute reductions in superword.")                            \
 
 // end of C2_FLAGS
 

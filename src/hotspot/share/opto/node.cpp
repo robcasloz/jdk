@@ -3212,6 +3212,81 @@ bool Node::is_dead_loop_safe() const {
   return false;
 }
 
+template <typename Predicate>
+const Node* Node::traverse_upwards(uint input, int opcode, int max, Predicate is_end) const {
+  const Node* current = this;
+  for (int i = 0; i < max; i++) {
+    if (current == NULL) {
+      return nullptr;
+    }
+    if (is_end(current)) {
+      return current;
+    }
+    if (current->Opcode() != opcode) {
+      return nullptr;
+    }
+    current = current->in(input);
+  }
+  return nullptr;
+}
+
+bool Node::is_in_reduction_cycle(uint input) const {
+#ifndef PRODUCT
+  if (Verbose) {
+    tty->print("is_in_reduction_cycle(%d) ", input);
+    this->dump();
+  }
+#endif
+  const Node* current = this;
+  // First traverse upwards until a phi node is found.
+  // TODO: tighten upper bounds. It should be at most LoopMaxUnroll between both
+  // traversals.
+  current = current->traverse_upwards(input, this->Opcode(), LoopMaxUnroll + 1, [&](const Node* n) { return n->is_Phi(); });
+  if (current == nullptr) {
+    return false;
+  }
+  // Current is the reduction's phi.
+  assert(current->is_Phi(), "");
+  current = current->in(LoopNode::LoopBackControl);
+  // Now current is the last node in the reduction cycle. Traverse upwards until
+  // this node is found.
+  current = current->traverse_upwards(input, this->Opcode(), LoopMaxUnroll + 1, [&](const Node* n) { return n == this; });
+  if (current == this) {
+    return true;
+  }
+  // No luck.
+  return false;
+}
+
+bool Node::is_reduction() const {
+  if (Verbose) {
+#ifndef PRODUCT
+    tty->print("is_reduction ");
+    this->dump();
+#endif
+  }
+  if (PreComputeReductions) {
+    bool result = (_flags & Flag_is_reduction) != 0;
+    if (Verbose) {
+      tty->print_cr(" -> %d", result);
+    }
+    return result;
+  }
+
+  for (uint i = 1; i < req(); i++) {
+    if (is_in_reduction_cycle(i)) {
+      if (Verbose) {
+        tty->print_cr(" -> 1");
+      }
+      return true;
+    }
+  }
+  if (Verbose) {
+    tty->print_cr(" -> 0");
+  }
+  return false;
+}
+
 //=============================================================================
 //------------------------------yank-------------------------------------------
 // Find and remove

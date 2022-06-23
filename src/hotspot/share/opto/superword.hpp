@@ -471,7 +471,7 @@ class SuperWord : public ResourceObj {
   // TODO: make a member of Node or something.
   static bool is_reduction_operator(const Node* n);
   // Find and mark reductions in a loop.
-  void mark_reductions(IdealLoopTree* lpt);
+  void mark_reductions(IdealLoopTree* lpt, bool do_optimizations);
   // Extract the superword level parallelism
   bool SLP_extract();
   // Find the adjacent memory references and create pack pairs for them.
