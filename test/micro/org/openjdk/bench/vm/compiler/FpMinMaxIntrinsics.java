@@ -41,6 +41,8 @@ public class FpMinMaxIntrinsics {
 
     private Random r = new Random();
 
+    private int stride;
+
     @Setup
     public void init() {
         c1 = s1 = step();
@@ -50,6 +52,8 @@ public class FpMinMaxIntrinsics {
             floats[i] = r.nextFloat();
             doubles[i] = r.nextDouble();
         }
+
+        stride = 1;
     }
 
     private int step() {
@@ -121,6 +125,28 @@ public class FpMinMaxIntrinsics {
 
         for (int i=0; i<COUNT; i++)
             result = Math.min(result, doubles[i]);
+
+        return result;
+    }
+
+    @Benchmark
+    public float fMinReduceUnrolled() {
+        float result = Float.MAX_VALUE;
+
+        for (int i=0; i<COUNT; i += 2) {
+            result = Math.min(result, floats[i]);
+            result = Math.min(result, floats[i + 1]);
+        }
+
+        return result;
+    }
+
+    @Benchmark
+    public float fMinReduceNonCounted() {
+        float result = Float.MAX_VALUE;
+
+        for (int i = 0; i < COUNT; i += stride)
+            result = Math.min(result, floats[i]);
 
         return result;
     }
