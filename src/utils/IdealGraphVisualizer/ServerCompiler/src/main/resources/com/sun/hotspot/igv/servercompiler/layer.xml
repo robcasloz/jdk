@@ -77,11 +77,15 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Hide other edges"/>
         </file>
-        <file name="Hide uncommon trap blocks.js" url="filters/hideUncommonTrapBlocks.filter">
+        <file name="Hide UEP block" url="filters/hideUEPBlock.filter">
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Hide root block"/>
         </file>
-        <file name="Hide exception blocks.js" url="filters/hideExceptionBlocks.filter">
+        <file name="Hide uncommon trap blocks.js" url="filters/hideUncommonTrapBlocks.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Hide UEP block"/>
+        </file>
+        <file name="Hide exception blocks" url="filters/hideExceptionBlocks.filter">
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Hide uncommon trap blocks"/>
         </file>

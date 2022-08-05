@@ -1,0 +1,13 @@
+// Remove Unvalidated Entry Point block and all nodes in it (hopefully just the corresponding UEP node).
+
+var f = new RemoveBlockFilter("Hide UEP block");
+f.addRule(
+  new RemoveBlockFilter.RemoveBlockRule(
+    new AnySelector(
+      new MatcherSelector(
+        new Properties.RegexpPropertyMatcher("name", "Unvalidated-Entry-Point")
+      )
+    )
+  )
+);
+f.apply(graph);
