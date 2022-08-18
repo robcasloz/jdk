@@ -157,6 +157,7 @@ void* ZBarrierSetC2::create_barrier_state(Arena* comp_arena) const {
 }
 
 void ZBarrierSetC2::late_barrier_analysis() const {
+  compute_domination_information();
   analyze_dominating_barriers();
   compute_liveness_at_stubs();
 }
@@ -376,6 +377,26 @@ static uint block_index(const Block* block, const Node* node) {
   }
   ShouldNotReachHere();
   return 0;
+}
+
+void ZBarrierSetC2::compute_domination_information() const {
+  Compile* const C = Compile::current();
+#ifdef ASSERT
+  // Despite the name, after PhaseCFG::fixup_flow() a block's _pre_order just
+  // reflects the block's index in the CFG block list.
+  for (uint i = 0; i < C->cfg()->number_of_blocks(); i++) {
+    Block* b = C->cfg()->get_block(i);
+    assert(b->_pre_order == i, "_pre_order of block b must be equal to b's index");
+  }
+#endif
+  // Rebuild dominator tree, as it can be invalidated after the introduction of
+  // new blocks by PhaseCFG::fixup_flow().
+  C->cfg()->rebuild_dominator_tree();
+  // Restore _pre_order indices, as they are still used afterwards. _rpo indices
+  // (also overwritten) are not restored as they are not required anymore.
+  for (uint i = 0; i < C->cfg()->number_of_blocks(); i++) {
+    C->cfg()->get_block(i)->_pre_order = i;
+  }
 }
 
 void ZBarrierSetC2::analyze_dominating_barriers() const {

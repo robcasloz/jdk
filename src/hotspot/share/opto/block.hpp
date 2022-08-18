@@ -302,8 +302,11 @@ public:
     // This will not give correct end_idx for block 0 when it only contains root.
     int last_idx = _nodes.size() - 1;
     Node *last  = _nodes[last_idx];
-    assert(last->is_block_proj() == last || last->is_block_proj() == _nodes[last_idx - _num_succs], "");
-    return (last->is_block_proj() == last) ? last_idx : (last_idx - _num_succs);
+    // The last node might lack projections either because it is a single-branch
+    // node or a multi-branch node after the block ordering phase.
+    bool no_projs = !last->is_block_proj() || last->is_block_proj() == last;
+    assert(no_projs || last->is_block_proj() == _nodes[last_idx - _num_succs], "");
+    return no_projs ? last_idx : (last_idx - _num_succs);
   }
 
   // Basic blocks have a Node which ends them.  This Node determines which
@@ -410,8 +413,14 @@ class PhaseCFG : public Phase {
   // Build a proper looking cfg.  Return count of basic blocks
   uint build_cfg();
 
-  // Build the dominator tree so that we know where we can move instructions
+  // Build the dominator tree so that we know where we can move instructions.
+  // Use the information given by the analysis to build the initial block list.
   void build_dominator_tree();
+
+  // Compute the immediate dominator (_idom) and depth (_dom_depth) of each
+  // block using the Lengauer & Tarjan algorithm. As a side-effect, compute also
+  // the _pre_order and _rpo (reverse post-order) indices of each block.
+  void compute_dominators(Tarjan* tarjan);
 
   // Estimate block frequencies based on IfNode probabilities, so that we know where we want to move instructions
   void estimate_block_frequency();
@@ -594,6 +603,14 @@ class PhaseCFG : public Phase {
   // Use frequency calculations and code shape to predict if the block
   // is uncommon.
   bool is_uncommon(const Block* block);
+
+  // Get the predecessor i of block b (by input number of b's head), or
+  // default_block if b has fewer predecessors.
+  Block* get_pred_or_default(Block* b, uint i, Block* default_block) const;
+
+  // Re-build the dominator tree (_idom and _dom_depth) on an existing CFG block
+  // list and recompute DFS orderings (_pre_order and _rpo).
+  void rebuild_dominator_tree();
 
 #ifdef ASSERT
   Unique_Node_List _raw_oops;

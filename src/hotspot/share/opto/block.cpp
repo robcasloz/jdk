@@ -270,6 +270,13 @@ bool PhaseCFG::is_uncommon(const Block* block) {
   return false;
 }
 
+Block* PhaseCFG::get_pred_or_default(Block* b, uint i, Block* default_block) const {
+  if (i < b->num_preds()) {
+    return get_block_for_node(b->pred(i));
+  }
+  return default_block;
+}
+
 #ifndef PRODUCT
 void Block::dump_bidx(const Block* orig, outputStream* st) const {
   if (_pre_order) st->print("B%d", _pre_order);

@@ -68,7 +68,32 @@ void PhaseCFG::build_dominator_tree() {
   // Setup mappings from my Graph to Tarjan's stuff and back
   // Note: Tarjan uses 1-based arrays
   Tarjan* tarjan = NEW_RESOURCE_ARRAY(Tarjan, number_of_blocks() + 1);
+  // Compute dominator information.
+  compute_dominators(tarjan);
+  if (C->failing()) {
+    return;
+  }
+  // Finally, build the CFG block list in reverse post-order.
+  for (uint i = 1; i <= number_of_blocks(); i++) {
+    Block* block = tarjan[i]._block;
+    _blocks.map(block->_rpo, block);
+  }
+  _blocks._cnt = number_of_blocks();
+}
 
+void PhaseCFG::rebuild_dominator_tree() {
+  // Unassign _pre_order indices as assumed by PhaseCFG::compute_dominators().
+  for (uint i = 0; i < C->cfg()->number_of_blocks(); i++) {
+    C->cfg()->get_block(i)->_pre_order = 0;
+  }
+  ResourceMark rm;
+  Tarjan* tarjan = NEW_RESOURCE_ARRAY(Tarjan, number_of_blocks() + 1);
+  compute_dominators(tarjan);
+  // Unreachable loops should have caused build_dominator_tree() to fail.
+  assert(!C->failing(), "unreachable loops are not expected");
+}
+
+void PhaseCFG::compute_dominators(Tarjan* tarjan) {
   // Tarjan's algorithm, almost verbatim:
   // Step 1:
   uint dfsnum = do_DFS(tarjan, number_of_blocks());
@@ -89,7 +114,6 @@ void PhaseCFG::build_dominator_tree() {
     C->record_method_not_compilable("unreachable loop");
     return;
   }
-  _blocks._cnt = number_of_blocks();
 
   // Tarjan is using 1-based arrays, so these are some initialize flags
   tarjan[0]._size = tarjan[0]._semi = 0;
@@ -99,9 +123,21 @@ void PhaseCFG::build_dominator_tree() {
     Tarjan *w = &tarjan[i];     // Get vertex from DFS
 
     // Step 2:
-    Node *whead = w->_block->head();
-    for (uint j = 1; j < whead->req(); j++) {
-      Block* b = get_block_for_node(whead->in(j));
+    Block* wb = w->_block;
+#ifdef ASSERT
+    // If this analysis is run during the output phase, the predecessors of wb
+    // might not be accessible through wb's head node, even though wb is
+    // reachable from the root block (guaranteed by Step 1). This is e.g. the
+    // case of MachProlog blocks. Such blocks are preceded by the root block.
+    if (wb->num_preds() < 2) {
+      assert(get_root_block()->has_successor(wb), "wb must succeed the root block");
+      for (uint i = 2; i <= number_of_blocks(); i++) {
+        assert(!tarjan[i]._block->has_successor(wb), "wb cannot succeed any other block than the root");
+      }
+    }
+#endif
+    for (uint j = 1; j < MAX2(wb->num_preds(), (uint)2); j++) {
+      Block* b = get_pred_or_default(wb, j, get_root_block());
       Tarjan *vx = &tarjan[b->_pre_order];
       Tarjan *u = vx->EVAL();
       if( u->_semi < w->_semi )
@@ -210,9 +246,17 @@ class Block_Stack {
 
 // Find the index into the b->succs[] array of the most frequent successor.
 uint Block_Stack::most_frequent_successor( Block *b ) {
+  if (b->_num_succs == 1) {
+    // Trivial case: only one successor.
+    return 0;
+  }
   uint freq_idx = 0;
   int eidx = b->end_idx();
   Node *n = b->get_node(eidx);
+  if (n == b->get_node(b->number_of_nodes() - 1)) {
+    // Frequency information is not available because n lacks projections.
+    return 0;
+  }
   int op = n->is_Mach() ? n->as_Mach()->ideal_Opcode() : n->Opcode();
   switch( op ) {
   case Op_CountedLoopEnd:
@@ -234,16 +278,8 @@ uint Block_Stack::most_frequent_successor( Block *b ) {
     // Currently there is no support for finding out the most
     // frequent successor for jumps, so lets just make it the first one
   case Op_Jump:
-  case Op_Root:
-  case Op_Goto:
   case Op_NeverBranch:
     freq_idx = 0;               // fall thru
-    break;
-  case Op_TailCall:
-  case Op_TailJump:
-  case Op_Return:
-  case Op_Halt:
-  case Op_Rethrow:
     break;
   default:
     ShouldNotReachHere();
@@ -274,10 +310,9 @@ uint PhaseCFG::do_DFS(Tarjan *tarjan, uint rpo_counter) {
       }
     }
     else {
-      // Build a reverse post-order in the CFG _blocks array
+      // Build a reverse post-order, used e.g. to build the CFG block list.
       Block *stack_top = bstack.pop();
       stack_top->_rpo = --rpo_counter;
-      _blocks.map(stack_top->_rpo, stack_top);
     }
   }
   return pre_order;
