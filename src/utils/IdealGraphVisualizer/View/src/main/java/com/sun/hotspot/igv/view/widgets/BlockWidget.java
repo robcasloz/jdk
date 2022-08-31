@@ -28,10 +28,13 @@ import com.sun.hotspot.igv.data.InputBlock;
 import com.sun.hotspot.igv.data.services.InputGraphProvider;
 import com.sun.hotspot.igv.util.DoubleClickHandler;
 import com.sun.hotspot.igv.util.LookupHistory;
+import com.sun.hotspot.igv.data.InputNode;
+import com.sun.hotspot.igv.graph.Diagram;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import org.netbeans.api.visual.action.WidgetAction;
+import java.util.List;
 import org.netbeans.api.visual.widget.Scene;
 import org.netbeans.api.visual.widget.Widget;
 import org.openide.util.Utilities;
@@ -73,6 +76,15 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
         g.setFont(TITLE_FONT);
 
         String s = "B" + getBlockNode().getName();
+        List<InputNode> nodes = getBlockNode().getNodes();
+        if (!nodes.isEmpty()) {
+            InputNode head = getBlockNode().getNodes().get(0);
+            String idom = head.getProperties().get("idom");
+            String domDepth = head.getProperties().get("dom_depth");
+            if (idom != null && domDepth != null) {
+                s += " (idom: B" + idom + ", dep: " + domDepth + ")";
+            }
+        }
         Rectangle2D r1 = g.getFontMetrics().getStringBounds(s, g);
         g.drawString(s, r.x + 5, r.y + (int) r1.getHeight());
         g.setStroke(old);
