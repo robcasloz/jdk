@@ -1,0 +1,13 @@
+var safepointColor       = java.awt.Color.decode("#ffef81");
+var strongColor          = java.awt.Color.decode("#5d835e");
+var mediumColor          = java.awt.Color.decode("#7ca27d");
+var weakColor            = java.awt.Color.decode("#a0bba0");
+var elidedNodeColor      = java.awt.Color.decode("#ff4e11");
+
+colorize(matches("access_info", ".*safepoint.*"), safepointColor);
+colorize(matches("access_info", ".*store.*"), strongColor);
+colorize(matches("access_info", ".*atomic.*"), strongColor);
+colorize(matches("access_info", ".*allocation.*"), mediumColor);
+colorize(matches("access_info", ".*load.*"), weakColor);
+
+colorize(matches("dump_spec", ".*elided.*"), elidedNodeColor);

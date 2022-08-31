@@ -2673,6 +2673,19 @@ void Node::dump_comp(const char* suffix, outputStream *st) const {
   C->_in_dump_cnt--;
 }
 
+void Node::dump_access_info(outputStream* st) const {
+  BarrierSet::barrier_set()->barrier_set_c2()->dump_access_info(this, st);
+  if (!this->is_Mach()) {
+    return;
+  }
+  const MachNode* mach = this->as_Mach();
+  if (mach->has_any_barrier_flag()) {
+    st->print(" barrier(");
+    BarrierSet::barrier_set()->barrier_set_c2()->dump_barrier_data(mach, st);
+    st->print(")");
+  }
+}
+
 // VERIFICATION CODE
 // Verify all nodes if verify_depth is negative
 void Node::verify(int verify_depth, VectorSet& visited, Node_List& worklist) {
