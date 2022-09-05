@@ -97,5 +97,9 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Show ZGC barrier analysis nodes only"/>
         </file>
+        <file name="Show reduction nodes only" url="filters/showReductions.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Color by ZGC barrier state"/>
+        </file>
     </folder>
 </filesystem>
