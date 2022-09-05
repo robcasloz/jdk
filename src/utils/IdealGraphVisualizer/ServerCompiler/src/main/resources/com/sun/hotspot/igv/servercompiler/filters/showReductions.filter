@@ -1,0 +1,30 @@
+// Remove all nodes except those relevant to reduction analysis.
+
+var reductionLoopColor = java.awt.Color.decode("#FFEF81");
+
+var f = new RemoveFilter("Show reduction nodes only");
+f.addRule(
+  new RemoveFilter.RemoveRule(
+    new InvertSelector(
+      new OrSelector(
+        new MatcherSelector(
+          new Properties.RegexpPropertyMatcher("is_reduction", "true")
+        ),
+        new AndSelector(
+          new MatcherSelector(
+            new Properties.RegexpPropertyMatcher("name", ".*Loop.*")
+          ),
+          new MatcherSelector(
+            new Properties.RegexpPropertyMatcher("category", "control")
+          )
+        )
+      )
+    ),
+    false
+  )
+);
+
+colorize("dump_spec", ".*reduction.*", reductionLoopColor);
+
+
+f.apply(graph);
