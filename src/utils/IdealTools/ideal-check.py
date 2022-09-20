@@ -35,10 +35,7 @@ import tempfile
 import shutil
 import re
 import colorsys
-import graphviz # 0.8.4
 import html
-import matplotlib
-import matplotlib.cm as cm
 from itertools import chain
 
 # Helper functions for traversing the XML graph.
@@ -149,12 +146,14 @@ def check_cfg(graph_id, graph, args):
     ((short_group_name, graph_name), G, CFG) = graph
     if args.verbose:
         print("check_cfg: " + str(graph_id) + " " + short_group_name + " " + graph_name)
-    actual = {}
+    actual_idom = {}
+    actual_depth = {}
     root = None
     for b in list(CFG.nodes()):
         if root == None:
             root = b
             idom = b
+            depth = 1
         else:
             assert len(CFG.nodes[b]['nodes']) > 0
             head = CFG.nodes[b]['nodes'][0]
@@ -163,12 +162,30 @@ def check_cfg(graph_id, graph, args):
                 idom = None
             else:
                 idom = int(raw_idom)
-        actual[b] = idom
-    expected = nx.immediate_dominators(CFG, root)
-    if actual != expected:
+            raw_depth = G.nodes[head].get('dom_depth')
+            if raw_depth == None:
+                depth = None
+            else:
+                depth = int(raw_depth)
+        actual_depth[b] = depth
+        actual_idom[b] = idom
+    expected_idom = nx.immediate_dominators(CFG, root)
+    if actual_idom != expected_idom:
         print("Wrong dominator tree for " + str(graph_id) + " " + short_group_name + " " + graph_name)
-        print("expected: " + str(sorted(list(expected.items()))))
-        print("actual:   " + str(sorted(list(actual.items()))))
+        print("expected_idom: " + str(sorted(list(expected_idom.items()))))
+        print("actual_idom:   " + str(sorted(list(actual_idom.items()))))
+    # Now that we agree about the dominator tree, check expected depth.
+    DT = nx.DiGraph()
+    for b in expected_idom:
+        DT.add_node(b)
+    for b, d in expected_idom.items():
+        DT.add_edge(d, b)
+    nx_expected_depth = nx.shortest_path_length(DT, root)
+    expected_depth = dict((b, d + 1) for b, d in nx_expected_depth.items())
+    if actual_depth != expected_depth:
+        print("Wrong dominator tree depth for " + str(graph_id) + " " + short_group_name + " " + graph_name)
+        print("expected_depth: " + str(sorted(list(expected_depth.items()))))
+        print("actual_depth:   " + str(sorted(list(actual_depth.items()))))
 
 def add_feature_argument(parser, feature, help_msg, default):
     """
@@ -201,22 +218,6 @@ def main():
     io = parser.add_argument_group('input/output options')
     io.add_argument('XML_FILE',
                     help="XML graph file emitted by the HotSpot JVM")
-    io.add_argument('--outdir',
-                    metavar='DIR',
-                    default=os.getcwd(),
-                    help="output directory (default: %(default)s)")
-    add_feature_argument(io,
-                         'dot',
-                         "output DOT files for each graph",
-                         False)
-    add_feature_argument(io,
-                         'log',
-                         "output log files (.out and .err) for each graph",
-                         False)
-    add_feature_argument(io,
-                         'clean',
-                         "remove intermediate files",
-                         True)
     add_feature_argument(io,
                          'verbose',
                          "print debug information to the standard output",
