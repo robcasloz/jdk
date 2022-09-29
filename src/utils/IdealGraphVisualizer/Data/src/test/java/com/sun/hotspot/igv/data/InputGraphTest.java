@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import org.junit.*;
 
 /**
@@ -208,4 +209,36 @@ public class InputGraphTest {
         assertEquals(b, c.getPrev());
         assertEquals(null, c.getNext());
     }
+
+    /**
+     * Test of isSameContent method, of class InputGraph.
+     */
+    @Test
+    public void testIsSameContent() {
+
+        InputGraph a = new InputGraph("graph");
+        a.addNode(N1);
+        a.addNode(N2);
+        a.addEdge(E12);
+
+        InputGraph b = new InputGraph("graph");
+        b.addNode(N1);
+        b.addNode(N2);
+        b.addEdge(E12);
+
+        InputGraph c = new InputGraph("graph");
+        c.addNode(N3);
+        c.addNode(N4);
+        c.addEdge(E34);
+
+        assertTrue(a.isSameContent(b));
+        assertFalse(b.isSameContent(c));
+
+        a.addNode(N3);
+        assertFalse(a.isSameContent(b));
+
+        b.addNode(N3);
+        assertTrue(a.isSameContent(b));
+    }
+
 }
