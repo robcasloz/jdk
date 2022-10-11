@@ -49,6 +49,10 @@
   flags(PHASEIDEALLOOP_ITERATIONS,    "PhaseIdealLoop iterations") \
   flags(OPTIMIZE_FINISHED,            "Optimize finished") \
   flags(GLOBAL_CODE_MOTION,           "Global code motion") \
+  flags(REGISTER_ALLOCATION,          "Register allocation") \
+  flags(BLOCK_ORDERING,               "Block ordering") \
+  flags(PEEPHOLE,                     "Peephole") \
+  flags(POSTALLOC_EXPAND,             "Post-allocation expand") \
   flags(FINAL_CODE,                   "Final Code") \
   flags(AFTER_EA,                     "After Escape Analysis") \
   flags(BEFORE_CLOOPS,                "Before CountedLoop") \

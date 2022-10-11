@@ -365,7 +365,7 @@ void PhaseOutput::perform_mach_node_analysis() {
 
   pd_perform_mach_node_analysis();
 
-  C->print_method(CompilerPhaseType::PHASE_MACHANALYSIS, 4);
+  C->print_method(CompilerPhaseType::PHASE_MACHANALYSIS, 3);
 }
 
 // Convert Nodes to instruction bits and pass off to the VM

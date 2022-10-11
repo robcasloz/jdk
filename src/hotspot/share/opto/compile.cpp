@@ -2962,6 +2962,7 @@ void Compile::Code_Gen() {
     if (failing()) {
       return;
     }
+    print_method(PHASE_REGISTER_ALLOCATION, 2);
   }
 
   // Prior to register allocation we kept empty basic blocks in case the
@@ -2978,6 +2979,7 @@ void Compile::Code_Gen() {
     }
     cfg.fixup_flow();
     cfg.remove_unreachable_blocks();
+    print_method(PHASE_BLOCK_ORDERING, 3);
     cfg.verify_dominator_tree();
   }
 
@@ -2986,12 +2988,14 @@ void Compile::Code_Gen() {
     TracePhase tp("peephole", &timers[_t_peephole]);
     PhasePeephole peep( _regalloc, cfg);
     peep.do_transform();
+    print_method(PHASE_PEEPHOLE, 3);
   }
 
   // Do late expand if CPU requires this.
   if (Matcher::require_postalloc_expand) {
     TracePhase tp("postalloc_expand", &timers[_t_postalloc_expand]);
     cfg.postalloc_expand(_regalloc);
+    print_method(PHASE_POSTALLOC_EXPAND, 3);
   }
 
   // Convert Nodes to instruction bits in a buffer
