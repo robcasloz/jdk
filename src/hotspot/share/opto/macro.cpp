@@ -1335,7 +1335,7 @@ void PhaseMacroExpand::expand_allocate_common(
 
       InitializeNode* init = alloc->initialization();
       fast_oop_rawmem = initialize_object(alloc,
-                                          fast_oop_ctrl, fast_oop_rawmem, fast_oop,
+                                          &fast_oop_ctrl, fast_oop_rawmem, fast_oop,
                                           klass_node, length, size_in_bytes);
       expand_initialize_membar(alloc, init, fast_oop_ctrl, fast_oop_rawmem);
       expand_dtrace_alloc_probe(alloc, fast_oop, fast_oop_ctrl, fast_oop_rawmem);
@@ -1650,23 +1650,23 @@ void PhaseMacroExpand::expand_dtrace_alloc_probe(AllocateNode* alloc, Node* oop,
 // Initializes the newly-allocated storage.
 Node*
 PhaseMacroExpand::initialize_object(AllocateNode* alloc,
-                                    Node* control, Node* rawmem, Node* object,
+                                    Node** control, Node* rawmem, Node* object,
                                     Node* klass_node, Node* length,
                                     Node* size_in_bytes) {
   InitializeNode* init = alloc->initialization();
   // Store the klass & mark bits
-  Node* mark_node = alloc->make_ideal_mark(&_igvn, object, control, rawmem);
+  Node* mark_node = alloc->make_ideal_mark(&_igvn, object, *control, rawmem);
   if (!mark_node->is_Con()) {
     transform_later(mark_node);
   }
-  rawmem = make_store(control, rawmem, object, oopDesc::mark_offset_in_bytes(), mark_node, TypeX_X->basic_type());
+  rawmem = make_store(*control, rawmem, object, oopDesc::mark_offset_in_bytes(), mark_node, TypeX_X->basic_type());
 
-  rawmem = make_store(control, rawmem, object, oopDesc::klass_offset_in_bytes(), klass_node, T_METADATA);
+  rawmem = make_store(*control, rawmem, object, oopDesc::klass_offset_in_bytes(), klass_node, T_METADATA);
   int header_size = alloc->minimum_header_size();  // conservatively small
 
   // Array length
   if (length != NULL) {         // Arrays need length field
-    rawmem = make_store(control, rawmem, object, arrayOopDesc::length_offset_in_bytes(), length, T_INT);
+    rawmem = make_store(*control, rawmem, object, arrayOopDesc::length_offset_in_bytes(), length, T_INT);
     // conservatively small header size:
     header_size = arrayOopDesc::base_offset_in_bytes(T_BYTE);
     if (_igvn.type(klass_node)->isa_aryklassptr()) {   // we know the exact header size in most cases:
@@ -1690,16 +1690,28 @@ PhaseMacroExpand::initialize_object(AllocateNode* alloc,
     // edge cases is safety first.  It is always safe to clear immediately
     // within an Allocate, and then (maybe or maybe not) clear some more later.
     if (!(UseTLAB && ZeroTLAB)) {
-      rawmem = ClearArrayNode::clear_memory(control, rawmem, object,
+      rawmem = ClearArrayNode::clear_memory(*control, rawmem, object,
                                             header_size, size_in_bytes,
                                             &_igvn);
     }
   } else {
+    AllocateArrayNode* aalloc = alloc->isa_AllocateArray();
+    if (Fix && ReduceBulkZeroing && aalloc != nullptr &&
+        aalloc->_initializing_arraycopy != nullptr &&
+        aalloc->maybe_set_complete(&_igvn)) {
+      assert(init == aalloc->initialization(), "sanity");
+      assert(init->is_complete(), "we just did this");
+      init->set_complete_with_arraycopy();
+
+      ArrayCopyNode* ac = aalloc->_initializing_arraycopy;
+      rawmem = initialize_uncopied_array_slices(control, rawmem, object, aalloc, ac);
+    }
+
     if (!init->is_complete()) {
       // Try to win by zeroing only what the init does not store.
       // We can also try to do some peephole optimizations,
       // such as combining some adjacent subword stores.
-      rawmem = init->complete_stores(control, rawmem, object,
+      rawmem = init->complete_stores(*control, rawmem, object,
                                      header_size, size_in_bytes, &_igvn);
     }
     // We have no more use for this link, since the AllocateNode goes away:
@@ -1709,6 +1721,76 @@ PhaseMacroExpand::initialize_object(AllocateNode* alloc,
   }
 
   return rawmem;
+}
+
+Node* PhaseMacroExpand::initialize_uncopied_array_slices(Node** ctrl, Node* rawmem, Node* dest, AllocateArrayNode* alloc, ArrayCopyNode* ac) {
+
+   // TODO: is it safe to do this even though ac is dead?
+  Node* dest_offset = alloc->_dest_offset;
+  assert(dest_offset != nullptr && !dest_offset->is_dead(), "null dest_offset node");
+  Node* copy_length = alloc->_copy_length;
+  assert(copy_length != nullptr && !copy_length->is_dead(), "null copy_length node");
+  const TypePtr* adr_type = TypeRawPtr::BOTTOM;
+  const BasicType basic_elem_type = T_OBJECT;
+  // TODO: see if we can use a more functional style for updating memory.
+  MergeMemNode* mem = MergeMemNode::make(rawmem);
+  transform_later(mem);
+
+  uint alias_idx = C->get_alias_index(adr_type);
+
+  // We have to initialize the *uncopied* part of the array to zero.
+  // The copy destination is the slice dest[off..off+len].  The other slices
+  // are dest_head = dest[0..off] and dest_tail = dest[off+len..dest.length].
+
+  Node* dest_size   = alloc->in(AllocateNode::AllocSize);
+  Node* dest_length = alloc->in(AllocateNode::ALength);
+  Node* dest_tail   = transform_later(new AddINode(dest_offset, copy_length));
+
+  // If there is a head section that needs zeroing, do it now.
+  if (_igvn.find_int_con(dest_offset, -1) != 0) {
+    // Clear dest[0..dest_offset].
+    generate_clear_array(*ctrl, mem,
+                         adr_type, dest, basic_elem_type,
+                         intcon(0), dest_offset,
+                         nullptr);
+  }
+
+  // Next, perform a dynamic check on the tail length.
+  // It is often zero, and we can avoid generating the ClearArray
+  // with its attendant messy index arithmetic if we prove this.
+  Node* tail_ctl = NULL;
+  if (!(*ctrl)->is_top() && !dest_tail->eqv_uncast(dest_length)) {
+    Node* cmp_lt   = transform_later( new CmpINode(dest_tail, dest_length) );
+    // Whether dest_tail = dest_offset + copy_length < dest_length.
+    Node* bol_lt   = transform_later( new BoolNode(cmp_lt, BoolTest::lt) );
+    tail_ctl = generate_slow_guard(ctrl, bol_lt, NULL);
+    assert(tail_ctl != NULL || !(*ctrl)->is_top(), "must be an outcome");
+  }
+
+  Node* done_mem = mem->memory_at(alias_idx);
+  // Clear the tail, if any.
+  if (tail_ctl != NULL) {
+    // TODO: clarify and simplify this mess.
+    Node* notail_ctl = *ctrl;
+    *ctrl = tail_ctl;
+    assert (!(*ctrl)->is_top(), "cannot happen?");
+    // Make a local merge.
+    Node* done_ctl = transform_later(new RegionNode(3));
+    done_mem = transform_later(new PhiNode(done_ctl, Type::MEMORY, adr_type));
+    done_ctl->init_req(1, notail_ctl);
+    done_mem->init_req(1, mem->memory_at(alias_idx));
+    // Clear dest[dest_tail..dest_size].
+    generate_clear_array(*ctrl, mem,
+                         adr_type, dest, basic_elem_type,
+                         dest_tail, NULL,
+                         dest_size);
+    done_ctl->init_req(2, *ctrl);
+    done_mem->init_req(2, mem->memory_at(alias_idx));
+    *ctrl = done_ctl;
+    mem->set_memory_at(alias_idx, done_mem);
+  }
+
+  return done_mem;
 }
 
 // Generate prefetch instructions for next allocations.

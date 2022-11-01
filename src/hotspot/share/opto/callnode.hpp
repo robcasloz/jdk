@@ -979,12 +979,19 @@ public:
 //
 class AllocateArrayNode : public AllocateNode {
 public:
+  // TODO: find a more elegant way of passing tightly coupled array copy information.
+  ArrayCopyNode* _initializing_arraycopy;
+  Node* _dest_offset;
+  Node* _copy_length;
   AllocateArrayNode(Compile* C, const TypeFunc* atype, Node* ctrl, Node* mem, Node* abio, Node* size, Node* klass_node,
                     Node* initial_test, Node* count_val, Node* valid_length_test)
     : AllocateNode(C, atype, ctrl, mem, abio, size, klass_node,
                    initial_test)
   {
     init_class_id(Class_AllocateArray);
+    _initializing_arraycopy = nullptr;
+    _dest_offset = nullptr;
+    _copy_length = nullptr;
     set_req(AllocateNode::ALength,        count_val);
     set_req(AllocateNode::ValidLengthTest, valid_length_test);
   }

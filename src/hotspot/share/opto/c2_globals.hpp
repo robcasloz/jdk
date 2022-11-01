@@ -780,6 +780,9 @@
                                                                             \
   product(bool, VerifyReceiverTypes, trueInDebug, DIAGNOSTIC,               \
           "Verify receiver types at runtime")                               \
+                                                                            \
+  product(bool, Fix, false,                                                 \
+          "Apply fix")                                                      \
 
 // end of C2_FLAGS
 

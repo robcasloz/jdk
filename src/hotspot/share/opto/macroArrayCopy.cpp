@@ -139,7 +139,7 @@ Node* PhaseMacroExpand::generate_guard(Node** ctrl, Node* test, RegionNode* regi
   return if_slow;
 }
 
-inline Node* PhaseMacroExpand::generate_slow_guard(Node** ctrl, Node* test, RegionNode* region) {
+Node* PhaseMacroExpand::generate_slow_guard(Node** ctrl, Node* test, RegionNode* region) {
   return generate_guard(ctrl, test, region, PROB_UNLIKELY_MAG(3));
 }
 
@@ -385,7 +385,6 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
     transform_later(slow_region);
   }
 
-  Node* original_dest = dest;
   bool  dest_needs_zeroing   = false;
   bool  acopy_to_uninitialized = false;
 
@@ -401,31 +400,43 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
       && alloc != NULL
       && _igvn.find_int_con(alloc->in(AllocateNode::ALength), 1) > 0) {
     assert(ac->is_alloc_tightly_coupled(), "sanity");
-    // acopy to uninitialized tightly coupled allocations
-    // needs zeroing outside the copy range
-    // and the acopy itself will be to uninitialized memory
-    acopy_to_uninitialized = true;
-    if (alloc->maybe_set_complete(&_igvn)) {
-      // "You break it, you buy it."
-      InitializeNode* init = alloc->initialization();
-      assert(init->is_complete(), "we just did this");
-      init->set_complete_with_arraycopy();
-      assert(dest->is_CheckCastPP(), "sanity");
-      assert(dest->in(0)->in(0) == init, "dest pinned");
-      adr_type = TypeRawPtr::BOTTOM;  // all initializations are into raw memory
-      // From this point on, every exit path is responsible for
-      // initializing any non-copied parts of the object to zero.
-      // Also, if this flag is set we make sure that arraycopy interacts properly
-      // with G1, eliding pre-barriers. See CR 6627983.
-      dest_needs_zeroing = true;
+    InitializeNode* init = alloc->initialization();
+    if (Fix && init != nullptr && !init->is_complete()) {
+      assert(alloc->_initializing_arraycopy == nullptr,
+             "each allocation can only have at most one initializing arraycopy");
+      alloc->_initializing_arraycopy = ac;
+      alloc->_dest_offset = dest_offset;
+      alloc->_copy_length = copy_length;
     } else {
-      // dest_need_zeroing = false;
+      // acopy to uninitialized tightly coupled allocations
+      // needs zeroing outside the copy range
+      // and the acopy itself will be to uninitialized memory
+      acopy_to_uninitialized = true;
+      if (alloc->maybe_set_complete(&_igvn)) {
+        // Initialization was incomplete and has been set to complete now. The
+        // next array copy that is tightly coupled with this allocation will not
+        // enter here.
+        // "You break it, you buy it."
+        InitializeNode* init = alloc->initialization();
+        assert(init->is_complete(), "we just did this");
+        init->set_complete_with_arraycopy();
+        assert(dest->is_CheckCastPP(), "sanity");
+        assert(dest->in(0)->in(0) == init, "dest pinned");
+        adr_type = TypeRawPtr::BOTTOM;  // all initializations are into raw memory
+        // From this point on, every exit path is responsible for
+        // initializing any non-copied parts of the object to zero.
+        // Also, if this flag is set we make sure that arraycopy interacts properly
+        // with G1, eliding pre-barriers. See CR 6627983.
+        dest_needs_zeroing = true;
+      } else {
+        // TODO: when does this happen?
+        // dest_need_zeroing = false;
+      }
     }
   } else {
     // No zeroing elimination needed here.
     alloc                  = NULL;
     acopy_to_uninitialized = false;
-    //original_dest        = dest;
     //dest_needs_zeroing   = false;
   }
 
@@ -550,6 +561,7 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
     }
 
     // At this point, let's assume there is no tail.
+    // TODO: can we extract this case outside the dest_needs_zeroing case?
     if (!(*ctrl)->is_top() && alloc != NULL && basic_elem_type != T_OBJECT) {
       // There is no tail.  Try an upgrade to a 64-bit copy.
       bool didit = false;
@@ -766,6 +778,8 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
     // Generate the slow path, if needed.
     local_mem->set_memory_at(alias_idx, slow_mem);
 
+    // TODO: do we need this? probably not since the array will be fully
+    // initialized during expansion of ArrayAllocate?
     if (dest_needs_zeroing) {
       generate_clear_array(local_ctrl, local_mem,
                            adr_type, dest, basic_elem_type,

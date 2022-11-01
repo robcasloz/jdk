@@ -192,9 +192,11 @@ private:
                            Node* parm2);
 
   Node* initialize_object(AllocateNode* alloc,
-                          Node* control, Node* rawmem, Node* object,
+                          Node** control, Node* rawmem, Node* object,
                           Node* klass_node, Node* length,
                           Node* size_in_bytes);
+  Node* initialize_uncopied_array_slices(Node** ctrl, Node* mem, Node* dest,
+                                         AllocateArrayNode* alloc, ArrayCopyNode* ac);
 
   Node* make_arraycopy_load(ArrayCopyNode* ac, intptr_t offset, Node* ctl, Node* mem, BasicType ft, const Type *ftype, AllocateNode *alloc);
 
