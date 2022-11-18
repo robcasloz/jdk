@@ -624,7 +624,7 @@ void PhaseTransform::init_con_caches() {
 
 
 //--------------------------------find_int_type--------------------------------
-const TypeInt* PhaseTransform::find_int_type(Node* n) {
+const TypeInt* PhaseTransform::find_int_type(const Node* n) const {
   if (n == NULL)  return NULL;
   // Call type_or_null(n) to determine node's type since we might be in
   // parse phase and call n->Value() may return wrong type.

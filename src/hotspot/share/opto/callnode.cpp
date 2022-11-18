@@ -1579,7 +1579,7 @@ Node *AllocateNode::make_ideal_mark(PhaseGVN *phase, Node* obj, Node* control, N
   return mark_node;
 }
 
-AllocateNode::InitialTestType AllocateNode::initial_test_type(PhaseGVN* phase) {
+AllocateNode::InitialTestType AllocateNode::initial_test_type(const PhaseGVN* phase) const {
   switch (phase->find_int_con(in(AllocateNode::InitialTest), -1)) {
     case -1:
       return InitialTestType::Unknown;
@@ -1593,11 +1593,11 @@ AllocateNode::InitialTestType AllocateNode::initial_test_type(PhaseGVN* phase) {
   return InitialTestType::Unknown;
 }
 
-bool AllocateNode::may_take_fast_path(PhaseGVN* phase) {
+bool AllocateNode::may_take_fast_path(const PhaseGVN* phase) const {
   return UseTLAB && initial_test_type(phase) != InitialTestType::SlowOnly;
 }
 
-bool AllocateNode::requires_initial_test(PhaseGVN* phase) {
+bool AllocateNode::requires_initial_test(const PhaseGVN* phase) const {
   return UseTLAB && initial_test_type(phase) == InitialTestType::Unknown;
 }
 

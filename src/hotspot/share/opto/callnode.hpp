@@ -973,10 +973,10 @@ public:
   Node* make_ideal_mark(PhaseGVN *phase, Node* obj, Node* control, Node* mem);
 
   // Whether the allocation should include a fast path when expanded.
-  bool may_take_fast_path(PhaseGVN* phase);
+  bool may_take_fast_path(const PhaseGVN* phase) const;
 
   // Whether the allocation should include an initial test when expanded.
-  bool requires_initial_test(PhaseGVN* phase);
+  bool requires_initial_test(const PhaseGVN* phase) const;
 
 private:
 
@@ -988,7 +988,7 @@ private:
   };
 
   // Gives the constant value of the initial test, if available.
-  InitialTestType initial_test_type(PhaseGVN* phase);
+  InitialTestType initial_test_type(const PhaseGVN* phase) const;
 
 };
 

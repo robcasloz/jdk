@@ -255,9 +255,9 @@ public:
   }
 
   // Utility functions:
-  const TypeInt*  find_int_type( Node* n);
+  const TypeInt* find_int_type(const Node* n) const;
   const TypeLong* find_long_type(Node* n);
-  jint  find_int_con( Node* n, jint  value_if_unknown) {
+  jint find_int_con(const Node* n, jint value_if_unknown) const {
     const TypeInt* t = find_int_type(n);
     return (t != NULL && t->is_con()) ? t->get_con() : value_if_unknown;
   }
