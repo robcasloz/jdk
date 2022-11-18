@@ -28,6 +28,7 @@
 #include "compiler/oopMap.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
+#include "gc/shared/tlab_globals.hpp"
 #include "interpreter/interpreter.hpp"
 #include "opto/callGenerator.hpp"
 #include "opto/callnode.hpp"
@@ -1576,6 +1577,28 @@ Node *AllocateNode::make_ideal_mark(PhaseGVN *phase, Node* obj, Node* control, N
   // For now only enable fast locking for non-array types
   mark_node = phase->MakeConX(markWord::prototype().value());
   return mark_node;
+}
+
+AllocateNode::InitialTestType AllocateNode::initial_test_type(PhaseGVN* phase) {
+  switch (phase->find_int_con(in(AllocateNode::InitialTest), -1)) {
+    case -1:
+      return InitialTestType::Unknown;
+    case 0:
+      return InitialTestType::CanFitInTLAB;
+    case 1:
+      return InitialTestType::SlowOnly;
+    default:
+      assert(false, "unmatched initial test type");
+  }
+  return InitialTestType::Unknown;
+}
+
+bool AllocateNode::may_take_fast_path(PhaseGVN* phase) {
+  return UseTLAB && initial_test_type(phase) != InitialTestType::SlowOnly;
+}
+
+bool AllocateNode::requires_initial_test(PhaseGVN* phase) {
+  return UseTLAB && initial_test_type(phase) == InitialTestType::Unknown;
 }
 
 // Retrieve the length from the AllocateArrayNode. Narrow the type with a

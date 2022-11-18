@@ -1198,7 +1198,6 @@ void PhaseMacroExpand::expand_allocate_common(
   Node* i_o  = alloc->in(TypeFunc::I_O);
   Node* size_in_bytes     = alloc->in(AllocateNode::AllocSize);
   Node* klass_node        = alloc->in(AllocateNode::KlassNode);
-  Node* initial_slow_test = alloc->in(AllocateNode::InitialTest);
   assert(ctrl != NULL, "must have control");
 
   // We need a Region and corresponding Phi's to merge the slow-path and fast-path results.
@@ -1211,24 +1210,9 @@ void PhaseMacroExpand::expand_allocate_common(
 
   // The initial slow comparison is a size check, the comparison
   // we want to do is a BoolTest::gt
-  bool expand_fast_path = true;
-  int tv = _igvn.find_int_con(initial_slow_test, -1);
-  if (tv >= 0) {
-    // InitialTest has constant result
-    //   0 - can fit in TLAB
-    //   1 - always too big or negative
-    assert(tv <= 1, "0 or 1 if a constant");
-    expand_fast_path = (tv == 0);
-    initial_slow_test = NULL;
-  } else {
-    initial_slow_test = BoolNode::make_predicate(initial_slow_test, &_igvn);
-  }
-
-  if (!UseTLAB) {
-    // Force slow-path allocation
-    expand_fast_path = false;
-    initial_slow_test = NULL;
-  }
+  bool expand_fast_path = alloc->may_take_fast_path(&_igvn);
+  Node* initial_slow_test = alloc->requires_initial_test(&_igvn) ?
+    BoolNode::make_predicate(alloc->in(AllocateNode::InitialTest), &_igvn) : NULL;
 
   bool allocation_has_use = (alloc->result_cast() != NULL);
   if (!allocation_has_use) {

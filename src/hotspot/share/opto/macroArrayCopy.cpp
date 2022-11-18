@@ -399,6 +399,7 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
       && basic_elem_type != T_CONFLICT // avoid corner case
       && !src->eqv_uncast(dest)
       && alloc != NULL
+      && alloc->may_take_fast_path(&_igvn) // slow path does initialization
       && _igvn.find_int_con(alloc->in(AllocateNode::ALength), 1) > 0) {
     assert(ac->is_alloc_tightly_coupled(), "sanity");
     // acopy to uninitialized tightly coupled allocations

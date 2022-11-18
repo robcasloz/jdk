@@ -971,6 +971,25 @@ public:
   bool is_allocation_MemBar_redundant() { return _is_allocation_MemBar_redundant; }
 
   Node* make_ideal_mark(PhaseGVN *phase, Node* obj, Node* control, Node* mem);
+
+  // Whether the allocation should include a fast path when expanded.
+  bool may_take_fast_path(PhaseGVN* phase);
+
+  // Whether the allocation should include an initial test when expanded.
+  bool requires_initial_test(PhaseGVN* phase);
+
+private:
+
+  // Constant value of the initial test, if known at compile time.
+  enum class InitialTestType {
+    Unknown,         // test result is unknown at compile time
+    CanFitInTLAB,    // constant, can fit in TLAB
+    SlowOnly         // constant always too big or negative
+  };
+
+  // Gives the constant value of the initial test, if available.
+  InitialTestType initial_test_type(PhaseGVN* phase);
+
 };
 
 //------------------------------AllocateArray---------------------------------
