@@ -263,6 +263,11 @@ public class IRNode {
         trapNodes(CLASS_CHECK_TRAP, "class_check");
     }
 
+    public static final String CLEAR_ARRAY = PREFIX + "CLEAR_ARRAY" + POSTFIX;
+    static {
+        beforeMatchingNameRegex(CLEAR_ARRAY, "ClearArray");
+    }
+
     public static final String CMOVE_I = PREFIX + "CMOVE_I" + POSTFIX;
     static {
         beforeMatchingNameRegex(CMOVE_I, "CMoveI");
