@@ -69,8 +69,8 @@ def main():
         data = json.load(json_file)
 
     thread_key = 'osName'
-
     thread_events = {}
+    earliest_start = None
 
     for event in data['recording']['events']:
         if event['type'] != 'jdk.VMPause':
@@ -84,6 +84,8 @@ def main():
             thread_events[thread_id] = []
         start = pd.to_datetime(values['startTime'],
                                format="%Y-%m-%dT%H:%M:%S.%f")
+        if earliest_start == None or start < earliest_start:
+            earliest_start = start
         duration = pd.to_timedelta(values['duration'])
         end = start + duration
         event_data = (start, duration, end)
@@ -96,7 +98,8 @@ def main():
 
     for thread in thread_events.keys():
         for (start, duration, end) in thread_events[thread]:
-            ax.barh(thread, duration, left=start)
+            relative_start = start - earliest_start
+            ax.barh(thread, duration.value, left=relative_start.value,color="gray")
 
     plt.show()
 

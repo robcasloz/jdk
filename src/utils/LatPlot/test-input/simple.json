@@ -1,0 +1,26 @@
+{
+    "recording": {
+        "events": [
+            {
+                "type": "jdk.VMPause",
+                "values": {
+                    "startTime": "2023-01-17T10:00:00.0+02:00",
+                    "duration": "PT10.0S",
+                    "eventThread": {
+                        "osName": "thread1"
+                    }
+                }
+            },
+            {
+                "type": "jdk.VMPause",
+                "values": {
+                    "startTime": "2023-01-17T10:00:30.0+02:00",
+                    "duration": "PT10.0S",
+                    "eventThread": {
+                        "osName": "thread1"
+                    }
+                }
+            }
+        ]
+    }
+}
