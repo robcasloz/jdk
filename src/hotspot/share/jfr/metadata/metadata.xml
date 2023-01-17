@@ -1233,7 +1233,8 @@
   </Event>
 
   <Event name="VMPause" category="Java Virtual Machine, Runtime" label="VM Pause" description="VM pause" thread="true">
-    <Field type="ulong" name="value" label="Value"/>
+    <!-- JFR seems to assume all events have at least one field, otherwise it enters an infinite loop when committing. !-->
+    <Field type="ulong" name="dummy" label="Dummy"/>
   </Event>
 
   <Type name="DeoptimizationReason" label="Deoptimization Reason">

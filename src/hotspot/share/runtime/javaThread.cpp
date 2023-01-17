@@ -1583,10 +1583,8 @@ void JavaThread::emit_pause_event(JavaThreadState from, JavaThreadState to, cons
   EventVMPause e;
   e.set_starttime(start);
   e.set_endtime(end);
-  if (e.should_commit()) {
-    e.set_value(0);
-    e.commit();
-  }
+  // The value 0 is passed to initialize a dummy field used to prevent JFR from hanging.
+  e.commit(0);
 }
 
 // CR 6300358 (sub-CR 2137150)
