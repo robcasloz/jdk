@@ -1,0 +1,104 @@
+#!/usr/bin/python3
+#
+# Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+
+import argparse
+import warnings
+import json
+import matplotlib.pyplot as plt # v. 3.6.3
+import pandas as pd # v. 1.5.2
+
+def add_feature_argument(parser, feature, help_msg, default):
+    """
+    Add a Boolean, mutually-exclusive feature argument to a parser.
+    """
+    if default:
+        default_option = '--' + feature
+    else:
+        default_option = '--no-' + feature
+    help_string = help_msg + " (default: " + default_option + ")"
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_lower = feature.replace('-', '_')
+    feature_parser.add_argument('--' + feature,
+                                dest=feature_lower,
+                                action='store_true',
+                                help=help_string)
+    feature_parser.add_argument('--no-' + feature,
+                                dest=feature_lower,
+                                action='store_false',
+                                help=argparse.SUPPRESS)
+    parser.set_defaults(**{feature_lower:default})
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Plots VM pause events from a JFR JSON file.",
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False,
+        usage='%(prog)s [options] JSON_FILE')
+
+    io = parser.add_argument_group('input/output options')
+    io.add_argument('JSON_FILE',
+                    help="JSON file obtained by running 'jfr print --json' on a JFR file")
+    io.add_argument('--help',
+                    action='help',
+                    default=argparse.SUPPRESS,
+                    help='Show this help message and exit')
+
+    args = parser.parse_args()
+
+    with open(args.JSON_FILE, 'r') as json_file:
+        data = json.load(json_file)
+
+    thread_key = 'osName'
+
+    thread_events = {}
+
+    for event in data['recording']['events']:
+        if event['type'] != 'jdk.VMPause':
+            continue
+        values = event['values']
+        if values['eventThread'] == None:
+            warnings.warn("VMPause event with empty eventThread information")
+            continue
+        thread_id = values['eventThread'][thread_key]
+        if not thread_id in thread_events:
+            thread_events[thread_id] = []
+        start = pd.to_datetime(values['startTime'],
+                               format="%Y-%m-%dT%H:%M:%S.%f")
+        duration = pd.to_timedelta(values['duration'])
+        end = start + duration
+        event_data = (start, duration, end)
+        thread_events[thread_id].append(event_data)
+
+    for thread in thread_events.keys():
+        thread_events[thread].sort()
+
+    fig, ax = plt.subplots()
+
+    for thread in thread_events.keys():
+        for (start, duration, end) in thread_events[thread]:
+            ax.barh(thread, duration, left=start)
+
+    plt.show()
+
+if __name__ == '__main__':
+    main()
