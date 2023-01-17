@@ -45,6 +45,7 @@
 #include "utilities/exceptions.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/ticks.hpp"
 #if INCLUDE_JFR
 #include "jfr/support/jfrThreadExtension.hpp"
 #endif
@@ -156,6 +157,9 @@ class JavaThread: public Thread {
 
   // One-element thread local free list
   JNIHandleBlock* _free_handle_block;
+
+  // Start point of VM pause for JFR recording
+  Ticks pause_start;
 
  public:
   volatile intptr_t _Stalled;
@@ -906,10 +910,12 @@ private:
   void print_on(outputStream* st, bool print_extended_info) const;
   void print_on(outputStream* st) const { print_on(st, false); }
   void print() const;
+  static const char* _get_thread_state_name(JavaThreadState _thread_state);
   void print_thread_state_on(outputStream*) const;
   void print_on_error(outputStream* st, char* buf, int buflen) const;
   void print_name_on_error(outputStream* st, char* buf, int buflen) const;
   void verify();
+  static void emit_pause_event(JavaThreadState from, JavaThreadState to, const Ticks& start, const Ticks& end);
 
   // Accessing frames
   frame last_frame() {

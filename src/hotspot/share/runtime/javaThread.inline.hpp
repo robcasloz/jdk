@@ -150,6 +150,20 @@ inline JavaThreadState JavaThread::thread_state() const    {
 inline void JavaThread::set_thread_state(JavaThreadState s) {
   assert(current_or_null() == nullptr || current_or_null() == this,
          "state change should only be called by the current thread");
+  JavaThreadState from = thread_state();
+  if (current_or_null() == this && from != s) {
+    if ((from == _thread_in_Java || from == _thread_in_native) &&
+        (s == _thread_in_vm || s == _thread_blocked)) {
+      // Transition from running application to paused.
+      pause_start = Ticks::now();
+    } else if ((from == _thread_in_vm || from == _thread_blocked) &&
+               (s == _thread_in_Java || s == _thread_in_native)) {
+      // Transition from paused to running application.
+      Ticks pause_end = Ticks::now();
+      emit_pause_event(from, s, pause_start, pause_end);
+    }
+  }
+
 #if defined(PPC64) || defined (AARCH64) || defined(RISCV64)
   // Use membars when accessing volatile _thread_state. See
   // Threads::create_vm() for size checks.

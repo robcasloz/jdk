@@ -1454,7 +1454,7 @@ void JavaThread::metadata_do(MetadataClosure* f) {
 }
 
 // Printing
-const char* _get_thread_state_name(JavaThreadState _thread_state) {
+const char* JavaThread::_get_thread_state_name(JavaThreadState _thread_state) {
   switch (_thread_state) {
   case _thread_uninitialized:     return "_thread_uninitialized";
   case _thread_new:               return "_thread_new";
@@ -1569,6 +1569,24 @@ void JavaThread::verify() {
 
   // Verify the stack frames.
   frames_do(frame_verify);
+}
+
+void JavaThread::emit_pause_event(JavaThreadState from, JavaThreadState to, const Ticks& start, const Ticks& end) {
+  if (Verbose) {
+    tty->print_cr("%s -> %s: end pause (%ld) at %ld, total duration: %ld ns",
+                  _get_thread_state_name(from),
+                  _get_thread_state_name(to),
+                  start.nanoseconds(),
+                  end.nanoseconds(),
+                  (end.nanoseconds() - start.nanoseconds()));
+  }
+  EventVMPause e;
+  e.set_starttime(start);
+  e.set_endtime(end);
+  if (e.should_commit()) {
+    e.set_value(0);
+    e.commit();
+  }
 }
 
 // CR 6300358 (sub-CR 2137150)
