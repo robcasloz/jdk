@@ -48,6 +48,11 @@ def add_feature_argument(parser, feature, help_msg, default):
                                 help=argparse.SUPPRESS)
     parser.set_defaults(**{feature_lower:default})
 
+def print_duration(duration):
+    microseconds = duration.seconds * 1000000 + duration.microseconds
+    miliseconds = microseconds / 1000
+    return str(round(miliseconds, 1)) + "ms"
+
 def main():
     parser = argparse.ArgumentParser(
         description="Plots VM pause events from a JFR JSON file.",
@@ -99,8 +104,26 @@ def main():
     for thread in thread_events.keys():
         for (start, duration, end) in thread_events[thread]:
             relative_start = start - earliest_start
-            ax.barh(thread, duration.value, left=relative_start.value,color="gray")
+            ax.barh(thread,
+                    duration.value,
+                    left=relative_start.value,
+                    color="gray",
+                    edgecolor="black",
+                    linewidth=1)
+            if duration.seconds > 0 or duration.microseconds > 500000:
+                ax.text(relative_start.value + duration.value/2,
+                        thread,
+                        print_duration(duration),
+                        horizontalalignment='center',
+                        verticalalignment='center')
 
+    ax.xaxis.set_major_locator(plt.MaxNLocator(12))
+
+    (ticks, labels) = plt.xticks()
+    labels2 = [print_duration(pd.Timedelta(t)) for t in ticks]
+    ax.set_xticks(ticks, labels=labels2, rotation='vertical')
+
+    plt.subplots_adjust(left=0.3, bottom=0.3)
     plt.show()
 
 if __name__ == '__main__':
