@@ -228,6 +228,40 @@ class ThreadBlockInVM  : public ThreadBlockInVMPreprocess<> {
   static void emptyOp(JavaThread* current) {}
 };
 
+// Perform a transition from VM to native and take a call-back to be executed
+// before SafepointMechanism::process_if_requested when returning to VM. This is
+// analogous to ThreadBlockInVMPreprocess but going VM <-> native.
+template <typename PRE_PROC = void(JavaThread*)>
+class ThreadNativeInVMPreprocess : public ThreadStateTransition {
+ private:
+  PRE_PROC& _pr;
+  bool _allow_suspend;
+ public:
+  ThreadNativeInVMPreprocess(JavaThread* thread, PRE_PROC& pr, bool allow_suspend = false)
+    : ThreadStateTransition(thread), _pr(pr), _allow_suspend(allow_suspend) {
+    assert(_thread->thread_state() == _thread_in_vm, "coming from wrong thread state");
+    transition_from_vm(thread, _thread_in_native);
+  }
+  ~ThreadNativeInVMPreprocess() {
+    assert(_thread->thread_state() == _thread_in_native, "coming from wrong thread state");
+    // Change back to _thread_in_vm and ensure it is seen by the VM thread.
+    _thread->set_thread_state_fence(_thread_in_vm);
+
+    if (SafepointMechanism::should_process(_thread, _allow_suspend)) {
+      _pr(_thread);
+      SafepointMechanism::process_if_requested(_thread, _allow_suspend, false /* check_async_exception */);
+    }
+  }
+};
+
+// This is analogous to ThreadBlockInVM but going VM <-> native.
+class ThreadNativeInVM  : public ThreadNativeInVMPreprocess<> {
+ public:
+  ThreadNativeInVM(JavaThread* thread, bool allow_suspend = false)
+    : ThreadNativeInVMPreprocess(thread, emptyOp, allow_suspend) {}
+ private:
+  static void emptyOp(JavaThread* current) {}
+};
 
 // Debug class instantiated in JRT_ENTRY macro.
 // Can be used to verify properties on enter/exit of the VM.

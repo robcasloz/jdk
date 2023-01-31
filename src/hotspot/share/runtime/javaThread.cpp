@@ -2062,7 +2062,7 @@ bool JavaThread::sleep_nanos(jlong nanos) {
     }
 
     {
-      ThreadBlockInVM tbivm(this);
+      ThreadNativeInVM tnivm(this);
       OSThreadWaitState osts(this->osthread(), false /* not Object.wait() */);
       slp->park_nanos(nanos_remaining);
     }

@@ -1521,7 +1521,7 @@ void ObjectMonitor::wait(jlong millis, bool interruptible, TRAPS) {
 
     {
       ClearSuccOnSuspend csos(this);
-      ThreadBlockInVMPreprocess<ClearSuccOnSuspend> tbivs(current, csos, true /* allow_suspend */);
+      ThreadNativeInVMPreprocess<ClearSuccOnSuspend> tnivs(current, csos, true /* allow_suspend */);
       if (interrupted || HAS_PENDING_EXCEPTION) {
         // Intentionally empty
       } else if (node._notified == 0) {
