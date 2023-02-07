@@ -357,6 +357,20 @@ public class Figure extends Properties.Entity implements Vertex {
         return idString;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Figure)) {
+            return false;
+        }
+        return getInputNode() == ((Figure)o).getInputNode();
+    }
+
+    @Override
+    public int hashCode() {
+        return getInputNode().hashCode();
+    }
+
+
     public static int getVerticalOffset() {
         return Figure.SLOT_WIDTH - Figure.OVERLAPPING;
     }
