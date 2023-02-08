@@ -104,7 +104,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     public static final float ZOOM_MIN_FACTOR = 0.25f;
     public static final float ZOOM_INCREMENT = 1.5f;
     public static final int SLOT_OFFSET = 8;
-    public static final int ANIMATION_LIMIT = 40;
+    public static final int ANIMATION_LIMIT = 100;
 
     @SuppressWarnings("unchecked")
     public <T> T getWidget(Object o) {
@@ -620,12 +620,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private void update() {
         rebuilding = true;
+        Map<Figure, Point> oldVisibleFigurePoints = getVisibleFigurePoints();
         clearObjects();
         updateFigureTexts();
         updateFigureWidths();
         rebuildMainLayer();
         rebuildBlockLayer();
-        relayout();
+        relayout(oldVisibleFigurePoints);
         setFigureSelection(model.getSelectedFigures());
         validateAll();
         centerSelectedFigures();
@@ -663,7 +664,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private void hiddenNodesChanged() {
-        relayout();
+        Map<Figure, Point> oldVisibleFigurePoints = getVisibleFigurePoints();
+        relayout(oldVisibleFigurePoints);
         addUndo();
     }
 
@@ -994,17 +996,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
-    private Set<FigureWidget> getVisibleFigureWidgets() {
-        Set<FigureWidget> visibleFigureWidgets = new HashSet<>();
-        for (Figure figure : getModel().getDiagram().getFigures()) {
-            FigureWidget figureWidget = getWidget(figure);
-            if (figureWidget != null && figureWidget.isVisible()) {
-                visibleFigureWidgets.add(figureWidget);
-            }
-        }
-        return visibleFigureWidgets;
-    }
-
     private Set<BlockWidget> getVisibleBlockWidgets() {
         Set<BlockWidget> visibleBlockWidgets = new HashSet<>();
         if (getModel().getShowBlocks() || getModel().getShowCFG()) {
@@ -1091,15 +1082,15 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
-    private HashSet<Figure> getVisibleFigures() {
-        HashSet<Figure> visibleFigures = new HashSet<>();
+    private Map<Figure, Point> getVisibleFigurePoints() {
+        Map<Figure, Point> visibleFigurePoints = new HashMap<>();
         for (Figure figure : getModel().getDiagram().getFigures()) {
             FigureWidget figureWidget = getWidget(figure);
-            if (figureWidget.isVisible()) {
-                visibleFigures.add(figure);
+            if (figureWidget != null && figureWidget.isVisible()) {
+                visibleFigurePoints.put(figure, figureWidget.getLocation());
             }
         }
-        return visibleFigures;
+        return visibleFigurePoints;
     }
 
     private HashSet<Connection> getVisibleConnections() {
@@ -1112,16 +1103,19 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return visibleConnections;
     }
 
-    private void updateFigureWidgetLocations(Set<FigureWidget> oldVisibleFigureWidgets) {
+    private void updateFigureWidgetLocations(Map<Figure, Point> oldVisibleFigurePoints) {
         boolean doAnimation = shouldAnimate();
         for (Figure figure : getModel().getDiagram().getFigures()) {
             FigureWidget figureWidget = getWidget(figure);
             if (figureWidget.isVisible()) {
-                Point location = new Point(figure.getPosition());
-                if (doAnimation && oldVisibleFigureWidgets.contains(figureWidget)) {
-                    getSceneAnimator().animatePreferredLocation(figureWidget, location);
+                Point target = new Point(figure.getPosition());
+                if (doAnimation && oldVisibleFigurePoints.containsKey(figure)) {
+                    // TODO: don't animate if old is (0,0) (initial)
+                    Point old = oldVisibleFigurePoints.get(figure);
+                    figureWidget.setPreferredLocation(old);
+                    getSceneAnimator().animatePreferredLocation(figureWidget, target);
                 } else {
-                    figureWidget.setPreferredLocation(location);
+                    figureWidget.setPreferredLocation(target);
                 }
             }
         }
@@ -1174,16 +1168,15 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
-    private void relayout() {
+    private void relayout(Map<Figure, Point> oldVisibleFigurePoints) {
         rebuilding = true;
-        Set<FigureWidget> oldVisibleFigureWidgets = getVisibleFigureWidgets();
         Set<BlockWidget> oldVisibleBlockWidgets = getVisibleBlockWidgets();
 
         updateVisibleFigureWidgets();
         updateNodeHull();
         updateVisibleBlockWidgets();
 
-        HashSet<Figure> visibleFigures = getVisibleFigures();
+        HashSet<Figure> visibleFigures = new HashSet<>(getVisibleFigurePoints().keySet());
         HashSet<Connection> visibleConnections = getVisibleConnections();
         if (getModel().getShowSea()) {
             doSeaLayout(visibleFigures, visibleConnections);
@@ -1194,7 +1187,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
         rebuildConnectionLayer();
 
-        updateFigureWidgetLocations(oldVisibleFigureWidgets);
+        updateFigureWidgetLocations(oldVisibleFigurePoints);
         updateBlockWidgetBounds(oldVisibleBlockWidgets);
         validateAll();
 
