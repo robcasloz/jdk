@@ -79,5 +79,18 @@ public class Block implements Cluster {
     public String toString() {
         return inputBlock.getName();
     }
-}
 
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Block)) {
+            return false;
+        }
+        return getInputBlock().getName().equals(((Block)o).getInputBlock().getName());
+    }
+
+    @Override
+    public int hashCode() {
+        return getInputBlock().hashCode();
+    }
+
+}
