@@ -889,14 +889,16 @@ public class ServerCompilerScheduler implements Scheduler {
     }
 
     int reprRank(Node n) {
-        if (n.isBlockStart || isOtherBlockStart(n)) {
+        // Mixed-category and return-like nodes are ranked highest since they
+        // remain stable before and after C2 scheduling.
+        if (n.inputNode.getProperties().get("category").equals("mixed")) {
             return 1;
-        } else if (isRegion(n)) {
-            return 2;
-        } else if (n.inputNode.getProperties().get("category").equals("mixed")) {
-            return 3;
         } else if (n.inputNode.getProperties().get("category").equals("other") &&
                    n.inputNode.getProperties().get("type").equals("bottom")) {
+            return 2;
+        } else if (n.isBlockStart || isOtherBlockStart(n)) {
+            return 3;
+        } else if (isRegion(n)) {
             return 4;
         } else {
             return 5;
