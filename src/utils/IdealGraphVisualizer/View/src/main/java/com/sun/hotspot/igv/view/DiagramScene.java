@@ -88,6 +88,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private ModelState modelState;
     private boolean rebuilding;
     private long relayouts;
+    private Map<Figure, Point> currentVisibleFigureLocations;
 
     /**
      * The alpha level of partially visible figures.
@@ -473,6 +474,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         this.model = model;
         modelState = new ModelState(model);
         relayouts = 0;
+        currentVisibleFigureLocations = new HashMap<>();
 
         model.getDiagramChangedEvent().addListener(m -> update());
         model.getGraphChangedEvent().addListener(m -> graphChanged());
@@ -622,14 +624,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private void update() {
         rebuilding = true;
-        Map<Figure, Point> oldVisibleFigurePoints = getVisibleFigurePoints();
         Map<Block, Rectangle> oldVisibleBlockBounds = getVisibleBlockBounds();
         clearObjects();
         updateFigureTexts();
         updateFigureWidths();
         rebuildMainLayer();
         rebuildBlockLayer();
-        relayout(oldVisibleFigurePoints, oldVisibleBlockBounds);
+        relayout(oldVisibleBlockBounds);
         setFigureSelection(model.getSelectedFigures());
         validateAll();
         centerSelectedFigures();
@@ -667,9 +668,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private void hiddenNodesChanged() {
-        Map<Figure, Point> oldVisibleFigurePoints = getVisibleFigurePoints();
         Map<Block, Rectangle> oldVisibleBlockBounds = getVisibleBlockBounds();
-        relayout(oldVisibleFigurePoints, oldVisibleBlockBounds);
+        relayout(oldVisibleBlockBounds);
         addUndo();
     }
 
@@ -1065,15 +1065,15 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
-    private Map<Figure, Point> getVisibleFigurePoints() {
-        Map<Figure, Point> visibleFigurePoints = new HashMap<>();
+    private HashSet<Figure> getVisibleFigures() {
+        HashSet<Figure> visibleFigures = new HashSet<>();
         for (Figure figure : getModel().getDiagram().getFigures()) {
             FigureWidget figureWidget = getWidget(figure);
             if (figureWidget != null && figureWidget.isVisible()) {
-                visibleFigurePoints.put(figure, figureWidget.getLocation());
+                visibleFigures.add(figure);
             }
         }
-        return visibleFigurePoints;
+        return visibleFigures;
     }
 
     private Map<Block, Rectangle> getVisibleBlockBounds() {
@@ -1099,21 +1099,24 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return visibleConnections;
     }
 
-    private void updateFigureWidgetLocations(Map<Figure, Point> oldVisibleFigurePoints) {
+    private void updateFigureWidgetLocations() {
         boolean doAnimation = shouldAnimate();
+        Map<Figure, Point> newVisibleFigureLocations = new HashMap<>();
         for (Figure figure : getModel().getDiagram().getFigures()) {
             FigureWidget figureWidget = getWidget(figure);
             if (figureWidget.isVisible()) {
                 Point target = new Point(figure.getPosition());
-                if (doAnimation && oldVisibleFigurePoints.containsKey(figure)) {
-                    Point old = oldVisibleFigurePoints.get(figure);
-                    figureWidget.setPreferredLocation(old);
+                newVisibleFigureLocations.put(figure, target);
+                if (doAnimation && currentVisibleFigureLocations.containsKey(figure)) {
+                    Point current = currentVisibleFigureLocations.get(figure);
+                    figureWidget.setPreferredLocation(current);
                     getSceneAnimator().animatePreferredLocation(figureWidget, target);
                 } else {
                     figureWidget.setPreferredLocation(target);
                 }
             }
         }
+        currentVisibleFigureLocations = newVisibleFigureLocations;
     }
 
     private void updateBlockWidgetBounds(Map<Block, Rectangle> oldVisibleBlockBounds) {
@@ -1165,8 +1168,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
-    private void relayout(Map<Figure, Point> oldVisibleFigurePoints,
-                          Map<Block, Rectangle> oldVisibleBlockBounds) {
+    private void relayout(Map<Block, Rectangle> oldVisibleBlockBounds) {
         relayouts++;
         rebuilding = true;
 
@@ -1174,7 +1176,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         updateNodeHull();
         updateVisibleBlockWidgets();
 
-        HashSet<Figure> visibleFigures = new HashSet<>(getVisibleFigurePoints().keySet());
+        HashSet<Figure> visibleFigures = getVisibleFigures();
         HashSet<Connection> visibleConnections = getVisibleConnections();
         if (getModel().getShowSea()) {
             doSeaLayout(visibleFigures, visibleConnections);
@@ -1185,7 +1187,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
         rebuildConnectionLayer();
 
-        updateFigureWidgetLocations(oldVisibleFigurePoints);
+        updateFigureWidgetLocations();
         updateBlockWidgetBounds(oldVisibleBlockBounds);
         validateAll();
 
