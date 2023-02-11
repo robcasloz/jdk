@@ -362,7 +362,7 @@ public class Figure extends Properties.Entity implements Vertex {
         if (!(o instanceof Figure)) {
             return false;
         }
-        return getInputNode() == ((Figure)o).getInputNode();
+        return getInputNode().equals(((Figure)o).getInputNode());
     }
 
     @Override
