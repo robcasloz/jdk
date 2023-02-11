@@ -89,6 +89,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private boolean rebuilding;
     private long relayouts;
     private Map<Figure, Point> currentVisibleFigureLocations;
+    private Map<Block, Rectangle> currentVisibleBlockBounds;
 
     /**
      * The alpha level of partially visible figures.
@@ -475,6 +476,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         modelState = new ModelState(model);
         relayouts = 0;
         currentVisibleFigureLocations = new HashMap<>();
+        currentVisibleBlockBounds = new HashMap<>();
 
         model.getDiagramChangedEvent().addListener(m -> update());
         model.getGraphChangedEvent().addListener(m -> graphChanged());
@@ -624,13 +626,12 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private void update() {
         rebuilding = true;
-        Map<Block, Rectangle> oldVisibleBlockBounds = getVisibleBlockBounds();
         clearObjects();
         updateFigureTexts();
         updateFigureWidths();
         rebuildMainLayer();
         rebuildBlockLayer();
-        relayout(oldVisibleBlockBounds);
+        relayout();
         setFigureSelection(model.getSelectedFigures());
         validateAll();
         centerSelectedFigures();
@@ -668,8 +669,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private void hiddenNodesChanged() {
-        Map<Block, Rectangle> oldVisibleBlockBounds = getVisibleBlockBounds();
-        relayout(oldVisibleBlockBounds);
+        relayout();
         addUndo();
     }
 
@@ -1076,19 +1076,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return visibleFigures;
     }
 
-    private Map<Block, Rectangle> getVisibleBlockBounds() {
-        Map<Block, Rectangle> visibleBlockBounds = new HashMap<>();
-        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
-            for (Block block : getModel().getDiagram().getBlocks()) {
-                BlockWidget blockWidget = getWidget(block);
-                if (blockWidget != null && blockWidget.isVisible()) {
-                    visibleBlockBounds.put(block, blockWidget.getBounds());
-                }
-            }
-        }
-        return visibleBlockBounds;
-    }
-
     private HashSet<Connection> getVisibleConnections() {
         HashSet<Connection> visibleConnections = new HashSet<>();
         for (Connection connection : getModel().getDiagram().getConnections()) {
@@ -1119,22 +1106,25 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         currentVisibleFigureLocations = newVisibleFigureLocations;
     }
 
-    private void updateBlockWidgetBounds(Map<Block, Rectangle> oldVisibleBlockBounds) {
+    private void updateBlockWidgetBounds() {
         if (getModel().getShowBlocks() || getModel().getShowCFG()) {
             boolean doAnimation = shouldAnimate();
+            Map<Block, Rectangle> newVisibleBlockBounds = new HashMap<>();
             for (Block block : getModel().getDiagram().getBlocks()) {
                 BlockWidget blockWidget = getWidget(block);
                 if (blockWidget != null && blockWidget.isVisible()) {
                     Rectangle target = new Rectangle(block.getBounds());
-                    if (doAnimation && oldVisibleBlockBounds.containsKey(block)) {
-                        Rectangle old = oldVisibleBlockBounds.get(block);
-                        blockWidget.setPreferredBounds(old);
+                    newVisibleBlockBounds.put(block, target);
+                    if (doAnimation && currentVisibleBlockBounds.containsKey(block)) {
+                        Rectangle current = currentVisibleBlockBounds.get(block);
+                        blockWidget.setPreferredBounds(current);
                         getSceneAnimator().animatePreferredBounds(blockWidget, target);
                     } else {
                         blockWidget.setPreferredBounds(target);
                     }
                 }
             }
+            currentVisibleBlockBounds = newVisibleBlockBounds;
         }
     }
 
@@ -1168,7 +1158,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
-    private void relayout(Map<Block, Rectangle> oldVisibleBlockBounds) {
+    private void relayout() {
         relayouts++;
         rebuilding = true;
 
@@ -1188,7 +1178,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         rebuildConnectionLayer();
 
         updateFigureWidgetLocations();
-        updateBlockWidgetBounds(oldVisibleBlockBounds);
+        updateBlockWidgetBounds();
         validateAll();
 
         centerSingleSelectedFigure();
