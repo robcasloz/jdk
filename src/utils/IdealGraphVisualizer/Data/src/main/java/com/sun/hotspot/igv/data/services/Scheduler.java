@@ -35,4 +35,6 @@ import java.util.Collection;
 public interface Scheduler {
 
     public Collection<InputBlock> schedule(InputGraph graph);
+
+    public void decorate(InputGraph graph);
 }

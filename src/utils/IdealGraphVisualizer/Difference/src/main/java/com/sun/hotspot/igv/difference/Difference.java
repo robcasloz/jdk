@@ -78,12 +78,13 @@ public class Difference {
     }
 
     private static void ensureScheduled(InputGraph a) {
+        Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
         if (a.getBlocks().isEmpty()) {
-            Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
             a.clearBlocks();
             s.schedule(a);
             a.ensureNodesInBlocks();
         }
+        s.decorate(a);
     }
 
     private static InputGraph createDiff(InputGraph a, InputGraph b, Set<NodePair> pairs) {

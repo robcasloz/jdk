@@ -299,12 +299,13 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
     private void rebuildDiagram() {
         // clear diagram
         InputGraph graph = getGraph();
+        Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
         if (graph.getBlocks().isEmpty()) {
-            Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
             graph.clearBlocks();
             s.schedule(graph);
             graph.ensureNodesInBlocks();
         }
+        s.decorate(graph);
         diagram = new Diagram(graph,
                 Settings.get().get(Settings.NODE_TEXT, Settings.NODE_TEXT_DEFAULT),
                 Settings.get().get(Settings.NODE_SHORT_TEXT, Settings.NODE_SHORT_TEXT_DEFAULT),

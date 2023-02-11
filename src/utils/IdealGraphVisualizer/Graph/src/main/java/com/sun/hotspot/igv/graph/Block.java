@@ -87,12 +87,12 @@ public class Block implements Cluster {
             return false;
         }
         Block b = (Block)o;
-        InputNode myHeader = getInputBlock().getHeader(),
-                  bHeader = b.getInputBlock().getHeader();
-        if (myHeader == null || bHeader == null) {
+        InputNode myRepr = getInputBlock().getRepresentative(),
+                  bRepr = b.getInputBlock().getRepresentative();
+        if (myRepr == null || bRepr == null) {
             return getInputBlock().getName().equals(b.getInputBlock().getName());
         }
-        return myHeader.equals(bHeader);
+        return myRepr.equals(bRepr);
     }
 
     @Override
