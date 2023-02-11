@@ -86,18 +86,14 @@ public class Block implements Cluster {
         if (!(o instanceof Block)) {
             return false;
         }
-        Block b = (Block)o;
         InputNode myRepr = getInputBlock().getRepresentative(),
-                  bRepr = b.getInputBlock().getRepresentative();
-        if (myRepr == null || bRepr == null) {
-            return getInputBlock().getName().equals(b.getInputBlock().getName());
-        }
+                  bRepr = ((Block)o).getInputBlock().getRepresentative();
         return myRepr.equals(bRepr);
     }
 
     @Override
     public int hashCode() {
-        return getInputBlock().hashCode();
+        return getInputBlock().getRepresentative().hashCode();
     }
 
 }

@@ -131,6 +131,10 @@ public class InputBlock {
     }
 
     public InputNode getRepresentative() {
+        if (representative == null) {
+            // Guarantee that a representative node is always returned.
+            return new InputNode(-1);
+        }
         return representative;
     }
 }

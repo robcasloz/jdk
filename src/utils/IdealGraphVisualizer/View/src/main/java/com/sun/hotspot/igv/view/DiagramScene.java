@@ -1113,6 +1113,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
             for (Block block : getModel().getDiagram().getBlocks()) {
                 BlockWidget blockWidget = getWidget(block);
                 if (blockWidget != null && blockWidget.isVisible()) {
+                    assert (block.getBounds() != null);
                     Rectangle target = new Rectangle(block.getBounds());
                     newVisibleBlockBounds.put(block, target);
                     if (doAnimation && currentVisibleBlockBounds.containsKey(block)) {
