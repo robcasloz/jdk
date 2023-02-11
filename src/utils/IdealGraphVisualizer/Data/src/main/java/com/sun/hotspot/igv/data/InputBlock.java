@@ -123,4 +123,11 @@ public class InputBlock {
     public boolean isArtificial() {
         return artificial;
     }
+
+    public InputNode getHeader() {
+        if (nodes.isEmpty()) {
+            return null;
+        }
+        return nodes.get(0);
+    }
 }

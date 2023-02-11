@@ -24,6 +24,7 @@
 package com.sun.hotspot.igv.graph;
 
 import com.sun.hotspot.igv.data.InputBlock;
+import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.layout.Cluster;
 import java.awt.Dimension;
 import java.awt.Rectangle;
@@ -85,7 +86,13 @@ public class Block implements Cluster {
         if (!(o instanceof Block)) {
             return false;
         }
-        return getInputBlock().getName().equals(((Block)o).getInputBlock().getName());
+        Block b = (Block)o;
+        InputNode myHeader = getInputBlock().getHeader(),
+                  bHeader = b.getInputBlock().getHeader();
+        if (myHeader == null || bHeader == null) {
+            return getInputBlock().getName().equals(b.getInputBlock().getName());
+        }
+        return myHeader.equals(bHeader);
     }
 
     @Override
