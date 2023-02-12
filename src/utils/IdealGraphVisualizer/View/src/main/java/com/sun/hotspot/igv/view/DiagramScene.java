@@ -763,12 +763,16 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private boolean shouldAnimate() {
         int visibleFigureCount = 0;
+        int animationLimit = Settings.get().getInt(Settings.ANIMATION_LIMIT, Settings.ANIMATION_LIMIT_DEFAULT);
         for (Figure figure : getModel().getDiagram().getFigures()) {
             if (getWidget(figure, FigureWidget.class).isVisible()) {
                 visibleFigureCount++;
+                if (visibleFigureCount > animationLimit) {
+                    return false;
+                }
             }
         }
-        return visibleFigureCount <= Settings.get().getInt(Settings.ANIMATION_LIMIT, Settings.ANIMATION_LIMIT_DEFAULT);
+        return true;
     }
 
     private final Point specialNullPoint = new Point(Integer.MAX_VALUE, Integer.MAX_VALUE);
@@ -1081,15 +1085,14 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return visibleConnections;
     }
 
-    private void updateFigureWidgetLocations() {
-        boolean doAnimation = shouldAnimate();
+    private void updateFigureWidgetLocations(boolean animate) {
         Map<Figure, Point> newVisibleFigureLocations = new HashMap<>();
         for (Figure figure : getModel().getDiagram().getFigures()) {
             FigureWidget figureWidget = getWidget(figure);
             if (figureWidget.isVisible()) {
                 Point target = new Point(figure.getPosition());
                 newVisibleFigureLocations.put(figure, target);
-                if (doAnimation && currentVisibleFigureLocations.containsKey(figure)) {
+                if (animate && currentVisibleFigureLocations.containsKey(figure)) {
                     Point current = currentVisibleFigureLocations.get(figure);
                     figureWidget.setPreferredLocation(current);
                     getSceneAnimator().animatePreferredLocation(figureWidget, target);
@@ -1101,9 +1104,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         currentVisibleFigureLocations = newVisibleFigureLocations;
     }
 
-    private void updateBlockWidgetBounds() {
+    private void updateBlockWidgetBounds(boolean animate) {
         if (getModel().getShowBlocks() || getModel().getShowCFG()) {
-            boolean doAnimation = shouldAnimate();
             Map<Block, Rectangle> newVisibleBlockBounds = new HashMap<>();
             for (Block block : getModel().getDiagram().getBlocks()) {
                 BlockWidget blockWidget = getWidget(block);
@@ -1111,7 +1113,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                     assert (block.getBounds() != null);
                     Rectangle target = new Rectangle(block.getBounds());
                     newVisibleBlockBounds.put(block, target);
-                    if (doAnimation && currentVisibleBlockBounds.containsKey(block)) {
+                    if (animate && currentVisibleBlockBounds.containsKey(block)) {
                         Rectangle current = currentVisibleBlockBounds.get(block);
                         blockWidget.setPreferredBounds(current);
                         getSceneAnimator().animatePreferredBounds(blockWidget, target);
@@ -1172,8 +1174,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
         rebuildConnectionLayer();
 
-        updateFigureWidgetLocations();
-        updateBlockWidgetBounds();
+        boolean animate = shouldAnimate();
+        updateFigureWidgetLocations(animate);
+        updateBlockWidgetBounds(animate);
         validateAll();
 
         centerSingleSelectedFigure();
