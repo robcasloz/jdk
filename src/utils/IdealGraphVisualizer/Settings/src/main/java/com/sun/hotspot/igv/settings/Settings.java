@@ -46,6 +46,8 @@ public class Settings {
     public static final String NODE_TINY_TEXT_DEFAULT = "[idx]";
     public static final String DEFAULT_VIEW = "defaultView";
     public static final int    DEFAULT_VIEW_DEFAULT = DefaultView.SEA_OF_NODES;
+    public static final String ANIMATION_LIMIT = "animationLimit";
+    public static final int    ANIMATION_LIMIT_DEFAULT = 100;
     public static final String PORT = "port";
     public static final String PORT_DEFAULT = "4444";
     public static final String DIRECTORY = "directory";

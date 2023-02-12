@@ -32,6 +32,7 @@ import com.sun.hotspot.igv.hierarchicallayout.HierarchicalLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.LinearLayoutManager;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.selectioncoordinator.SelectionCoordinator;
+import com.sun.hotspot.igv.settings.Settings;
 import com.sun.hotspot.igv.util.ColorIcon;
 import com.sun.hotspot.igv.util.DoubleClickAction;
 import com.sun.hotspot.igv.util.DoubleClickHandler;
@@ -107,7 +108,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     public static final float ZOOM_MIN_FACTOR = 0.25f;
     public static final float ZOOM_INCREMENT = 1.5f;
     public static final int SLOT_OFFSET = 8;
-    public static final int ANIMATION_LIMIT = 100;
 
     @SuppressWarnings("unchecked")
     public <T> T getWidget(Object o) {
@@ -773,7 +773,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                 visibleFigureCount++;
             }
         }
-        return visibleFigureCount <= ANIMATION_LIMIT;
+        return visibleFigureCount <= Settings.get().getInt(Settings.ANIMATION_LIMIT, Settings.ANIMATION_LIMIT_DEFAULT);
     }
 
     private final Point specialNullPoint = new Point(Integer.MAX_VALUE, Integer.MAX_VALUE);

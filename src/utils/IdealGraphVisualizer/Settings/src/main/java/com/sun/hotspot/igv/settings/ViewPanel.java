@@ -56,10 +56,14 @@ final class ViewPanel extends javax.swing.JPanel {
         jLabel5 = new javax.swing.JLabel();
         nodeTinyTextField = new javax.swing.JTextField();
         defaultViewComboBox = new javax.swing.JComboBox<>();
+        jLabel6 = new javax.swing.JLabel();
+        animationLimitSpinner = new javax.swing.JSpinner();
 
         org.openide.awt.Mnemonics.setLocalizedText(jLabel1, "Node Text");
 
         org.openide.awt.Mnemonics.setLocalizedText(jLabel2, "Default View");
+
+        portSpinner.setToolTipText("Network port for incoming graph data.");
 
         nodeTextArea.setColumns(20);
         nodeTextArea.setRows(5);
@@ -70,16 +74,18 @@ final class ViewPanel extends javax.swing.JPanel {
 
         org.openide.awt.Mnemonics.setLocalizedText(jLabel4, "Short Node Text");
 
-        nodeShortTextField.setBackground(new java.awt.Color(255, 255, 255));
         nodeShortTextField.setToolTipText("Single-line format string for nodes in edge tooltips, slot tooltips, and node search bar. Properties are specified with brackets  (example: \"[idx]\").");
 
         org.openide.awt.Mnemonics.setLocalizedText(jLabel5, "Tiny Node Text");
 
-        nodeTinyTextField.setBackground(new java.awt.Color(255, 255, 255));
         nodeTinyTextField.setToolTipText("Single-line format string for node input lists. Properties are specified with brackets  (example: \"[idx]\").");
 
         defaultViewComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Sea of nodes", "Clustered sea of nodes", "Control-flow graph" }));
         defaultViewComboBox.setToolTipText("View shown by default when a graph is opened.");
+
+        org.openide.awt.Mnemonics.setLocalizedText(jLabel6, "Animation Limit");
+
+        animationLimitSpinner.setToolTipText("Maximum number of nodes for which graph animations are enabled.");
 
         org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -88,18 +94,27 @@ final class ViewPanel extends javax.swing.JPanel {
             .add(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jLabel1)
-                    .add(jLabel3)
-                    .add(jLabel2)
-                    .add(jLabel4)
-                    .add(jLabel5))
-                .add(39, 39, 39)
-                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
-                    .add(nodeShortTextField)
-                    .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 470, Short.MAX_VALUE)
-                    .add(portSpinner)
-                    .add(nodeTinyTextField)
-                    .add(defaultViewComboBox, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .add(jPanel1Layout.createSequentialGroup()
+                        .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(jLabel1)
+                            .add(jLabel3)
+                            .add(jLabel2)
+                            .add(jLabel4)
+                            .add(jLabel5))
+                        .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(jPanel1Layout.createSequentialGroup()
+                                .add(39, 39, 39)
+                                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                                    .add(nodeShortTextField)
+                                    .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 470, Short.MAX_VALUE)
+                                    .add(nodeTinyTextField)
+                                    .add(defaultViewComboBox, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel1Layout.createSequentialGroup()
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                                    .add(animationLimitSpinner)
+                                    .add(portSpinner, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 470, Short.MAX_VALUE)))))
+                    .add(jLabel6))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -109,7 +124,7 @@ final class ViewPanel extends javax.swing.JPanel {
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(jScrollPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(jLabel1))
-                .add(27, 27, 27)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 27, Short.MAX_VALUE)
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(jLabel4)
                     .add(nodeShortTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
@@ -117,14 +132,19 @@ final class ViewPanel extends javax.swing.JPanel {
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel5)
                     .add(nodeTinyTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .add(27, 27, 27)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 27, Short.MAX_VALUE)
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel2)
                     .add(defaultViewComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 27, Short.MAX_VALUE)
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(jLabel6)
+                    .add(animationLimitSpinner, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 27, Short.MAX_VALUE)
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(portSpinner, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jLabel3)))
+                    .add(jLabel3))
+                .addContainerGap())
         );
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
@@ -141,7 +161,7 @@ final class ViewPanel extends javax.swing.JPanel {
             .add(layout.createSequentialGroup()
                 .addContainerGap()
                 .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(29, Short.MAX_VALUE))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
     void load() {
@@ -149,6 +169,7 @@ final class ViewPanel extends javax.swing.JPanel {
         nodeShortTextField.setText(Settings.get().get(Settings.NODE_SHORT_TEXT, Settings.NODE_SHORT_TEXT_DEFAULT));
         nodeTinyTextField.setText(Settings.get().get(Settings.NODE_TINY_TEXT, Settings.NODE_TINY_TEXT_DEFAULT));
         defaultViewComboBox.setSelectedIndex(Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DefaultView.SEA_OF_NODES));
+        animationLimitSpinner.setValue(Settings.get().getInt(Settings.ANIMATION_LIMIT, Settings.ANIMATION_LIMIT_DEFAULT));
         portSpinner.setValue(Integer.parseInt(Settings.get().get(Settings.PORT, Settings.PORT_DEFAULT)));
     }
 
@@ -157,6 +178,7 @@ final class ViewPanel extends javax.swing.JPanel {
         Settings.get().put(Settings.NODE_SHORT_TEXT, nodeShortTextField.getText());
         Settings.get().put(Settings.NODE_TINY_TEXT, nodeTinyTextField.getText());
         Settings.get().putInt(Settings.DEFAULT_VIEW, defaultViewComboBox.getSelectedIndex());
+        Settings.get().putInt(Settings.ANIMATION_LIMIT, (Integer)animationLimitSpinner.getValue());
         Settings.get().put(Settings.PORT, portSpinner.getValue().toString());
     }
 
@@ -164,12 +186,14 @@ final class ViewPanel extends javax.swing.JPanel {
         return true;
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JSpinner animationLimitSpinner;
     private javax.swing.JComboBox<String> defaultViewComboBox;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTextField nodeShortTextField;
