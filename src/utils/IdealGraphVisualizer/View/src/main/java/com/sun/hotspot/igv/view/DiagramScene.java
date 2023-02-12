@@ -777,7 +777,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private final Point specialNullPoint = new Point(Integer.MAX_VALUE, Integer.MAX_VALUE);
 
-    private void processOutputSlot(OutputSlot outputSlot, List<Connection> connections, int controlPointIndex, Point lastPoint, LineWidget predecessor) {
+    private void processOutputSlot(OutputSlot outputSlot, List<Connection> connections, int controlPointIndex, Point lastPoint, LineWidget predecessor, boolean animate) {
         Map<Point, List<Connection>> pointMap = new HashMap<>(connections.size());
 
         for (Connection connection : connections) {
@@ -838,9 +838,15 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                 connectionLayer.addChild(newPredecessor);
                 addObject(new ConnectionSet(connectionList), newPredecessor);
                 newPredecessor.getActions().addAction(hoverAction);
+                Color targetColor = newPredecessor.getTargetColor();
+                if (animate) {
+                    getSceneAnimator().animateBackgroundColor(newPredecessor, targetColor);
+                } else {
+                    newPredecessor.setBackground(targetColor);
+                }
             }
 
-            processOutputSlot(outputSlot, connectionList, controlPointIndex + 1, currentPoint, newPredecessor);
+            processOutputSlot(outputSlot, connectionList, controlPointIndex + 1, currentPoint, newPredecessor, animate);
         }
     }
 
@@ -972,19 +978,19 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         SelectionCoordinator.getInstance().getSelectedChangedEvent().addListener(selectedCoordinatorListener);
     }
 
-    private void rebuildConnectionLayer() {
+    private void rebuildConnectionLayer(boolean animate) {
         connectionLayer.removeChildren();
         for (Figure figure : getModel().getDiagram().getFigures()) {
             for (OutputSlot outputSlot : figure.getOutputSlots()) {
                 List<Connection> connectionList = new ArrayList<>(outputSlot.getConnections());
-                processOutputSlot(outputSlot, connectionList, 0, null, null);
+                processOutputSlot(outputSlot, connectionList, 0, null, null, animate);
             }
         }
 
         if (getModel().getShowCFG()) {
             for (BlockConnection blockConnection : getModel().getDiagram().getBlockConnections()) {
                 if (isVisible(blockConnection)) {
-                    processOutputSlot(null, Collections.singletonList(blockConnection), 0, null, null);
+                    processOutputSlot(null, Collections.singletonList(blockConnection), 0, null, null, animate);
                 }
             }
         }
@@ -1172,9 +1178,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         } else if (getModel().getShowCFG()) {
             doCFGLayout(visibleFigures, visibleConnections);
         }
-        rebuildConnectionLayer();
 
         boolean animate = shouldAnimate();
+        rebuildConnectionLayer(animate);
         updateFigureWidgetLocations(animate);
         updateBlockWidgetBounds(animate);
         validateAll();

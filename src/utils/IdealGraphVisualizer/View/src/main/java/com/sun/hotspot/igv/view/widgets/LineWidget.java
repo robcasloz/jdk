@@ -106,17 +106,13 @@ public class LineWidget extends Widget implements PopupMenuProvider {
 
         clientArea = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
         clientArea.grow(BORDER, BORDER);
-
-        Color color = Color.BLACK;
-        if (connections.size() > 0) {
-            color = connections.get(0).getColor();
-        }
         setToolTipText("<HTML>" + generateToolTipText(this.connections) + "</HTML>");
 
         setCheckClipping(true);
 
         getActions().addAction(ActionFactory.createPopupMenuAction(this));
-        setBackground(color);
+        // DiagramScene is responsible for re-setting it to the targeted color.
+        setBackground(Color.WHITE);
 
         getActions().addAction(new CustomSelectAction(new SelectProvider() {
 
@@ -142,6 +138,13 @@ public class LineWidget extends Widget implements PopupMenuProvider {
                 scene.userSelectionSuggested(vertexSet, invertSelection);
             }
         }));
+    }
+
+    public Color getTargetColor() {
+        if (connections.size() > 0) {
+            return connections.get(0).getColor();
+        }
+        return Color.BLACK;
     }
 
     private String generateToolTipText(List<Connection> conn) {
