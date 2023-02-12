@@ -88,7 +88,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private final DiagramViewModel model;
     private ModelState modelState;
     private boolean rebuilding;
-    private long relayouts;
     private Map<Figure, Point> currentVisibleFigureLocations;
     private Map<Block, Rectangle> currentVisibleBlockBounds;
 
@@ -474,7 +473,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
         this.model = model;
         modelState = new ModelState(model);
-        relayouts = 0;
         currentVisibleFigureLocations = new HashMap<>();
         currentVisibleBlockBounds = new HashMap<>();
 
@@ -764,9 +762,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
 
     private boolean shouldAnimate() {
-        if (relayouts <= 2) {
-            return false;
-        }
         int visibleFigureCount = 0;
         for (Figure figure : getModel().getDiagram().getFigures()) {
             if (getWidget(figure, FigureWidget.class).isVisible()) {
@@ -1160,7 +1155,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private void relayout() {
-        relayouts++;
         rebuilding = true;
 
         updateVisibleFigureWidgets();
