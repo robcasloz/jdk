@@ -107,6 +107,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     public static final float ZOOM_MIN_FACTOR = 0.25f;
     public static final float ZOOM_INCREMENT = 1.5f;
     public static final int SLOT_OFFSET = 8;
+    public static final double LINE_ANIMATION_THRESHOLD = 3.0;
 
     @SuppressWarnings("unchecked")
     public <T> T getWidget(Object o) {
@@ -777,8 +778,22 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private final Point specialNullPoint = new Point(Integer.MAX_VALUE, Integer.MAX_VALUE);
 
+    private static boolean near(Point p1, Point p2) {
+        if (p1 == null || p2 == null) {
+            return false;
+        }
+        return Math.hypot(p1.x - p2.x, p1.y - p2.y) < LINE_ANIMATION_THRESHOLD;
+    }
+
     private void processOutputSlot(OutputSlot outputSlot, List<Connection> connections, int controlPointIndex, Point lastPoint, LineWidget predecessor, boolean animate) {
         Map<Point, List<Connection>> pointMap = new HashMap<>(connections.size());
+
+        boolean locationHasChanged = false;
+        Figure startFigure = outputSlot.getFigure();
+        if (!near(currentVisibleFigureLocations.get(startFigure),
+                  startFigure.getPosition())) {
+            locationHasChanged = true;
+        }
 
         for (Connection connection : connections) {
             if (!isVisible(connection)) {
@@ -800,6 +815,12 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                            !((Slot)connection.getTo()).shouldShowName()) {
                     currentPoint = new Point(currentPoint.x, currentPoint.y + SLOT_OFFSET);
                 }
+            }
+
+            Figure endFigure = ((Slot)connection.getTo()).getFigure();
+            if (!near(currentVisibleFigureLocations.get(endFigure),
+                      endFigure.getPosition())) {
+                locationHasChanged = true;
             }
 
             if (pointMap.containsKey(currentPoint)) {
@@ -839,7 +860,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                 addObject(new ConnectionSet(connectionList), newPredecessor);
                 newPredecessor.getActions().addAction(hoverAction);
                 Color targetColor = newPredecessor.getTargetColor();
-                if (animate) {
+                if (animate && locationHasChanged) {
                     getSceneAnimator().animateBackgroundColor(newPredecessor, targetColor);
                 } else {
                     newPredecessor.setBackground(targetColor);
