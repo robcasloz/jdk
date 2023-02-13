@@ -789,6 +789,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         Map<Point, List<Connection>> pointMap = new HashMap<>(connections.size());
 
         boolean locationHasChanged = false;
+        assert outputSlot != null : "FIXME: implement BlockConnection animations";
         Figure startFigure = outputSlot.getFigure();
         if (!near(currentVisibleFigureLocations.get(startFigure),
                   startFigure.getPosition())) {
