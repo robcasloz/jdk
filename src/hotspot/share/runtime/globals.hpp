@@ -1979,6 +1979,10 @@ const int ObjectAlignmentInBytes = 8;
           "1: monitors & legacy stack-locking (LM_LEGACY, default), "       \
           "2: monitors & new lightweight locking (LM_LIGHTWEIGHT)")         \
           range(0, 2)                                                       \
+                                                                            \
+  product(intx, NativeHeapTrimPeriod, 0,                                    \
+          "Native heap trimming period (in number of malloc calls)")        \
+          range(min_intx, max_intx)                                         \
 
 // end of RUNTIME_FLAGS
 

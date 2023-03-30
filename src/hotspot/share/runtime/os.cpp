@@ -623,7 +623,15 @@ void* os::malloc(size_t size, MEMFLAGS flags) {
   return os::malloc(size, flags, CALLER_PC);
 }
 
+static volatile uint64_t allocs = 0;
 void* os::malloc(size_t size, MEMFLAGS memflags, const NativeCallStack& stack) {
+
+  if (NativeHeapTrimPeriod > 0) {
+    Atomic::inc(&allocs);
+    if (allocs % NativeHeapTrimPeriod == 0) {
+      os::trim_native_heap();
+    }
+  }
 
   // Special handling for NMT preinit phase before arguments are parsed
   void* rc = nullptr;
