@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "jfr/periodic/jfrNativeMemoryEvent.hpp"
+#include "runtime/os.hpp"
 #include "services/memTracker.hpp"
 #include "services/nmtUsage.hpp"
 #include "utilities/globalDefinitions.hpp"
@@ -60,6 +61,7 @@ void JfrNativeMemoryEvent::send_total_event(const Ticks& timestamp) {
   event.set_starttime(timestamp);
   event.set_reserved(usage->total_reserved());
   event.set_committed(usage->total_committed());
+  event.set_rss(usage->rss());
   event.commit();
 }
 
