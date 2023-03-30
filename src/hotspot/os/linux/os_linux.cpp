@@ -1911,7 +1911,7 @@ size_t os::rss() {
 size_t os::Linux::get_rss() {
   meminfo_t info;
   if (query_process_memory_info(&info)) {
-    return ((info.vmrss + info.vmswap) * K);
+    return info.vmrss * K;
   }
   return 0;
 }
