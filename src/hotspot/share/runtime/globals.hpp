@@ -1974,6 +1974,10 @@ const int ObjectAlignmentInBytes = 8;
           false AARCH64_ONLY(DEBUG_ONLY(||true)),                           \
              "Mark all threads after a safepoint, and clear on a modify "   \
              "fence. Add cleanliness checks.")                              \
+                                                                            \
+  product(intx, NativeHeapTrimPeriod, 0,                                    \
+          "Native heap trimming period (in number of malloc calls)")        \
+          range(min_intx, max_intx)                                         \
 
 // end of RUNTIME_FLAGS
 
