@@ -343,6 +343,7 @@ class Compile : public Phase {
   uint                  _stress_seed;           // Seed for stress testing
 
   // Compilation environment.
+  ContiguousProvider     _mp;                    // Provide memory via mmap
   Arena                 _comp_arena;            // Arena with lifetime equivalent to Compile
   void*                 _barrier_set_state;     // Potential GC barrier state for Compile
   ciEnv*                _env;                   // CI interface

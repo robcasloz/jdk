@@ -26,12 +26,60 @@
 #define SHARE_MEMORY_ARENA_HPP
 
 #include "memory/allocation.hpp"
+#include "memory/contiguousAllocator.hpp"
 #include "runtime/globals.hpp"
+#include "runtime/threadCritical.hpp"
+#include "services/memTracker.hpp"
 #include "utilities/align.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/powerOfTwo.hpp"
+#include "runtime/os.hpp"
 
-#include <new>
+
+// TODO: This is a protocol, but maybe use templates to avoid taking v-table hit.
+class ArenaMemoryProvider : public StackObj {
+public:
+  struct AllocationResult {
+    void* loc;
+    size_t sz;
+  };
+
+  virtual AllocationResult alloc(AllocFailType alloc_failmode, size_t bytes, size_t length, MEMFLAGS flags) = 0;
+  virtual void free(void* ptr) = 0;
+  // Is this provider capable of freeing its memory on destruction?
+  virtual bool self_free() = 0;
+  virtual bool reset_to(void* ptr) = 0;
+};
+
+class ContiguousProvider : public ArenaMemoryProvider {
+  ContiguousAllocator _cont_allocator;
+public:
+  ContiguousProvider(MEMFLAGS flag) :
+    _cont_allocator(flag) {}
+  ContiguousProvider(MEMFLAGS flag, size_t max_size) :
+    _cont_allocator(max_size, flag) {}
+
+  AllocationResult alloc(AllocFailType alloc_failmode, size_t bytes, size_t length, MEMFLAGS flags) override {
+    ContiguousAllocator::AllocationResult p = _cont_allocator.alloc(bytes);
+     if (p.loc != nullptr) {
+       return {p.loc, p.sz};
+     }
+     if (alloc_failmode == AllocFailStrategy::EXIT_OOM) {
+       vm_exit_out_of_memory(bytes, OOM_MALLOC_ERROR, "ContiguousAllocator::alloc");
+     }
+     return AllocationResult{nullptr, 0};
+  }
+  void free(void* ptr) override {
+    // NOP.
+  }
+
+  bool reset_to(void* ptr) override {
+    assert(ptr >= _cont_allocator.start && ptr <= _cont_allocator.offset, "invariant");
+    _cont_allocator.reset_to(ptr);
+    return true;
+ }
+  bool self_free() override { return true; }
+};
 
 // The byte alignment to be used by Arena::Amalloc.
 #define ARENA_AMALLOC_ALIGNMENT BytesPerLong
@@ -39,16 +87,22 @@
 
 //------------------------------Chunk------------------------------------------
 // Linked list of raw memory chunks
-class Chunk: CHeapObj<mtChunk> {
+class Chunk {
 
  private:
   Chunk*       _next;     // Next Chunk in list
   const size_t _len;      // Size of this Chunk
  public:
-  void* operator new(size_t size, AllocFailType alloc_failmode, size_t length) throw();
-  void  operator delete(void* p);
+  static void destroy(void* p, ArenaMemoryProvider* mp);
+  // Allocate enough memory for a chunk being able to hold length bytes
+  static Chunk*
+  allocate_chunk(AllocFailType alloc_failmode, size_t length, ArenaMemoryProvider* mp);
+
   Chunk(size_t length);
 
+  // TODO:
+  // 1. I changed these sizes to be page aligned, revert them.
+  // 2. These are really mostly interesting for the ChunkPool allocator MAYBE??
   enum {
     // default sizes; make them slightly smaller than 2**k to guard against
     // buddy-system style malloc implementations
@@ -67,8 +121,8 @@ class Chunk: CHeapObj<mtChunk> {
     non_pool_size = init_size + 4*K // An initial size which is not one of above
   };
 
-  void chop();                  // Chop this chunk
-  void next_chop();             // Chop next chunk
+  static void chop(Chunk* chnk, ArenaMemoryProvider* mp);      // Chop this chunk
+  static void next_chop(Chunk* chnk, ArenaMemoryProvider* mp); // Chop next chunk
   static size_t aligned_overhead_size(void) { return ARENA_ALIGN(sizeof(Chunk)); }
   static size_t aligned_overhead_size(size_t byte_size) { return ARENA_ALIGN(byte_size); }
 
@@ -84,14 +138,25 @@ class Chunk: CHeapObj<mtChunk> {
   static void start_chunk_pool_cleaner_task();
 };
 
+class ChunkPoolProvider : public ArenaMemoryProvider {
+public:
+  AllocationResult alloc(AllocFailType alloc_failmode, size_t bytes, size_t length, MEMFLAGS flags) override;
+  void free(void* p) override;
+  bool self_free() override;
+  bool reset_to(void* ptr) override;
+};
+
+
 //------------------------------Arena------------------------------------------
 // Fast allocation of memory
 class Arena : public CHeapObjBase {
+  static ChunkPoolProvider chunk_pool;
 protected:
   friend class HandleMark;
   friend class NoHandleMark;
   friend class VMStructs;
 
+  ArenaMemoryProvider* _mem;
   MEMFLAGS    _flags;           // Memory tracking flags
 
   Chunk *_first;                // First chunk
@@ -115,6 +180,12 @@ protected:
  public:
   Arena(MEMFLAGS memflag);
   Arena(MEMFLAGS memflag, size_t init_size);
+  Arena(MEMFLAGS memflag, ArenaMemoryProvider* mp);
+
+  struct ProvideAProviderPlease {};
+  Arena(MEMFLAGS memflag, ProvideAProviderPlease provide_it);
+  void init_memory_provider(ArenaMemoryProvider* mem, size_t init_size = Chunk::init_size);
+
   ~Arena();
   void  destruct_contents();
   char* hwm() const             { return _hwm; }
@@ -173,7 +244,7 @@ protected:
 
 private:
   // Reset this Arena to empty, access will trigger grow if necessary
-  void   reset(void) {
+  void reset(void) {
     _first = _chunk = nullptr;
     _hwm = _max = nullptr;
     set_size_in_bytes(0);

@@ -148,6 +148,15 @@ class MemTracker : AllStatic {
     }
   }
 
+  static inline void record_virtual_memory_release(void* addr, size_t size) {
+    assert_post_init();
+    if (!enabled()) return;
+    if (addr != nullptr) {
+      ThreadCritical tc;
+      VirtualMemoryTracker::remove_released_region((address)addr, size);
+    }
+  }
+
   static inline void record_virtual_memory_reserve_and_commit(void* addr, size_t size,
     const NativeCallStack& stack, MEMFLAGS flag = mtNone) {
     assert_post_init();

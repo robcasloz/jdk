@@ -85,7 +85,7 @@ class ChunkPool {
     Chunk* next = nullptr;
     while (cur != nullptr) {
       next = cur->next();
-      os::release_memory((char*)cur, cur->length() + 16);
+      os::free(cur);
       cur = next;
     }
     _first = nullptr;
@@ -125,10 +125,52 @@ class ChunkPoolCleaner : public PeriodicTask {
    }
 };
 
+
+ArenaMemoryProvider::AllocationResult
+    ChunkPoolProvider::alloc(AllocFailType alloc_failmode, size_t bytes, size_t length, MEMFLAGS flags) {
+  // Try to reuse a freed chunk from the pool
+  ChunkPool* pool = ChunkPool::get_pool_for_size(length);
+  if (pool != nullptr) {
+    Chunk* c = pool->allocate();
+    if (c != nullptr) {
+      assert(c->length() == length, "wrong length?");
+      return ArenaMemoryProvider::AllocationResult{c, bytes};
+    }
+  }
+  // Either the pool was empty, or this is a non-standard length. Allocate a new Chunk from C-heap.
+  void* p = os::malloc(bytes, mtChunk);
+
+  if (p == nullptr && alloc_failmode == AllocFailStrategy::EXIT_OOM) {
+    vm_exit_out_of_memory(bytes, OOM_MALLOC_ERROR, "Chunk::new");
+  }
+  // We rely on arena alignment <= malloc alignment.
+  assert(is_aligned(p, ARENA_AMALLOC_ALIGNMENT), "Chunk start address misaligned.");
+  return ArenaMemoryProvider::AllocationResult{p, bytes};
+}
+void ChunkPoolProvider::free(void* p) {
+  // If this is a standard-sized chunk, return it to its pool; otherwise free it.
+  Chunk* c = (Chunk*)p;
+  ChunkPool* pool = ChunkPool::get_pool_for_size(c->length());
+  if (pool != nullptr) {
+    pool->free(c);
+  } else {
+    os::free(c);
+  }
+}
+bool ChunkPoolProvider::self_free() { return false; }
+
+bool ChunkPoolProvider::reset_to(void* ptr) {
+  return false;
+}
+
+ChunkPoolProvider Arena::chunk_pool{};
+
 //--------------------------------------------------------------------------------------
 // Chunk implementation
 
-void* Chunk::operator new (size_t sizeofChunk, AllocFailType alloc_failmode, size_t length) throw() {
+
+// TODO: Inline destroy and allocate_chunk
+Chunk* Chunk::allocate_chunk(AllocFailType alloc_failmode, size_t length, ArenaMemoryProvider* mem_provide) throw() {
   // - requested_size = sizeof(Chunk)
   // - length = payload size
   // We must ensure that the boundaries of the payload (C and D) are aligned to 64-bit:
@@ -145,62 +187,41 @@ void* Chunk::operator new (size_t sizeofChunk, AllocFailType alloc_failmode, siz
   // - sizeof(Chunk) (B) may not be aligned to 64-bit, and we have to take that into
   //   account when calculating the Payload bottom (C) (see Chunk::bottom())
   // - the payload size (length) must be aligned to 64-bit, which takes care of 64-bit
-  //   aligning (D)
+  //   aligning (
 
-  assert(sizeofChunk == sizeof(Chunk), "weird request size");
+  size_t bytes = ARENA_ALIGN(sizeof(Chunk)) + length;
   assert(is_aligned(length, ARENA_AMALLOC_ALIGNMENT), "chunk payload length misaligned: "
          SIZE_FORMAT ".", length);
-  // Try to reuse a freed chunk from the pool
-  ChunkPool* pool = ChunkPool::get_pool_for_size(length);
-  if (pool != nullptr) {
-    Chunk* c = pool->allocate();
-    if (c != nullptr) {
-      assert(c->length() == length, "wrong length?");
-      return c;
-    }
+
+  ArenaMemoryProvider::AllocationResult res = mem_provide->alloc(alloc_failmode, bytes, length, mtChunk);
+  if (res.loc == nullptr) {
+    return nullptr;
   }
-  // Either the pool was empty, or this is a non-standard length. Allocate a new Chunk from C-heap.
-  size_t bytes = ARENA_ALIGN(sizeofChunk) + length;
-  char* p = os::reserve_memory_aligned(bytes, ARENA_AMALLOC_ALIGNMENT);
-  bool b = os::commit_memory(p, bytes, false);
-  if (p == nullptr && alloc_failmode == AllocFailStrategy::EXIT_OOM) {
-    vm_exit_out_of_memory(bytes, OOM_MALLOC_ERROR, "Chunk::new");
-  }
-  // We rely on arena alignment <= malloc alignment.
-  assert(is_aligned(p, ARENA_AMALLOC_ALIGNMENT), "Chunk start address misaligned.");
-  return (void*)p;
+  return ::new (res.loc) Chunk(res.sz - sizeof(Chunk));
+
 }
 
-void Chunk::operator delete(void* p) {
-  // If this is a standard-sized chunk, return it to its pool; otherwise free it.
-  Chunk* c = (Chunk*)p;
-  ChunkPool* pool = ChunkPool::get_pool_for_size(c->length());
-  if (pool != nullptr) {
-    pool->free(c);
-  } else {
-    ThreadCritical tc;  // Free chunks under TC lock so that NMT adjustment is stable.
-    os::release_memory((char*)c, c->length());
-  }
+void Chunk::destroy(void* p, ArenaMemoryProvider* mp) {
+  mp->free(p);
 }
 
 Chunk::Chunk(size_t length) : _len(length) {
   _next = nullptr;         // Chain on the linked list
 }
 
-void Chunk::chop() {
-  Chunk *k = this;
-  while( k ) {
-    Chunk *tmp = k->next();
+void Chunk::chop(Chunk* chunk, ArenaMemoryProvider* mp) {
+  while (chunk != nullptr) {
+    Chunk *tmp = chunk->next();
     // clear out this chunk (to detect allocation bugs)
-    if (ZapResourceArea) memset(k->bottom(), badResourceValue, k->length());
-    delete k;                   // Free chunk (was malloc'd)
-    k = tmp;
+    if (ZapResourceArea) memset(chunk->bottom(), badResourceValue, chunk->length());
+    Chunk::destroy(chunk, mp);                   // Free chunk (was malloc'd)
+    chunk = tmp;
   }
 }
 
-void Chunk::next_chop() {
-  _next->chop();
-  _next = nullptr;
+void Chunk::next_chop(Chunk* chunk, ArenaMemoryProvider* mp) {
+  Chunk::chop(chunk->_next, mp);
+  chunk->_next = nullptr;
 }
 
 void Chunk::start_chunk_pool_cleaner_task() {
@@ -214,22 +235,67 @@ void Chunk::start_chunk_pool_cleaner_task() {
 }
 
 //------------------------------Arena------------------------------------------
-
-Arena::Arena(MEMFLAGS flag, size_t init_size) : _flags(flag), _size_in_bytes(0)  {
-  init_size = ARENA_ALIGN(init_size);
-  _first = _chunk = new (AllocFailStrategy::EXIT_OOM, init_size) Chunk(init_size);
-  _hwm = _chunk->bottom();      // Save the cached hwm, max
-  _max = _chunk->top();
+Arena::Arena(MEMFLAGS flag, Arena::ProvideAProviderPlease provide_mp) :
+  _mem(nullptr), _flags(flag), _size_in_bytes(0) {
+  // TODO: Kludge.
+  // See ResourceArea for why we can't init it more than we do here.
+  // I need to re-think this init interface a bit...
   MemTracker::record_new_arena(flag);
-  set_size_in_bytes(init_size);
 }
 
-Arena::Arena(MEMFLAGS flag) : _flags(flag), _size_in_bytes(0) {
-  _first = _chunk = new (AllocFailStrategy::EXIT_OOM, Chunk::init_size) Chunk(Chunk::init_size);
+Arena::Arena(MEMFLAGS flag, ArenaMemoryProvider* mp) :
+  _mem(mp), _flags(flag), _size_in_bytes(0) {
+  // TODO: Kludge.
+  // See ResourceArea for why we can't init it more than we do here.
+  // I need to re-think this init interface a bit...
+  MemTracker::record_new_arena(flag);
+
+  _first =  Chunk::allocate_chunk(AllocFailStrategy::EXIT_OOM, Chunk::init_size, _mem);
+  _chunk = _first;
+
+  _hwm = _chunk->bottom();      // Save the cached hwm, max
+  _max = _chunk->top();
+  set_size_in_bytes(_first->length() + Chunk::aligned_overhead_size());
+
+}
+
+void Arena::init_memory_provider(ArenaMemoryProvider* mp, size_t init_size) {
+  assert(_mem == nullptr, "must be null");
+  _mem = mp;
+
+  _first =  Chunk::allocate_chunk(AllocFailStrategy::EXIT_OOM, init_size, _mem);
+  _chunk = _first;
+
+  _hwm = _chunk->bottom();      // Save the cached hwm, max
+  _max = _chunk->top();
+  set_size_in_bytes(_first->length() + Chunk::aligned_overhead_size());
+}
+
+
+Arena::Arena(MEMFLAGS flag, size_t init_size) :
+  _mem(&chunk_pool),
+  _flags(flag), _size_in_bytes(0)  {
+
+  init_size = ARENA_ALIGN(init_size);
+  _first =  Chunk::allocate_chunk(AllocFailStrategy::EXIT_OOM, init_size, _mem);
+
+  _chunk = _first;
   _hwm = _chunk->bottom();      // Save the cached hwm, max
   _max = _chunk->top();
   MemTracker::record_new_arena(flag);
-  set_size_in_bytes(Chunk::init_size);
+  set_size_in_bytes(_first->length() + Chunk::aligned_overhead_size());
+}
+
+Arena::Arena(MEMFLAGS flag) :
+  _mem(&chunk_pool), _flags(flag), _size_in_bytes(0) {
+
+  _first =  Chunk::allocate_chunk(AllocFailStrategy::EXIT_OOM, Chunk::init_size, _mem);
+  _chunk = _first;
+
+  _hwm = _chunk->bottom();      // Save the cached hwm, max
+  _max = _chunk->top();
+  MemTracker::record_new_arena(flag);
+  set_size_in_bytes(_first->length() + Chunk::aligned_overhead_size());
 }
 
 Arena *Arena::move_contents(Arena *copy) {
@@ -250,7 +316,9 @@ Arena *Arena::move_contents(Arena *copy) {
 }
 
 Arena::~Arena() {
-  destruct_contents();
+  if (_mem != nullptr && !_mem->self_free()) {
+    destruct_contents();
+  }
   MemTracker::record_arena_free(_flags);
 }
 
@@ -260,7 +328,7 @@ void Arena::destruct_contents() {
   // that can have total arena memory exceed total chunk memory
   set_size_in_bytes(0);
   if (_first != nullptr) {
-    _first->chop();
+    Chunk::chop(_first, _mem);
   }
   reset();
 }
@@ -297,7 +365,7 @@ void* Arena::grow(size_t x, AllocFailType alloc_failmode) {
   }
 
   Chunk *k = _chunk;            // Get filled-up chunk address
-  _chunk = new (alloc_failmode, len) Chunk(len);
+  _chunk = Chunk::allocate_chunk(alloc_failmode, len, _mem);
 
   if (_chunk == nullptr) {
     _chunk = k;                 // restore the previous value of _chunk
@@ -307,7 +375,7 @@ void* Arena::grow(size_t x, AllocFailType alloc_failmode) {
   else _first = _chunk;
   _hwm  = _chunk->bottom();     // Save the cached hwm, max
   _max =  _chunk->top();
-  set_size_in_bytes(size_in_bytes() + len);
+  set_size_in_bytes(size_in_bytes() + len + Chunk::aligned_overhead_size());
   void* result = _hwm;
   _hwm += x;
   return result;

@@ -43,7 +43,7 @@
 // A ResourceArea is an Arena that supports safe usage of ResourceMark.
 class ResourceArea: public Arena {
   friend class VMStructs;
-
+  ContiguousProvider _mp;
 #ifdef ASSERT
   int _nesting;                 // current # of nested ResourceMarks
   void verify_has_resource_mark();
@@ -51,10 +51,23 @@ class ResourceArea: public Arena {
 
 public:
   ResourceArea(MEMFLAGS flags = mtThread) :
-    Arena(flags) DEBUG_ONLY(COMMA _nesting(0)) {}
+    Arena(flags, Arena::ProvideAProviderPlease{}),
+    _mp{flags}
+     DEBUG_ONLY(COMMA _nesting(0)) {
+    this->init_memory_provider(&_mp);
+  }
+
+  ~ResourceArea() {
+    if (!_mem->self_free()) {
+      destruct_contents();
+    }
+    _mem = nullptr;
+  }
 
   ResourceArea(size_t init_size, MEMFLAGS flags = mtThread) :
-    Arena(flags, init_size) DEBUG_ONLY(COMMA _nesting(0)) {}
+    Arena(flags, Arena::ProvideAProviderPlease{}), _mp{flags} DEBUG_ONLY(COMMA _nesting(0)) {
+    this->init_memory_provider(&_mp);
+  }
 
   char* allocate_bytes(size_t size, AllocFailType alloc_failmode = AllocFailStrategy::EXIT_OOM);
 
@@ -104,43 +117,35 @@ public:
   void rollback_to(const SavedState& state) {
     assert(_nesting > state._nesting, "rollback to inactive mark");
     assert((_nesting - state._nesting) == 1, "rollback across another mark");
-
-    if (state._chunk->next() != nullptr) { // Delete later chunks.
-      // Reset size before deleting chunks.  Otherwise, the total
-      // size could exceed the total chunk size.
-      assert(size_in_bytes() > state._size_in_bytes,
-             "size: " SIZE_FORMAT ", saved size: " SIZE_FORMAT,
-             size_in_bytes(), state._size_in_bytes);
-      set_size_in_bytes(state._size_in_bytes);
-      state._chunk->next_chop();
-      assert(_hwm != state._hwm, "Sanity check: HWM moves when we have later chunks");
-    } else {
+#ifdef ASSERT
+    if (state._chunk->next() == nullptr) {
       assert(size_in_bytes() == state._size_in_bytes, "Sanity check");
     }
-
-    if (_hwm != state._hwm) {
-      // HWM moved: resource area was used. Roll back!
-
-      char* replaced_hwm = _hwm;
-
-      _chunk = state._chunk;
-      _hwm = state._hwm;
-      _max = state._max;
-
-      // Clear out this chunk (to detect allocation bugs).
-      // If current chunk contains the replaced HWM, this means we are
-      // doing the rollback within the same chunk, and we only need to
-      // clear up to replaced HWM.
-      if (ZapResourceArea) {
-        char* limit = _chunk->contains(replaced_hwm) ? replaced_hwm : _max;
-        assert(limit >= _hwm, "Sanity check: non-negative memset size");
-        memset(_hwm, badResourceValue, limit - _hwm);
-      }
-    } else {
+    if (_hwm == state._hwm) {
       // No allocations. Nothing to rollback. Check it.
       assert(_chunk == state._chunk, "Sanity check: idempotence");
       assert(_hwm == state._hwm,     "Sanity check: idempotence");
       assert(_max == state._max,     "Sanity check: idempotence");
+    }
+#endif
+    // Chop off other chunks
+    state._chunk->set_next(nullptr);
+    set_size_in_bytes(state._size_in_bytes);
+    char* replaced_hwm = _hwm;
+
+    _chunk = state._chunk;
+    _hwm = state._hwm;
+    _max = state._max;
+    _mp.reset_to(_chunk->top());
+
+    // Clear out this chunk (to detect allocation bugs).
+    // If current chunk contains the replaced HWM, this means we are
+    // doing the rollback within the same chunk, and we only need to
+    // clear up to replaced HWM.
+    if (ZapResourceArea) {
+      char* limit = _chunk->contains(replaced_hwm) ? replaced_hwm : _max;
+      assert(limit >= _hwm, "Sanity check: non-negative memset size");
+      memset(_hwm, badResourceValue, limit - _hwm);
     }
   }
 };
