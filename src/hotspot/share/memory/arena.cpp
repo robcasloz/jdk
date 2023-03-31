@@ -85,7 +85,7 @@ class ChunkPool {
     Chunk* next = nullptr;
     while (cur != nullptr) {
       next = cur->next();
-      os::free(cur);
+      os::release_memory((char*)cur, cur->length() + 16);
       cur = next;
     }
     _first = nullptr;
@@ -161,13 +161,14 @@ void* Chunk::operator new (size_t sizeofChunk, AllocFailType alloc_failmode, siz
   }
   // Either the pool was empty, or this is a non-standard length. Allocate a new Chunk from C-heap.
   size_t bytes = ARENA_ALIGN(sizeofChunk) + length;
-  void* p = os::malloc(bytes, mtChunk, CALLER_PC);
+  char* p = os::reserve_memory_aligned(bytes, ARENA_AMALLOC_ALIGNMENT);
+  bool b = os::commit_memory(p, bytes, false);
   if (p == nullptr && alloc_failmode == AllocFailStrategy::EXIT_OOM) {
     vm_exit_out_of_memory(bytes, OOM_MALLOC_ERROR, "Chunk::new");
   }
   // We rely on arena alignment <= malloc alignment.
   assert(is_aligned(p, ARENA_AMALLOC_ALIGNMENT), "Chunk start address misaligned.");
-  return p;
+  return (void*)p;
 }
 
 void Chunk::operator delete(void* p) {
@@ -178,7 +179,7 @@ void Chunk::operator delete(void* p) {
     pool->free(c);
   } else {
     ThreadCritical tc;  // Free chunks under TC lock so that NMT adjustment is stable.
-    os::free(c);
+    os::release_memory((char*)c, c->length());
   }
 }
 
