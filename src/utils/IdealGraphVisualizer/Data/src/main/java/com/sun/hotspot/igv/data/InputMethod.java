@@ -145,8 +145,6 @@ public class InputMethod extends Properties.Entity {
                             break;
                         }
                     }
-                } else {
-                    System.out.println("no match: " + s);
                 }
             }
         }

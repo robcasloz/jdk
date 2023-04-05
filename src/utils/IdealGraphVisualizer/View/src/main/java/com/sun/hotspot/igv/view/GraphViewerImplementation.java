@@ -59,6 +59,7 @@ public class GraphViewerImplementation implements GraphViewer {
             EditorTopComponent etc = EditorTopComponent.findEditorForGraph(graph);
             if (etc != null) {
                 etc.getModel().selectGraph(graph);
+                etc.getModel().rebuildDiagram();
                 etc.requestActive();
                 return etc.getModel().getGraph();
             }
