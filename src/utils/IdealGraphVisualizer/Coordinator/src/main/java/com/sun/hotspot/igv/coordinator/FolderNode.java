@@ -25,18 +25,28 @@ package com.sun.hotspot.igv.coordinator;
 
 import com.sun.hotspot.igv.coordinator.actions.RemoveCookie;
 import com.sun.hotspot.igv.data.*;
+import com.sun.hotspot.igv.data.services.Scheduler;
+import com.sun.hotspot.igv.data.services.GraphViewer;
 import com.sun.hotspot.igv.util.PropertiesSheet;
 import com.sun.hotspot.igv.util.StringUtils;
 import java.awt.Image;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Set;
 import javax.swing.Action;
 import org.openide.actions.PropertiesAction;
 import org.openide.actions.RenameAction;
 import org.openide.nodes.*;
 import org.openide.util.ImageUtilities;
+import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
+import org.openide.LifecycleManager;
 
 /**
  *
@@ -50,14 +60,22 @@ public class FolderNode extends AbstractNode {
     // focused graph in the Outline window.
     private static final Map<InputGraph, GraphNode> graphNodeMap = new HashMap<>();
     private boolean selected = false;
+    private static final boolean OPEN_EAGERLY = true;
+    static private int REPETITIONS = 1;
+    static private int MAX_GRAPHS = 5000;
+    static {
+        System.out.println("DATA LINE:graph,nodes,schedule,layout");
+    }
 
     private static class FolderChildren extends Children.Keys<FolderElement> implements ChangedListener {
 
         private final Folder folder;
+        private Set<String> visited;
 
         public FolderChildren(Folder folder) {
             this.folder = folder;
             folder.getChangedEvent().addListener(this);
+            visited = new HashSet<>();
         }
 
         public Folder getFolder() {
@@ -95,8 +113,74 @@ public class FolderNode extends AbstractNode {
             setKeys(folder.getElements());
         }
 
+        private static long median(List<Long> values) {
+            Collections.sort(values);
+            if (values.size() % 2 == 0) {
+                return ((long) values.get(values.size() / 2) +
+                        (long) values.get(values.size() / 2 - 1)) / 2;
+            } else {
+                return (long) values.get(values.size() / 2);
+            }
+        }
+
         @Override
         public void changed(Object source) {
+            for (FolderElement e : folder.getElements()) {
+                if (!OPEN_EAGERLY) {
+                    continue;
+                }
+                if (e instanceof Group) {
+                    Group group = (Group)e;
+                    final GraphViewer viewer = Lookup.getDefault().lookup(GraphViewer.class);
+                    for (InputGraph graph : group.getGraphs()) {
+                        if (visited.size() == MAX_GRAPHS) {
+                            break;
+                        }
+                        String key = group.getName() + "::" + graph.getName();
+                        key = key.replaceAll(",", ";"); // ',' is the default CSV separator.
+                        if (!visited.contains(key)) {
+                            java.util.Map<String, List<AbstractMap.SimpleEntry<String, Long>>> entries = new HashMap<>();
+                            entries.put(key, new ArrayList<>(4));
+                            entries.get(key).add(new AbstractMap.SimpleEntry<>("nodes", (long)graph.getNodes().size()));
+                            if (graph.getBlocks().isEmpty()) {
+                                Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
+                                List<Long> times = new ArrayList<>(REPETITIONS);
+                                for (int i = 0; i < REPETITIONS; i++) {
+                                    graph.clearBlocks();
+                                    final long startTime = System.currentTimeMillis();
+                                    s.schedule(graph);
+                                    final long stopTime = System.currentTimeMillis();
+                                    final long totalTime = stopTime - startTime;
+                                    times.add(totalTime);
+                                }
+                                entries.get(key).add(new AbstractMap.SimpleEntry<>("schedule", median(times)));
+                                graph.ensureNodesInBlocks();
+                            } else {
+                                entries.get(key).add(new AbstractMap.SimpleEntry<>("schedule", 1L));
+                            }
+                            List<Long> times = new ArrayList<>(REPETITIONS);
+                            for (int i = 0; i < REPETITIONS; i++) {
+                                final long startTime = System.currentTimeMillis();
+                                viewer.view(graph, false);
+                                long stopTime = System.currentTimeMillis();
+                                long totalTime = stopTime - startTime;
+                                times.add(totalTime);
+                            }
+                            entries.get(key).add(new AbstractMap.SimpleEntry<String, Long>("layout", median(times)));
+                            System.out.print("DATA LINE:" + key);
+                            for (AbstractMap.SimpleEntry<String, Long> entry : entries.get(key)) {
+                                System.out.print("," + entry.getValue());
+                            }
+                            System.out.println("");
+                            visited.add(key);
+                        }
+                        if (visited.size() == MAX_GRAPHS) {
+                            System.out.println("MAX_GRAPHS limit (" + MAX_GRAPHS + ") reached, stopping now");
+                            LifecycleManager.getDefault().exit();
+                        }
+                    }
+                }
+            }
             addNotify();
         }
     }

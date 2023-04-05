@@ -46,6 +46,9 @@ public class Printer {
             xmlWriter.writeProperties(folder.getProperties());
             for (FolderElement e : folder.getElements()) {
                 if (e instanceof Group group) {
+                    if (((Group)e).getGraphs().isEmpty()) { // Do not export empty graphs.
+                        continue;
+                    }
                     exportGroup(xmlWriter, group, contexts);
                 } else if (e instanceof InputGraph graph) {
                     exportInputGraph(xmlWriter, graph, null, false, contexts);
