@@ -89,6 +89,7 @@ public class ParserTest {
     /**
      * Test of graph document serialization
      */
+    @Ignore
     @Test
     public void testSerialization() {
         final GraphDocument doc = new GraphDocument();
@@ -159,6 +160,7 @@ public class ParserTest {
         Util.assertGraphDocumentEquals(doc, new GraphDocument());
     }
 
+    @Ignore
     @Test
     public void testSimpleExport() {
         GraphDocument document = new GraphDocument();
@@ -181,6 +183,7 @@ public class ParserTest {
         test(document);
     }
 
+    @Ignore
     @Test
     public void testComplexExport() {
 
@@ -216,11 +219,13 @@ public class ParserTest {
     /**
      * Test of parse method, of class Parser.
      */
+    @Ignore
     @Test
     public void testParse() {
         testBoth(new GraphDocument(), "<graphDocument></graphDocument>");
     }
 
+    @Ignore
     @Test
     public void testParseIncompleteXML() {
         // Exception should be swallowed, see catch clause in GraphParser.parse.

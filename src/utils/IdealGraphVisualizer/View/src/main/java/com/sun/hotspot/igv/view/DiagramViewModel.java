@@ -376,7 +376,7 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
         getChangedEvent().fire();
     }
 
-    private void rebuildDiagram() {
+    public void rebuildDiagram() {
         // clear diagram
         InputGraph graph = getGraph();
         if (graph.getBlocks().isEmpty()) {
