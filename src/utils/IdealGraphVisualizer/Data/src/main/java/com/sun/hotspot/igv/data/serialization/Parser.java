@@ -50,6 +50,11 @@ import org.xml.sax.XMLReader;
  */
 public class Parser implements GraphParser {
 
+    public static final int MIN_NODES = 500;
+    public static final int MAX_NODES = 1000;
+    public static final int MAX_GRAPHS = 10;
+    private static int graphCount = 0;
+
     public static final String TOP_ELEMENT = "graphDocument";
     public static final String GROUP_ELEMENT = "group";
     public static final String GRAPH_ELEMENT = "graph";
@@ -427,6 +432,12 @@ public class Parser implements GraphParser {
                 graph.addBlockEdge(left, right);
             }
             blockConnections.clear();
+
+            if (graph.getNodes().size() < MIN_NODES || graph.getNodes().size() > MAX_NODES || graphCount >= MAX_GRAPHS) {
+                return;
+            }
+            System.out.println(graphCount + ": " + parent.getName() + "::" + graph.getName() + " (" + graph.getNodes().size() + ")");
+            graphCount++;
 
             if (invokeLater) {
                 SwingUtilities.invokeLater(() -> parent.addElement(graph));
