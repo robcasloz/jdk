@@ -270,8 +270,9 @@ bool CompileBroker::can_remove(CompilerThread *ct, bool do_it) {
   int compiler_count = compiler->num_compiler_threads();
   bool c1 = compiler->is_c1();
 
-  // Keep at least 1 compiler thread of each type.
-  if (compiler_count < 2) return false;
+  // Keep at least CoreCompilerThreadPoolSize threads alive. This threshold must
+  // be greater or equal than two (one compiler thread of each type).
+  if (compiler_count < CoreCompilerThreadPoolSize) return false;
 
   // Keep thread alive for at least some time.
   if (ct->idle_time_millis() < (c1 ? 500 : 100)) return false;

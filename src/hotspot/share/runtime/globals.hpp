@@ -929,6 +929,11 @@ const int ObjectAlignmentInBytes = 8;
              "Reduce the number of parallel compiler threads when they "    \
              "are not used")                                                \
                                                                             \
+  product(intx, CoreCompilerThreadPoolSize, 2,                              \
+          "Minimum number of dynamically created compiler threads to keep " \
+          "alive without timing out")                                       \
+          range(2, max_jint)                                                \
+                                                                            \
   product(bool, TraceCompilerThreads, false, DIAGNOSTIC,                    \
              "Trace creation and removal of compiler threads")              \
                                                                             \
