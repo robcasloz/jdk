@@ -473,7 +473,7 @@ class SuperWord : public ResourceObj {
 
   // methods
 
-  typedef const Pair<const Node*, int> PathEnd;
+  typedef const Pair<const Node*, GrowableArray<const Node*>*> PathEnd;
 
   // Search for a path P = (n_1, n_2, ..., n_k) such that:
   // - original_input(n_i, input) = n_i+1 for all 1 <= i < k,
@@ -486,21 +486,22 @@ class SuperWord : public ResourceObj {
   template <typename NodePredicate1, typename NodePredicate2>
   static PathEnd find_in_path(const Node *n1, uint input, int max,
                               NodePredicate1 path, NodePredicate2 end) {
-    const PathEnd no_path(nullptr, -1);
+    const PathEnd no_path(nullptr, nullptr);
+    GrowableArray<const Node*> *path_nodes = new GrowableArray<const Node*>(max, 0, 0);
+
     const Node* current = n1;
-    int k = 0;
     for (int i = 0; i <= max; i++) {
       if (current == nullptr) {
         return no_path;
       }
       if (end(current)) {
-        return PathEnd(current, k);
+        return PathEnd(current, path_nodes);
       }
       if (!path(current)) {
         return no_path;
       }
+      path_nodes->push(current);
       current = original_input(current, input);
-      k++;
     }
     return no_path;
   }

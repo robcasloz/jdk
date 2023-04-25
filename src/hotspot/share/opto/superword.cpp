@@ -436,6 +436,7 @@ bool SuperWord::is_reduction_operator(const Node* n) {
 }
 
 bool SuperWord::in_reduction_cycle(const Node* n, uint input) {
+  ResourceMark rm;
   // First find input reduction path to phi node.
   auto has_my_opcode = [&](const Node* m){ return m->Opcode() == n->Opcode(); };
   PathEnd path_to_phi = find_in_path(n, input, LoopMaxUnroll, has_my_opcode,
@@ -468,6 +469,8 @@ void SuperWord::mark_reductions() {
 
   _loop_reductions.clear();
 
+  ResourceMark rm;
+
   // Iterate through all phi nodes associated to the loop and search for
   // reduction cycles in the basic block.
   for (DUIterator_Fast imax, i = lp()->fast_outs(imax); i < imax; i++) {
@@ -496,7 +499,7 @@ void SuperWord::mark_reductions() {
     // inputs. This assumption is realistic because reduction cycles usually
     // consist of nodes cloned by loop unrolling.
     int reduction_input = -1;
-    int path_nodes = -1;
+    GrowableArray<const Node*>* path_nodes = nullptr;
     for (uint input = 1; input < first->req(); input++) {
       // Test whether there is a reduction path in the basic block from 'first'
       // to the phi node following edge index 'input'.
@@ -516,10 +519,11 @@ void SuperWord::mark_reductions() {
     }
     // Test that reduction nodes do not have any users in the loop besides their
     // reduction cycle successors.
-    const Node* current = first;
-    const Node* succ = phi; // current's successor in the reduction cycle.
+    const Node* succ = first;
     bool used_in_loop = false;
-    for (int i = 0; i < path_nodes; i++) {
+    assert(succ == path_nodes->at(0), "");
+    for (int i = 1; i < path_nodes->length(); i++) {
+      const Node* current = path_nodes->at(i);
       for (DUIterator_Fast jmax, j = current->fast_outs(jmax); j < jmax; j++) {
         Node* u = current->fast_out(j);
         if (!in_bb(u)) {
@@ -535,16 +539,13 @@ void SuperWord::mark_reductions() {
         break;
       }
       succ = current;
-      current = original_input(current, reduction_input);
     }
     if (used_in_loop) {
       continue;
     }
     // Reduction cycle found. Mark all nodes in the found path as reductions.
-    current = first;
-    for (int i = 0; i < path_nodes; i++) {
-      _loop_reductions.set(current->_idx);
-      current = original_input(current, reduction_input);
+    for (int i = 0; i < path_nodes->length(); i++) {
+      _loop_reductions.set(path_nodes->at(i)->_idx);
     }
   }
 }
