@@ -32,7 +32,7 @@ public:
   static size_t chunk_size() { return os::vm_page_size(); }
   static const size_t default_size = 1*G;
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 4;
+  static const size_t slack = 256*K;
   MEMFLAGS flag;
   const size_t size;
   char* start;
@@ -73,7 +73,7 @@ public:
 
     // We don't want to keep around too many pages that aren't in use,
     // so we ask the OS to throw away the physical backing, while keeping the memory reserved.
-    if (unused_bytes > slack*chunk_size()) {
+    if (unused_bytes > align_up(slack, chunk_size()) {
       // Look into MADV_FREE/MADV_COLD
       ::madvise(offset, unused_bytes, MADV_DONTNEED);
       // The actual reserved region(s) might not cover this whole area, therefore
