@@ -38,18 +38,21 @@ public:
   char* start;
   char* offset;
   char* committed_boundary;
-  ContiguousAllocator(size_t size, MEMFLAGS flag):
-    flag(flag),
-    size(size), start(my_mmap()),
-    offset(start),
-    committed_boundary(offset) {}
+  ContiguousAllocator(size_t size, MEMFLAGS flag)
+    : flag(flag),
+      size(size), start(my_mmap()),
+      offset(start),
+      committed_boundary(offset) {
+  }
 
   ContiguousAllocator(MEMFLAGS flag)
-    : ContiguousAllocator(default_size, flag){
+    : ContiguousAllocator(default_size, flag) {
   }
+
   ~ContiguousAllocator() {
     os::release_memory(start, size);
   }
+
   struct AllocationResult { void* loc; size_t sz; };
   AllocationResult alloc(size_t size) {
     size_t chunk_aligned_size = align_up(size, chunk_size());
@@ -73,7 +76,7 @@ public:
 
     // We don't want to keep around too many pages that aren't in use,
     // so we ask the OS to throw away the physical backing, while keeping the memory reserved.
-    if (unused_bytes > align_up(slack, chunk_size()) {
+    if (unused_bytes > align_up(slack, chunk_size())) {
       // Look into MADV_FREE/MADV_COLD
       ::madvise(offset, unused_bytes, MADV_DONTNEED);
       // The actual reserved region(s) might not cover this whole area, therefore
