@@ -73,7 +73,7 @@ public:
   void free(void* p) {
   }
 
-  void reset_to(void* p, size_t used_bytes) {
+  void reset_to(void* p) {
     void* chunk_aligned_pointer = align_up(p, chunk_size);
     offset = (char*)chunk_aligned_pointer;
     size_t unused_bytes = committed_boundary - offset;
