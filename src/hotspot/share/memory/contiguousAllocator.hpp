@@ -19,17 +19,28 @@ class ContiguousAllocator {
 private:
   // We're overriding os::reserve_memory and os::commit_memory
   // This is to avoid having to call os::mmap on each commit.
-  char* allocate_virtual_address_range() {
+  char* allocate_virtual_address_range(bool useHugePages) {
     // MAP_FIXED is intentionally left out, to leave existing mappings intact.
     const int flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
     char* addr = (char*)::mmap(nullptr, size, PROT_READ|PROT_WRITE, flags, -1, 0);
-    if (addr != MAP_FAILED) {
-      MemTracker::record_virtual_memory_reserve(addr, default_size, CALLER_PC, flag);
+    if (addr == MAP_FAILED) {
+      return nullptr;
     }
-    return addr == MAP_FAILED ? nullptr : (char*)addr;
+
+    if (useHugePages) {
+      addr = align_up(addr, 2*M);
+    }
+    MemTracker::record_virtual_memory_reserve(addr, default_size, CALLER_PC, flag);
+    return (char*)addr;
   }
 
-  static size_t get_chunk_size() { return align_up(1024*K, os::vm_page_size()); }
+  static size_t get_chunk_size(bool useHugePages) {
+    if (useHugePages) {
+      return align_up(2*M, os::vm_page_size());
+    }
+    return align_up(1*M, os::vm_page_size());
+  }
+
 public:
   static const size_t default_size = 1*G;
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
@@ -40,16 +51,16 @@ public:
   char* offset;
   char* committed_boundary;
   size_t chunk_size;
-  ContiguousAllocator(size_t size, MEMFLAGS flag)
+  ContiguousAllocator(size_t size, MEMFLAGS flag, bool useHugePages = false)
     : flag(flag),
-      size(size), start(allocate_virtual_address_range()),
+      size(size), start(allocate_virtual_address_range(useHugePages)),
       offset(start),
       committed_boundary(offset),
-      chunk_size(get_chunk_size()) {
+      chunk_size(get_chunk_size(useHugePages)) {
   }
 
-  ContiguousAllocator(MEMFLAGS flag)
-    : ContiguousAllocator(default_size, flag) {
+  ContiguousAllocator(MEMFLAGS flag, bool useHugePages = false)
+    : ContiguousAllocator(default_size, flag, useHugePages) {
   }
 
   ~ContiguousAllocator() {
