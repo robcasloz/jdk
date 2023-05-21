@@ -19,50 +19,43 @@ class ContiguousAllocator {
 public:
   struct AllocationResult { void* loc; size_t sz; };
 private:
-
-  AllocationResult populate_chunk(size_t size) {
-    size_t chunk_aligned_size = align_up(size, chunk_size);
-    char* p = this->offset;
-    if (p + chunk_aligned_size >= start + this->size) {
-      return {nullptr, 0};
-    }
-    const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_FIXED;
-    char* addr = (char*)::mmap(p, chunk_aligned_size, PROT_READ|PROT_WRITE, flags, -1, 0);
-    if (addr == MAP_FAILED) {
-      return {nullptr, 0};
-    }
-    this->offset = (char*)(addr + chunk_aligned_size);
-    MemTracker::record_virtual_memory_commit((address)addr, chunk_aligned_size, CALLER_PC);
-    return {p, chunk_aligned_size};
+  static size_t get_chunk_size(bool useHugePages) {
+    return align_up(1*M, os::vm_page_size());
   }
-  // We're overriding os::reserve_memory and os::commit_memory
-  // This is to avoid having to call os::mmap on each commit.
+
   char* allocate_virtual_address_range(bool useHugePages) {
-    // MAP_FIXED is intentionally left out, to leave existing mappings intact.
-    const int flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
+    constexpr const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
     char* addr = (char*)::mmap(nullptr, size, PROT_READ|PROT_WRITE, flags, -1, 0);
     if (addr == MAP_FAILED) {
       return nullptr;
     }
 
-    if (useHugePages) {
-      addr = align_up(addr, 2*M);
-    }
-    MemTracker::record_virtual_memory_reserve(addr, default_size, CALLER_PC, flag);
-    return (char*)addr;
+    MemTracker::record_virtual_memory_reserve(addr, size, CALLER_PC, flag);
+    return addr;
   }
 
-  static size_t get_chunk_size(bool useHugePages) {
-    if (useHugePages) {
-      return align_up(2*M, os::vm_page_size());
+  AllocationResult populate_chunk(size_t requested_size) {
+    size_t chunk_aligned_size = align_up(requested_size, chunk_size);
+    if (this->offset + chunk_aligned_size >= start + this->size) {
+      return {nullptr, 0};
     }
-    return align_up(1*M, os::vm_page_size());
+
+    constexpr const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_POPULATE;
+    char* addr = (char*)::mmap(this->offset, chunk_aligned_size, PROT_READ|PROT_WRITE, flags, -1, 0);
+    if (addr == MAP_FAILED) {
+      return {nullptr, 0};
+    }
+    assert(addr == this->offset, "not equal");
+
+    MemTracker::record_virtual_memory_commit(this->offset, chunk_aligned_size, CALLER_PC);
+    this->offset += chunk_aligned_size;
+    return {addr, chunk_aligned_size};
   }
 
 public:
   static const size_t default_size = 1*G;
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 2;
+  static const size_t slack = 4;
   MEMFLAGS flag;
   const size_t size;
   char* start;
