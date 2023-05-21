@@ -36,6 +36,12 @@ private:
 
   AllocationResult populate_chunk(size_t requested_size) {
     size_t chunk_aligned_size = align_up(requested_size, chunk_size);
+    if (this->offset + chunk_aligned_size < committed_boundary) {
+      AllocationResult r{this->offset, chunk_aligned_size};
+      this->offset += chunk_aligned_size;
+      return r;
+    }
+
     if (this->offset + chunk_aligned_size >= start + this->size) {
       return {nullptr, 0};
     }
