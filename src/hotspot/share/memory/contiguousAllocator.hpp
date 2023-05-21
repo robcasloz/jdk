@@ -101,6 +101,7 @@ public:
     if (unused_bytes > slack*chunk_size) {
       // Look into MADV_FREE/MADV_COLD
       ::madvise(offset, unused_bytes, MADV_DONTNEED);
+      committed_boundary = offset;
       // The actual reserved region(s) might not cover this whole area, therefore
       // the reserved region will not be found. We must first register a covering region.
       // Here's another issue: NMT wants the flags to match, but we've got no clue.
