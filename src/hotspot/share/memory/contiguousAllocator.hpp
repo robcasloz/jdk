@@ -16,7 +16,25 @@
 // Allocates memory into a contiguous fixed-size area at page-sized granularity.
 // Does not account for huge pages.
 class ContiguousAllocator {
+public:
+  struct AllocationResult { void* loc; size_t sz; };
 private:
+
+  AllocationResult populate_chunk(size_t size) {
+    size_t chunk_aligned_size = align_up(size, chunk_size);
+    char* p = this->offset;
+    if (p + chunk_aligned_size >= start + this->size) {
+      return {nullptr, 0};
+    }
+    const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE;
+    char* addr = (char*)::mmap(p, chunk_aligned_size, PROT_READ|PROT_WRITE, flags, -1, 0);
+    if (addr == MAP_FAILED) {
+      return {nullptr, 0};
+    }
+    this->offset = (char*)(addr + chunk_aligned_size);
+    MemTracker::record_virtual_memory_commit((address)addr, chunk_aligned_size, CALLER_PC);
+    return {p, chunk_aligned_size};
+  }
   // We're overriding os::reserve_memory and os::commit_memory
   // This is to avoid having to call os::mmap on each commit.
   char* allocate_virtual_address_range(bool useHugePages) {
@@ -67,18 +85,8 @@ public:
     os::release_memory(start, size);
   }
 
-  struct AllocationResult { void* loc; size_t sz; };
   AllocationResult alloc(size_t size) {
-    size_t chunk_aligned_size = align_up(size, chunk_size);
-    char* p = this->offset;
-    if (p + chunk_aligned_size >= start + this->size) {
-      return {nullptr, 0};
-    }
-    MemTracker::record_virtual_memory_commit((address)p, chunk_aligned_size, CALLER_PC);
-    // Encourage kernel to perform pagefaults prematurely
-    ::madvise(this->offset, chunk_aligned_size, MADV_WILLNEED);
-    this->offset = (char*)(p + chunk_aligned_size);
-    return {p, chunk_aligned_size};
+    return populate_chunk(size);
   }
   // This is a NOP. Use reset_to(void* p) instead.
   void free(void* p) {
