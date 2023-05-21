@@ -26,7 +26,7 @@ private:
     if (p + chunk_aligned_size >= start + this->size) {
       return {nullptr, 0};
     }
-    const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE;
+    const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE | MAP_FIXED;
     char* addr = (char*)::mmap(p, chunk_aligned_size, PROT_READ|PROT_WRITE, flags, -1, 0);
     if (addr == MAP_FAILED) {
       return {nullptr, 0};
