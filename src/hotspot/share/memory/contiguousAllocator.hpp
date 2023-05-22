@@ -61,7 +61,7 @@ private:
 public:
   static const size_t default_size = 1*G;
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 8;
+  static const size_t slack = 4;
   MEMFLAGS flag;
   const size_t size;
   size_t chunk_size;
