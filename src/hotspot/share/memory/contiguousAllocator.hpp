@@ -36,7 +36,7 @@ private:
 
   AllocationResult populate_chunk(size_t requested_size) {
     size_t chunk_aligned_size = align_up(requested_size, chunk_size);
-    if (this->offset + chunk_aligned_size < committed_boundary) {
+    if (this->offset + chunk_aligned_size <= committed_boundary) {
       AllocationResult r{this->offset, chunk_aligned_size};
       this->offset += chunk_aligned_size;
       return r;
@@ -55,6 +55,7 @@ private:
 
     MemTracker::record_virtual_memory_commit(this->offset, chunk_aligned_size, CALLER_PC);
     this->offset += chunk_aligned_size;
+    this->committed_boundary = this->offset;
     return {addr, chunk_aligned_size};
   }
 
@@ -73,7 +74,12 @@ public:
       chunk_size(get_chunk_size(useHugePages)),
       start(allocate_virtual_address_range(useHugePages)),
       offset(align_up(start, chunk_size)),
-      committed_boundary(align_up(start, chunk_size)) {}
+      committed_boundary(align_up(start, chunk_size)) {
+    if(!useHugePages) {
+      // No pre-faulting for the first chunk.
+      committed_boundary += chunk_size;
+    }
+  }
 
   ContiguousAllocator(MEMFLAGS flag, bool useHugePages = false)
     : ContiguousAllocator(default_size, flag, useHugePages) {
