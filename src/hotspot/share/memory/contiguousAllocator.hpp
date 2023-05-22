@@ -20,7 +20,7 @@ public:
   struct AllocationResult { void* loc; size_t sz; };
 private:
   static size_t get_chunk_size(bool useHugePages) {
-    return align_up(1*M, os::vm_page_size());
+    return align_up(useHugePages ? 2*M : 1*M, os::vm_page_size());
   }
 
   char* allocate_virtual_address_range(bool useHugePages) {
@@ -64,17 +64,16 @@ public:
   static const size_t slack = 4;
   MEMFLAGS flag;
   const size_t size;
+  size_t chunk_size;
   char* start;
   char* offset;
   char* committed_boundary;
-  size_t chunk_size;
   ContiguousAllocator(size_t size, MEMFLAGS flag, bool useHugePages = false)
-    : flag(flag),
-      size(size), start(allocate_virtual_address_range(useHugePages)),
-      offset(start),
-      committed_boundary(offset),
-      chunk_size(get_chunk_size(useHugePages)) {
-  }
+    : flag(flag), size(size),
+      chunk_size(get_chunk_size(useHugePages)),
+      start(allocate_virtual_address_range(useHugePages)),
+      offset(align_up(start, chunk_size)),
+      committed_boundary(align_up(start, chunk_size)) {}
 
   ContiguousAllocator(MEMFLAGS flag, bool useHugePages = false)
     : ContiguousAllocator(default_size, flag, useHugePages) {
@@ -92,7 +91,8 @@ public:
   }
 
   void reset_to(void* p) {
-    void* chunk_aligned_pointer = align_up(p, chunk_size);
+    assert(is_aligned(p,chunk_size), "Must be chunk aligned");
+    void* chunk_aligned_pointer = p;
     offset = (char*)chunk_aligned_pointer;
     size_t unused_bytes = committed_boundary - offset;
 
