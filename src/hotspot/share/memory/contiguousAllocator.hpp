@@ -20,7 +20,7 @@ public:
   struct AllocationResult { void* loc; size_t sz; };
 private:
   static size_t get_chunk_size(bool useHugePages) {
-    return align_up(useHugePages ? 2*M : 1*M, os::vm_page_size());
+    return align_up(useHugePages ? 2*M : 128*K, os::vm_page_size());
   }
 
   char* allocate_virtual_address_range(bool useHugePages) {
@@ -61,7 +61,7 @@ private:
 public:
   static const size_t default_size = 1*G;
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 4;
+  static const size_t slack = 8;
   MEMFLAGS flag;
   const size_t size;
   size_t chunk_size;
