@@ -29,9 +29,10 @@
 #include "runtime/javaThread.inline.hpp"
 
 // Create a CompilerThread
-CompilerThread::CompilerThread(CompileQueue* queue,
-                               CompilerCounters* counters)
-                               : JavaThread(&CompilerThread::thread_entry) {
+CompilerThread::CompilerThread(CompileQueue* queue, CompilerCounters* counters)
+  : JavaThread(&CompilerThread::thread_entry, 0, &_mp),
+    _mp{mtCompiler}
+    {
   _env   = nullptr;
   _log   = nullptr;
   _task  = nullptr;

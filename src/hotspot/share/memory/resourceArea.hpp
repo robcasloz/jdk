@@ -43,7 +43,6 @@
 // A ResourceArea is an Arena that supports safe usage of ResourceMark.
 class ResourceArea: public Arena {
   friend class VMStructs;
-  ContiguousProvider _mp;
 #ifdef ASSERT
   int _nesting;                 // current # of nested ResourceMarks
   void verify_has_resource_mark();
@@ -51,10 +50,8 @@ class ResourceArea: public Arena {
 
 public:
   ResourceArea(MEMFLAGS flags = mtThread) :
-    Arena(flags, Arena::ProvideAProviderPlease{}),
-    _mp{flags}
+    Arena(flags, Arena::ProvideAProviderPlease{})
      DEBUG_ONLY(COMMA _nesting(0)) {
-    this->init_memory_provider(&_mp);
   }
 
   ~ResourceArea() {
@@ -65,8 +62,11 @@ public:
   }
 
   ResourceArea(size_t init_size, MEMFLAGS flags = mtThread) :
-    Arena(flags, Arena::ProvideAProviderPlease{}), _mp{flags} DEBUG_ONLY(COMMA _nesting(0)) {
-    this->init_memory_provider(&_mp);
+    Arena(flags, Arena::ProvideAProviderPlease{}) DEBUG_ONLY(COMMA _nesting(0)) {
+  }
+
+  void init(ArenaMemoryProvider* amp) {
+    init_memory_provider(amp);
   }
 
   char* allocate_bytes(size_t size, AllocFailType alloc_failmode = AllocFailStrategy::EXIT_OOM);

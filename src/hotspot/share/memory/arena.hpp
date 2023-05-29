@@ -152,6 +152,7 @@ public:
 //------------------------------Arena------------------------------------------
 // Fast allocation of memory
 class Arena : public CHeapObjBase {
+public:
   static ChunkPoolProvider chunk_pool;
 protected:
   friend class HandleMark;

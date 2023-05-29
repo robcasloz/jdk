@@ -54,6 +54,7 @@ class CompilerThread : public JavaThread {
   AbstractCompiler*     _compiler;
   TimeStamp             _idle_time;
 
+  ContiguousProvider _mp;
  public:
 
   static CompilerThread* current() {
