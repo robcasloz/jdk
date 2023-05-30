@@ -136,7 +136,7 @@ public:
     _chunk = state._chunk;
     _hwm = state._hwm;
     _max = state._max;
-    _mp.reset_to(_chunk->top());
+    _mem->reset_to(_chunk->top());
 
     // Clear out this chunk (to detect allocation bugs).
     // If current chunk contains the replaced HWM, this means we are
