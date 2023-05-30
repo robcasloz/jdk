@@ -135,6 +135,47 @@ public:
       assert(_max == state._max,     "Sanity check: idempotence");
     }
 #endif
+
+    if (_mem == nullptr) {
+      if (state._chunk->next() != nullptr) { // Delete later chunks.
+        // Reset size before deleting chunks.  Otherwise, the total
+        // size could exceed the total chunk size.
+        assert(size_in_bytes() > state._size_in_bytes,
+               "size: " SIZE_FORMAT ", saved size: " SIZE_FORMAT,
+               size_in_bytes(), state._size_in_bytes);
+        set_size_in_bytes(state._size_in_bytes);
+        state._chunk->next_chop();
+        assert(_hwm != state._hwm, "Sanity check: HWM moves when we have later chunks");
+      } else {
+        assert(size_in_bytes() == state._size_in_bytes, "Sanity check");
+      }
+
+      if (_hwm != state._hwm) {
+        // HWM moved: resource area was used. Roll back!
+
+        char* replaced_hwm = _hwm;
+
+        _chunk = state._chunk;
+        _hwm = state._hwm;
+        _max = state._max;
+
+        // Clear out this chunk (to detect allocation bugs).
+        // If current chunk contains the replaced HWM, this means we are
+        // doing the rollback within the same chunk, and we only need to
+        // clear up to replaced HWM.
+        if (ZapResourceArea) {
+          char* limit = _chunk->contains(replaced_hwm) ? replaced_hwm : _max;
+          assert(limit >= _hwm, "Sanity check: non-negative memset size");
+          memset(_hwm, badResourceValue, limit - _hwm);
+        }
+      } else {
+        // No allocations. Nothing to rollback. Check it.
+        assert(_chunk == state._chunk, "Sanity check: idempotence");
+        assert(_hwm == state._hwm,     "Sanity check: idempotence");
+        assert(_max == state._max,     "Sanity check: idempotence");
+      }
+      return;
+    }
     // Chop off other chunks
     state._chunk->set_next(nullptr);
     set_size_in_bytes(state._size_in_bytes);
