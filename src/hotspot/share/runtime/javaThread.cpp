@@ -398,7 +398,7 @@ void JavaThread::check_for_valid_safepoint_state() {
 
 // A JavaThread is a normal Java thread
 
-JavaThread::JavaThread(bool self_init) :
+JavaThread::JavaThread(int x, bool self_init) :
   // Initialize fields
   Thread(self_init),
   _on_thread_list(false),
