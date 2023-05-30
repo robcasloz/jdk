@@ -95,10 +95,10 @@ class Chunk {
   Chunk*       _next;     // Next Chunk in list
   const size_t _len;      // Size of this Chunk
  public:
-  static void destroy(void* p, ArenaMemoryProvider* mp);
+  static void destroy(void* p, ContiguousProvider* mp);
   // Allocate enough memory for a chunk being able to hold length bytes
   static Chunk*
-  allocate_chunk(AllocFailType alloc_failmode, size_t length, ArenaMemoryProvider* mp);
+  allocate_chunk(AllocFailType alloc_failmode, size_t length, ContiguousProvider* mp);
 
   Chunk(size_t length);
 
@@ -123,8 +123,8 @@ class Chunk {
     non_pool_size = init_size + 4*K // An initial size which is not one of above
   };
 
-  static void chop(Chunk* chnk, ArenaMemoryProvider* mp);      // Chop this chunk
-  static void next_chop(Chunk* chnk, ArenaMemoryProvider* mp); // Chop next chunk
+  static void chop(Chunk* chnk, ContiguousProvider* mp);      // Chop this chunk
+  static void next_chop(Chunk* chnk, ContiguousProvider* mp); // Chop next chunk
   static size_t aligned_overhead_size(void) { return ARENA_ALIGN(sizeof(Chunk)); }
   static size_t aligned_overhead_size(size_t byte_size) { return ARENA_ALIGN(byte_size); }
 
@@ -159,7 +159,7 @@ protected:
   friend class NoHandleMark;
   friend class VMStructs;
 
-  ArenaMemoryProvider* _mem;
+  ContiguousProvider* _mem;
   MEMFLAGS    _flags;           // Memory tracking flags
 
   Chunk *_first;                // First chunk
@@ -183,11 +183,11 @@ protected:
  public:
   Arena(MEMFLAGS memflag);
   Arena(MEMFLAGS memflag, size_t init_size);
-  Arena(MEMFLAGS memflag, ArenaMemoryProvider* mp);
+  Arena(MEMFLAGS memflag, ContiguousProvider* mp);
 
   struct ProvideAProviderPlease {};
   Arena(MEMFLAGS memflag, ProvideAProviderPlease provide_it);
-  void init_memory_provider(ArenaMemoryProvider* mem, size_t init_size = Chunk::init_size);
+  void init_memory_provider(ContiguousProvider* mem, size_t init_size = Chunk::init_size);
 
   ~Arena();
   void  destruct_contents();
