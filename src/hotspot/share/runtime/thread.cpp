@@ -63,7 +63,7 @@ THREAD_LOCAL Thread* Thread::_thr_current = nullptr;
 
 DEBUG_ONLY(Thread* Thread::_starting_thread = nullptr;)
 
-Thread::Thread(ArenaMemoryProvider* amp) {
+Thread::Thread(bool self_init) {
 
   DEBUG_ONLY(_run_state = PRE_CALL_RUN;)
 
@@ -76,8 +76,10 @@ Thread::Thread(ArenaMemoryProvider* amp) {
 
   // allocated data structures
   set_osthread(nullptr);
-  set_resource_area(new (mtThread)ResourceArea());
-  _resource_area->init(amp);
+  if (self_init) {
+    set_resource_area(new (mtThread)ResourceArea());
+    _resource_area->init(&Arena::chunk_pool);
+  }
   DEBUG_ONLY(_current_resource_mark = nullptr;)
   set_handle_area(new (mtThread) HandleArea(nullptr));
   set_metadata_handles(new (mtClass) GrowableArray<Metadata*>(30, mtClass));

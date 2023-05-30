@@ -280,7 +280,7 @@ class Thread: public ThreadShadow {
                                                  // is waiting to lock
  public:
   // Constructor
-  Thread(ArenaMemoryProvider* = &Arena::chunk_pool);
+  Thread(bool self_init = true);
   virtual ~Thread() = 0;        // Thread is abstract.
 
   // Manage Thread::current()

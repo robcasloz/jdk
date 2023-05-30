@@ -30,7 +30,7 @@
 
 // Create a CompilerThread
 CompilerThread::CompilerThread(CompileQueue* queue, CompilerCounters* counters)
-  : JavaThread(&CompilerThread::thread_entry, 0, &_mp),
+  : JavaThread(&CompilerThread::thread_entry, 0, false),
     _mp{mtCompiler}
     {
   _env   = nullptr;
@@ -42,6 +42,8 @@ CompilerThread::CompilerThread(CompileQueue* queue, CompilerCounters* counters)
   _compiler = nullptr;
 
   // Compiler uses resource area for compilation, let's bias it to mtCompiler
+  set_resource_area(new (mtThread) ResourceArea{});
+  resource_area()->init(&_mp);
   resource_area()->bias_to(mtCompiler);
 
 #ifndef PRODUCT
