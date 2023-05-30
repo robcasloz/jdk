@@ -49,9 +49,12 @@ class ResourceArea: public Arena {
 #endif // ASSERT
 
 public:
-  ResourceArea(MEMFLAGS flags = mtThread) :
+  ResourceArea(MEMFLAGS flags = mtThread, bool def = true) :
     Arena(flags, Arena::ProvideAProviderPlease{})
      DEBUG_ONLY(COMMA _nesting(0)) {
+    if (def) {
+      init_memory_provider(&Arena::chunk_pool);
+    }
   }
 
   ~ResourceArea() {
@@ -61,8 +64,11 @@ public:
     _mem = nullptr;
   }
 
-  ResourceArea(size_t init_size, MEMFLAGS flags = mtThread) :
+  ResourceArea(size_t init_size, MEMFLAGS flags = mtThread, bool def = true) :
     Arena(flags, Arena::ProvideAProviderPlease{}) DEBUG_ONLY(COMMA _nesting(0)) {
+    if (def) {
+      init_memory_provider(&Arena::chunk_pool);
+    }
   }
 
   void init(ArenaMemoryProvider* amp) {

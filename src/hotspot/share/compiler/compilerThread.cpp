@@ -42,9 +42,8 @@ CompilerThread::CompilerThread(CompileQueue* queue, CompilerCounters* counters)
   _compiler = nullptr;
 
   // Compiler uses resource area for compilation, let's bias it to mtCompiler
-  set_resource_area(new (mtThread) ResourceArea{});
+  set_resource_area(new (mtThread) ResourceArea{mtCompiler, false});
   resource_area()->init(&_mp);
-  resource_area()->bias_to(mtCompiler);
 
 #ifndef PRODUCT
   _ideal_graph_printer = nullptr;

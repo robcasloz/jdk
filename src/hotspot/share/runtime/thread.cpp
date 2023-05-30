@@ -77,8 +77,7 @@ Thread::Thread(bool self_init) {
   // allocated data structures
   set_osthread(nullptr);
   if (self_init) {
-    set_resource_area(new (mtThread)ResourceArea());
-    _resource_area->init(&Arena::chunk_pool);
+    set_resource_area(new (mtThread)ResourceArea(mtThread, true));
   }
   DEBUG_ONLY(_current_resource_mark = nullptr;)
   set_handle_area(new (mtThread) HandleArea(nullptr));
