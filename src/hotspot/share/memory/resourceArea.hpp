@@ -43,6 +43,7 @@
 // A ResourceArea is an Arena that supports safe usage of ResourceMark.
 class ResourceArea: public Arena {
   friend class VMStructs;
+  bool use_chunk_pool;
 #ifdef ASSERT
   int _nesting;                 // current # of nested ResourceMarks
   void verify_has_resource_mark();
@@ -64,9 +65,9 @@ public:
     _mem = nullptr;
   }
 
-  ResourceArea(size_t init_size, MEMFLAGS flags = mtThread, bool def = true) :
+  ResourceArea(size_t init_size, MEMFLAGS flags = mtThread, bool use_chunk_pool = true) :
     Arena(flags, Arena::ProvideAProviderPlease{}) DEBUG_ONLY(COMMA _nesting(0)) {
-    if (def) {
+    if (use_chunk_pool) {
       init_memory_provider(&Arena::chunk_pool);
     }
   }

@@ -51,7 +51,7 @@ public:
   virtual bool reset_to(void* ptr) = 0;
 };
 
-class ContiguousProvider : public ArenaMemoryProvider {
+class ContiguousProvider final : public ArenaMemoryProvider {
   ContiguousAllocator _cont_allocator;
 public:
   ContiguousProvider(MEMFLAGS flag, bool useHugePages) :
@@ -140,7 +140,7 @@ class Chunk {
   static void start_chunk_pool_cleaner_task();
 };
 
-class ChunkPoolProvider : public ArenaMemoryProvider {
+class ChunkPoolProvider final : public ArenaMemoryProvider {
 public:
   AllocationResult alloc(AllocFailType alloc_failmode, size_t bytes, size_t length, MEMFLAGS flags) override;
   void free(void* p) override;
