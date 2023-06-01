@@ -20,7 +20,7 @@ public:
   struct AllocationResult { void* loc; size_t sz; };
 private:
   static size_t get_chunk_size(bool useHugePages) {
-    return align_up(useHugePages ? 2*M : 128*K, os::vm_page_size());
+    return align_up(useHugePages ? 2*M : 16*K, os::vm_page_size());
   }
 
   char* allocate_virtual_address_range(bool useHugePages) {
@@ -62,7 +62,7 @@ private:
 public:
   static const size_t default_size = 1*G;
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 4;
+  static const size_t slack = 1;
   MEMFLAGS flag;
   const size_t size;
   size_t chunk_size;
@@ -104,7 +104,7 @@ public:
 
     // We don't want to keep around too many pages that aren't in use,
     // so we ask the OS to throw away the physical backing, while keeping the memory reserved.
-    if (unused_bytes > slack*chunk_size) {
+    if (unused_bytes >= slack*chunk_size) {
       // Look into MADV_FREE/MADV_COLD
       ::madvise(offset, unused_bytes, MADV_DONTNEED);
       committed_boundary = offset;

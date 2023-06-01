@@ -136,6 +136,7 @@ public:
     }
 #endif
 
+    // Not in contiguous allocator, we must take the slow path.
     if (_mem == nullptr) {
       if (state._chunk->next() != nullptr) { // Delete later chunks.
         // Reset size before deleting chunks.  Otherwise, the total
@@ -176,6 +177,8 @@ public:
       }
       return;
     }
+
+    // We're in fast path -- aka contiguous allocator
     // Chop off other chunks
     state._chunk->set_next(nullptr);
     set_size_in_bytes(state._size_in_bytes);
