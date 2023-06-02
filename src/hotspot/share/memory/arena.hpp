@@ -54,11 +54,11 @@ public:
 class ContiguousProvider final : public ArenaMemoryProvider {
   ContiguousAllocator _cont_allocator;
 public:
-  ContiguousProvider(MEMFLAGS flag, bool useHugePages) :
+  explicit ContiguousProvider(MEMFLAGS flag, bool useHugePages) :
     _cont_allocator(flag, useHugePages) {}
-  ContiguousProvider(MEMFLAGS flag) :
+  explicit ContiguousProvider(MEMFLAGS flag) :
     _cont_allocator(flag) {}
-  ContiguousProvider(MEMFLAGS flag, size_t max_size) :
+  explicit ContiguousProvider(MEMFLAGS flag, size_t max_size) :
     _cont_allocator(max_size, flag) {}
 
   AllocationResult alloc(AllocFailType alloc_failmode, size_t bytes, size_t length, MEMFLAGS flags) override {

@@ -30,6 +30,10 @@ private:
       return nullptr;
     }
 
+    if (is_aligned(addr, 2*M)) {
+      addr += os::vm_page_size();
+    }
+
     MemTracker::record_virtual_memory_reserve(addr, size, CALLER_PC, flag);
     return addr;
   }
@@ -55,6 +59,7 @@ private:
 
     MemTracker::record_virtual_memory_commit(this->offset, chunk_aligned_size, CALLER_PC);
     this->offset += chunk_aligned_size;
+    assert(this->offset >= this->committed_boundary, "must be");
     this->committed_boundary = this->offset;
     return {addr, chunk_aligned_size};
   }

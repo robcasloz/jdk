@@ -50,10 +50,10 @@ class ResourceArea: public Arena {
 #endif // ASSERT
 
 public:
-  ResourceArea(MEMFLAGS flags = mtThread, bool def = true) :
+  ResourceArea(MEMFLAGS flags = mtThread, bool useDefaultMemoryProvider = true) :
     Arena(flags, Arena::ProvideAProviderPlease{})
      DEBUG_ONLY(COMMA _nesting(0)) {
-    if (def) {
+    if (useDefaultMemoryProvider) {
       init_memory_provider(nullptr);
     }
   }
