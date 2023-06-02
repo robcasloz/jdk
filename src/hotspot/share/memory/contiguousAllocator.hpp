@@ -31,7 +31,10 @@ private:
     }
 
     if (is_aligned(addr, 2*M)) {
-      addr += os::vm_page_size();
+      const size_t cz = get_chunk_size(false);
+      munmap(addr, cz);
+      addr += cz;
+      size -= cz;
     }
 
     MemTracker::record_virtual_memory_reserve(addr, size, CALLER_PC, flag);
@@ -69,21 +72,21 @@ public:
   // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
   static const size_t slack = 1;
   MEMFLAGS flag;
-  const size_t size;
+  size_t size;
   size_t chunk_size;
   char* start;
   char* offset;
   char* committed_boundary;
   ContiguousAllocator(size_t size, MEMFLAGS flag, bool useHugePages = false)
     : flag(flag), size(size),
-      chunk_size(get_chunk_size(useHugePages)),
-      start(allocate_virtual_address_range(useHugePages)),
+      chunk_size(get_chunk_size(false)),
+      start(allocate_virtual_address_range(false)),
       offset(align_up(start, chunk_size)),
       committed_boundary(align_up(start, chunk_size)) {
-    if(!useHugePages) {
+    /*if(!useHugePages) {
       // No pre-faulting for the first chunk.
       committed_boundary += chunk_size;
-    }
+      }*/
   }
 
   ContiguousAllocator(MEMFLAGS flag, bool useHugePages = false)
