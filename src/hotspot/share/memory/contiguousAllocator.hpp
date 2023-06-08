@@ -14,7 +14,7 @@
 #define SHARE_MEMORY_CONTIGUOUSALLOCATOR_HPP
 
 // Allocates memory into a contiguous fixed-size area at page-sized granularity.
-// Does not account for huge pages.
+// Explicitly avoids having the OS use huge pages.
 class ContiguousAllocator {
 public:
   struct AllocationResult { void* loc; size_t sz; };
@@ -30,6 +30,7 @@ private:
       return nullptr;
     }
 
+    // Avoid mapping 2MB huge page
     if (is_aligned(addr, 2*M)) {
       const size_t cz = get_chunk_size(false);
       munmap(addr, cz);
@@ -43,13 +44,21 @@ private:
 
   AllocationResult populate_chunk(size_t requested_size) {
     size_t chunk_aligned_size = align_up(requested_size, chunk_size);
-    if (this->offset + chunk_aligned_size <= committed_boundary) {
+    char* next_offset = this->offset + chunk_aligned_size;
+    if (next_offset <= committed_boundary) {
       AllocationResult r{this->offset, chunk_aligned_size};
-      this->offset += chunk_aligned_size;
+      this->offset = next_offset;
       return r;
     }
 
-    if (this->offset + chunk_aligned_size >= start + this->size) {
+    // Avoid mapping 2MB huge page
+    // We can't, unfortunately, do this. This is because NMT is not featureful enough.
+    /*if (is_aligned(next_offset, 2*M)) {
+      this->offset += chunk_size;
+      next_offset += chunk_size;
+      }*/
+
+    if (next_offset >= start + this->size) {
       return {nullptr, 0};
     }
 
@@ -61,7 +70,7 @@ private:
     assert(addr == this->offset, "not equal");
 
     MemTracker::record_virtual_memory_commit(this->offset, chunk_aligned_size, CALLER_PC);
-    this->offset += chunk_aligned_size;
+    this->offset = next_offset;
     assert(this->offset >= this->committed_boundary, "must be");
     this->committed_boundary = this->offset;
     return {addr, chunk_aligned_size};
@@ -69,8 +78,8 @@ private:
 
 public:
   static const size_t default_size = 1*G;
-  // The number of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 1;
+  // The size of unused-but-allocated chunks that we allow before madvising() that they're not needed.
+  static const size_t slack = 128*K;
   MEMFLAGS flag;
   size_t size;
   size_t chunk_size;
@@ -83,10 +92,8 @@ public:
       start(allocate_virtual_address_range(false)),
       offset(align_up(start, chunk_size)),
       committed_boundary(align_up(start, chunk_size)) {
-    /*if(!useHugePages) {
-      // No pre-faulting for the first chunk.
-      committed_boundary += chunk_size;
-      }*/
+    // Do not pre-fault for the first chunk.
+    committed_boundary += chunk_size;
   }
 
   ContiguousAllocator(MEMFLAGS flag, bool useHugePages = false)
@@ -100,6 +107,7 @@ public:
   AllocationResult alloc(size_t size) {
     return populate_chunk(size);
   }
+
   // This is a NOP. Use reset_to(void* p) instead.
   void free(void* p) {
   }
@@ -112,7 +120,7 @@ public:
 
     // We don't want to keep around too many pages that aren't in use,
     // so we ask the OS to throw away the physical backing, while keeping the memory reserved.
-    if (unused_bytes >= slack*chunk_size) {
+    if (unused_bytes >= slack) {
       // Look into MADV_FREE/MADV_COLD
       ::madvise(offset, unused_bytes, MADV_DONTNEED);
       committed_boundary = offset;
