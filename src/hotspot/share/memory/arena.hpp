@@ -80,6 +80,10 @@ public:
     _cont_allocator.reset_to(ptr);
     return true;
  }
+  bool reset_full() {
+    _cont_allocator.reset_to(_cont_allocator.start);
+    return true;
+  }
   bool self_free() override { return true; }
 };
 
@@ -251,6 +255,9 @@ private:
     _first = _chunk = nullptr;
     _hwm = _max = nullptr;
     set_size_in_bytes(0);
+    if (_mem != nullptr) {
+      _mem->reset_full();
+    }
   }
 };
 
