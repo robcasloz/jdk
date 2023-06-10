@@ -31,7 +31,10 @@
 // Create a CompilerThread
 CompilerThread::CompilerThread(CompileQueue* queue, CompilerCounters* counters)
   : JavaThread(&CompilerThread::thread_entry, 0, false),
-    _mp{mtCompiler, false}
+    _resource_area_memory{mtCOmpiler, false},
+    _compiler_memory{mtCompiler, false},
+    _narena_mem_one{mtCompiler, false},
+    _narena_mem_two{mtCompiler, false}
     {
   _env   = nullptr;
   _log   = nullptr;

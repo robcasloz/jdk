@@ -179,6 +179,7 @@ void C2Compiler::compile_method(ciEnv* env, ciMethod* target, int entry_bci, boo
     // No retry; just break the loop.
     break;
   }
+  
 }
 
 void C2Compiler::print_timers() {

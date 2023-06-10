@@ -80,8 +80,8 @@ public:
     _cont_allocator.reset_to(ptr);
     return true;
  }
-  bool reset_full() {
-    _cont_allocator.reset_to(_cont_allocator.start);
+  bool reset_full(bool hard_reset = true) {
+    _cont_allocator.reset_to(_cont_allocator.start, hard_reset);
     return true;
   }
   bool self_free() override { return true; }

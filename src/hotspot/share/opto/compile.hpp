@@ -343,7 +343,6 @@ class Compile : public Phase {
   uint                  _stress_seed;           // Seed for stress testing
 
   // Compilation environment.
-  ContiguousProvider     _mp;                    // Provide memory via mmap
   Arena                 _comp_arena;            // Arena with lifetime equivalent to Compile
   void*                 _barrier_set_state;     // Potential GC barrier state for Compile
   ciEnv*                _env;                   // CI interface
@@ -374,8 +373,6 @@ class Compile : public Phase {
   DEBUG_ONLY(Unique_Node_List* _modified_nodes;)   // List of nodes which inputs were modified
   DEBUG_ONLY(bool       _phase_optimize_finished;) // Used for live node verification while creating new nodes
 
-  ContiguousProvider _mp_one;
-  ContiguousProvider _mp_two;
   Arena                 _node_arena_one;
   Arena                 _node_arena_two;
   Arena*                _node_arena;
@@ -1073,6 +1070,7 @@ private:
 
   ~Compile() {
     delete _print_inlining_stream;
+    CompilerThread::current()->reset_memory();
   };
 
   // Are we compiling a method?

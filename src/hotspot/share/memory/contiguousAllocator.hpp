@@ -119,7 +119,7 @@ public:
   void free(void* p) {
   }
 
-  void reset_to(void* p) {
+  void reset_to(void* p, bool hard_reset = true) {
     assert(is_aligned(p,chunk_size), "Must be chunk aligned");
     void* chunk_aligned_pointer = p;
     offset = (char*)chunk_aligned_pointer;
@@ -127,7 +127,7 @@ public:
 
     // We don't want to keep around too many pages that aren't in use,
     // so we ask the OS to throw away the physical backing, while keeping the memory reserved.
-    if (unused_bytes >= slack) {
+    if (unused_bytes >= slack && hard_reset) {
       // Look into MADV_FREE/MADV_COLD
       ::madvise(offset, unused_bytes, MADV_DONTNEED);
       committed_boundary = offset;

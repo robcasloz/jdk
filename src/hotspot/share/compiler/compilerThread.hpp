@@ -53,9 +53,17 @@ class CompilerThread : public JavaThread {
 
   AbstractCompiler*     _compiler;
   TimeStamp             _idle_time;
-
-  ContiguousProvider _mp;
- public:
+public:
+  ContiguousProvider _resource_area_memory; // Backing memory for the ResourceArea
+  ContiguousProvider _compiler_memory; // Backing memory for the Compile class.
+  // Backing memory for the Node arenas
+  ContiguousProvider _narena_mem_one;
+  ContiguousProvider _narena_mem_two;
+  void reset_memory() {
+    _compiler_memory.reset_full(false);
+    _narena_mem_one.reset_full(false);
+    _narena_mem_two.reset_full(false);
+  }
 
   static CompilerThread* current() {
     return CompilerThread::cast(JavaThread::current());
