@@ -86,7 +86,7 @@ private:
 public:
   static const size_t default_size = 1*G;
   // The size of unused-but-allocated chunks that we allow before madvising() that they're not needed.
-  static const size_t slack = 192*K;
+  static const size_t slack = 128*K;
   MEMFLAGS flag;
   size_t size;
   size_t chunk_size;
@@ -99,9 +99,9 @@ public:
       start(allocate_virtual_address_range(false)),
       offset(align_up(start, chunk_size)),
       committed_boundary(align_up(start, chunk_size)) {
-    // Pre-fault first 128k.
+    // Pre-fault first 64k.
     constexpr const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_POPULATE;
-    char* addr = (char*)::mmap(this->offset, align_up(128*K, chunk_size), PROT_READ|PROT_WRITE, flags, -1, 0);
+    char* addr = (char*)::mmap(this->offset, align_up(64*K, chunk_size), PROT_READ|PROT_WRITE, flags, -1, 0);
     committed_boundary = addr;
   }
 
