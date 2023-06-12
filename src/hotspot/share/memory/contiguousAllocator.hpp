@@ -99,8 +99,10 @@ public:
       start(allocate_virtual_address_range(false)),
       offset(align_up(start, chunk_size)),
       committed_boundary(align_up(start, chunk_size)) {
-    // Do not pre-fault for the first chunk.
-    committed_boundary += chunk_size;
+    // Pre-fault first 64k.
+    constexpr const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_POPULATE;
+    char* addr = (char*)::mmap(this->offset, align_up(64*K, chunk_size), PROT_READ|PROT_WRITE, flags, -1, 0);
+    committed_boundary = addr;
   }
 
   ContiguousAllocator(MEMFLAGS flag, bool useHugePages = false)
