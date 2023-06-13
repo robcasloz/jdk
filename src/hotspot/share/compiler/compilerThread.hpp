@@ -59,10 +59,10 @@ public:
   // Backing memory for the Node arenas
   ContiguousProvider _narena_mem_one;
   ContiguousProvider _narena_mem_two;
-  void reset_memory() {
-    _compiler_memory.reset_full(false);
-    _narena_mem_one.reset_full(false);
-    _narena_mem_two.reset_full(false);
+  void reset_memory(bool force = false) {
+    _compiler_memory.reset_full(force);
+    _narena_mem_one.reset_full(force);
+    _narena_mem_two.reset_full(force);
   }
 
   static CompilerThread* current() {

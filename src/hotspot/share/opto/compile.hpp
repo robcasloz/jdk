@@ -1078,7 +1078,6 @@ private:
 
   // Maybe print some information about this compile.
   void print_compile_messages();
-
   // Final graph reshaping, a post-pass after the regular optimizer is done.
   bool final_graph_reshaping();
 
