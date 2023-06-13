@@ -138,7 +138,7 @@ public:
     // so we ask the OS to throw away the physical backing, while keeping the memory reserved.
     if (unused_bytes >= slack) {
       // Look into MADV_FREE/MADV_COLD
-      assert(::madvise(offset, unused_bytes, MADV_DONTNEED == 0), "must");
+      assert(::madvise(offset, unused_bytes, MADV_DONTNEED) == 0, "must");
       committed_boundary = offset;
       // The actual reserved region(s) might not cover this whole area, therefore
       // the reserved region will not be found. We must first register a covering region.
