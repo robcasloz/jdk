@@ -206,9 +206,7 @@ Chunk* Chunk::allocate_chunk(AllocFailType alloc_failmode, size_t length, Contig
 }
 
 void Chunk::destroy(void* p, ContiguousProvider* mp) {
-  if (mp != nullptr) {
-    mp->free(p);
-  } else {
+  if (mp == nullptr) {
     Arena::chunk_pool.free(p);
   }
 }
@@ -305,27 +303,8 @@ Arena::Arena(MEMFLAGS flag) :
   set_size_in_bytes(_first->length() + Chunk::aligned_overhead_size());
 }
 
-Arena *Arena::move_contents(Arena *copy) {
-  copy->destruct_contents();
-  copy->_chunk = _chunk;
-  copy->_hwm   = _hwm;
-  copy->_max   = _max;
-  copy->_first = _first;
-
-  // workaround rare racing condition, which could double count
-  // the arena size by native memory tracking
-  size_t size = size_in_bytes();
-  set_size_in_bytes(0);
-  copy->set_size_in_bytes(size);
-  // Destroy original arena
-  reset();
-  return copy;            // Return Arena with contents
-}
-
 Arena::~Arena() {
-  if (_mem != nullptr && !_mem->self_free()) {
-    destruct_contents();
-  }
+  destruct_contents();
   MemTracker::record_arena_free(_flags);
 }
 
@@ -335,9 +314,7 @@ void Arena::destruct_contents() {
   // that can have total arena memory exceed total chunk memory
   set_size_in_bytes(0);
   if (_mem == nullptr) {
-    if (_first != nullptr) {
-      Chunk::chop(_first, _mem);
-    }
+    Chunk::chop(_first, _mem);
   }
   reset();
 }

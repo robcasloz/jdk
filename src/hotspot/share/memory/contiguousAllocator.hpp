@@ -32,7 +32,7 @@ private:
 
     char* aligned_addr = align_up(addr, get_chunk_size(false));
     if (aligned_addr != addr) {
-      munmap(addr, aligned_addr - addr);
+      ::munmap(addr, aligned_addr - addr);
       size -= aligned_addr - addr;
       addr = aligned_addr;
     }
@@ -40,7 +40,7 @@ private:
     // Avoid mapping 2MB huge page
     if (is_aligned(addr, 2*M)) {
       const size_t cz = get_chunk_size(false);
-      munmap(addr, cz);
+      ::munmap(addr, cz);
       addr += cz;
       size -= cz;
     }
