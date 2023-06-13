@@ -60,9 +60,17 @@ public:
   ContiguousProvider _narena_mem_one;
   ContiguousProvider _narena_mem_two;
   void reset_memory(bool force = false) {
-    _compiler_memory.reset_full(force);
-    _narena_mem_one.reset_full(force);
-    _narena_mem_two.reset_full(force);
+    if (force) {
+      // Minimize memory usage -- we're probably idling
+      _compiler_memory.reset_full();
+      _narena_mem_one.reset_full();
+      _narena_mem_two.reset_full();
+    } else {
+      // Only keep the amount of memory that the last compilation needed
+      _compiler_memory.reset_full(_compiler_memory.used());
+      _narena_mem_one.reset_full(_narena_mem_one.used());
+      _narena_mem_two.reset_full(_narena_mem_two.used());
+    }
   }
 
   static CompilerThread* current() {

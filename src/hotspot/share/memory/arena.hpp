@@ -80,11 +80,14 @@ public:
     _cont_allocator.reset_to(ptr);
     return true;
  }
-  bool reset_full(bool hard_reset = true) {
-    _cont_allocator.reset_to(_cont_allocator.start, hard_reset);
+  bool reset_full(size_t memory_to_leave = -1) {
+    _cont_allocator.reset_full(memory_to_leave);
     return true;
   }
   bool self_free() override { return true; }
+  size_t used() {
+    return _cont_allocator.offset - _cont_allocator.start;
+  }
 };
 
 // The byte alignment to be used by Arena::Amalloc.
