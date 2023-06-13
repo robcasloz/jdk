@@ -59,10 +59,6 @@ public:
   }
 
   ~ResourceArea() {
-    if (!_mem->self_free()) {
-      destruct_contents();
-    }
-    _mem = nullptr;
   }
 
   ResourceArea(size_t init_size, MEMFLAGS flags = mtThread, bool use_chunk_pool = true) :
