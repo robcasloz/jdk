@@ -313,7 +313,7 @@ void Arena::destruct_contents() {
   // reset size before chop to avoid a rare racing condition
   // that can have total arena memory exceed total chunk memory
   set_size_in_bytes(0);
-  if (_mem == nullptr && _first != nullptr) {
+  if (_mem == nullptr) {
     Chunk::chop(_first, _mem);
   }
   reset();

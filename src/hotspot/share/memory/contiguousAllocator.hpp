@@ -124,12 +124,14 @@ public:
   void reset_full(int64_t memory_to_leave = -1) {
     offset = start;
     size_t memory = memory_to_leave == -1 ? chunk_size : (size_t)memory_to_leave;
-    assert(::madvise(offset+memory, size-memory, MADV_DONTNEED) == 0, "must");
+    assert(::madvise(offset+memory, committed_boundary - (offset+memory), MADV_DONTNEED) == 0, "must");
     committed_boundary = offset+memory;
   }
 
   void reset_to(void* p) {
     assert(is_aligned(p,chunk_size), "Must be chunk aligned");
+    assert(p <= offset, "must be");
+
     void* chunk_aligned_pointer = p;
     offset = (char*)chunk_aligned_pointer;
     size_t unused_bytes = committed_boundary - offset;
