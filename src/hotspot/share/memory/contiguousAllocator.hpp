@@ -122,6 +122,7 @@ public:
   }
 
   void reset_full(int64_t memory_to_leave = -1) {
+    if (offset == start) return;
     offset = start;
     size_t memory = memory_to_leave == -1 ? chunk_size : (size_t)memory_to_leave;
     assert(::madvise(offset+memory, committed_boundary - (offset+memory), MADV_DONTNEED) == 0, "must");
