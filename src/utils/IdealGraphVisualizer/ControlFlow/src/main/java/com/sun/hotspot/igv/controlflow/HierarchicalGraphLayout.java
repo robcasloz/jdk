@@ -161,7 +161,8 @@ public class HierarchicalGraphLayout<N, E> extends GraphLayout<N, E> {
         HierarchicalLayoutManager m = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.NONE);
 
         LayoutGraph layoutGraph = new LayoutGraph(links, vertices);
-        m.doLayout(layoutGraph);
+        // TODO: should be uncommented when HierarchicalLayoutManager is fixed
+        // m.doLayout(layoutGraph);
     }
 
     protected void performNodesLayout(UniversalGraph<N, E> graph, Collection<N> nodes) {
