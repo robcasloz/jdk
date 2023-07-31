@@ -38,6 +38,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.swing.*;
 import javax.swing.border.Border;
 import org.openide.actions.RedoAction;
@@ -237,6 +238,22 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
         container.add(BorderLayout.NORTH, topPanel);
 
         graphChanged(diagramViewModel);
+    }
+
+    public void doSomethingRandom() {
+        System.out.println("doSomethingRandom");
+        switch (ThreadLocalRandom.current().nextInt(2)) {
+        case 0:
+            System.out.println("MonkeyTestAction (" + this.getDisplayName() + "): prev diagram");
+            PrevDiagramAction.get(PrevDiagramAction.class).performAction(this.getModel());
+            break;
+        case 1:
+            System.out.println("MonkeyTestAction (" + this.getDisplayName() + "): next diagram");
+            NextDiagramAction.get(NextDiagramAction.class).performAction(this.getModel());
+            break;
+        default:
+            System.out.println("no action");
+        }
     }
 
     private void graphChanged(DiagramViewModel model) {

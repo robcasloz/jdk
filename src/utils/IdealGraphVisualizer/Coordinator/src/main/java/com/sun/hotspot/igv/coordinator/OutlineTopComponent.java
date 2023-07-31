@@ -66,6 +66,7 @@ public final class OutlineTopComponent extends TopComponent implements ExplorerM
     private final GraphDocument document;
     private FolderNode root;
     private SaveAllAction saveAllAction;
+    private MonkeyTestAction monkeyTestAction;
     private RemoveAllAction removeAllAction;
     private GraphNode[] selectedGraphs = new GraphNode[0];
     private final Set<FolderNode> selectedFolders = new HashSet<>();
@@ -105,6 +106,10 @@ public final class OutlineTopComponent extends TopComponent implements ExplorerM
         saveAllAction.setEnabled(false);
         toolbar.add(saveAllAction);
 
+        monkeyTestAction = MonkeyTestAction.get(MonkeyTestAction.class);
+        monkeyTestAction.setEnabled(false);
+        toolbar.add(monkeyTestAction);
+
         toolbar.add(RemoveAction.get(RemoveAction.class).createContextAwareInstance(this.getLookup()));
 
         removeAllAction = RemoveAllAction.get(RemoveAllAction.class);
@@ -123,6 +128,7 @@ public final class OutlineTopComponent extends TopComponent implements ExplorerM
     private void documentChanged() {
         boolean enableButton = !document.getElements().isEmpty();
         saveAllAction.setEnabled(enableButton);
+        monkeyTestAction.setEnabled(enableButton);
         removeAllAction.setEnabled(enableButton);
     }
 
