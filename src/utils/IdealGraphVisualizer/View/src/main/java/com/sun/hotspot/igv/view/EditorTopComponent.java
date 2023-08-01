@@ -28,6 +28,7 @@ import com.sun.hotspot.igv.data.Group;
 import com.sun.hotspot.igv.data.InputEdge;
 import com.sun.hotspot.igv.data.InputGraph;
 import com.sun.hotspot.igv.data.InputNode;
+import com.sun.hotspot.igv.data.Pair;
 import com.sun.hotspot.igv.data.services.InputGraphProvider;
 import com.sun.hotspot.igv.graph.Figure;
 import com.sun.hotspot.igv.util.LookupHistory;
@@ -255,20 +256,53 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
         }
     }
 
+    public enum RandomAction {
+        SHOW_PREV,
+        SHOW_NEXT,
+        RELAYOUT,
+        EXTRACT_NODE,
+        SHOW_ALL_NODES,
+        EXTEND_SELECTION,
+        REDUCE_SELECTION
+    }
+
+    private RandomAction selectAction(Set<Pair<RandomAction, Integer>> profile) {
+        List<Pair<RandomAction, Integer>> accProfile = new ArrayList<>(profile);
+        int acc = 0;
+        for (int i = 0; i < accProfile.size(); i++) {
+            acc += accProfile.get(i).getRight();
+            accProfile.set(i, new Pair<>(accProfile.get(i).getLeft(), acc));
+        }
+        int r = ThreadLocalRandom.current().nextInt(acc);
+        for (Pair<RandomAction, Integer> p : accProfile) {
+            if (r < p.getRight()) {
+                return p.getLeft();
+            }
+        }
+        assert (false);
+        return null;
+    }
+
     public void doSomethingRandom() {
         Set<Integer> initialSelection = getModel().getSelectedNodes();
         Set<Integer> initialHidden = getModel().getHiddenNodes();
-        switch (ThreadLocalRandom.current().nextInt(7)) {
-        case 0:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): prev diagram");
+        Set<Pair<RandomAction, Integer>> profile = new HashSet<>();
+        profile.add(new Pair<>(RandomAction.SHOW_PREV, 10));
+        profile.add(new Pair<>(RandomAction.SHOW_NEXT, 10));
+        profile.add(new Pair<>(RandomAction.EXTRACT_NODE, 20));
+        profile.add(new Pair<>(RandomAction.SHOW_ALL_NODES, 10));
+        profile.add(new Pair<>(RandomAction.EXTEND_SELECTION, 35));
+        profile.add(new Pair<>(RandomAction.REDUCE_SELECTION, 15));
+        RandomAction action = selectAction(profile);
+        System.out.println("MonkeyTestAction (" + getDisplayName() + "): " + action);
+        switch (action) {
+        case SHOW_PREV:
             PrevDiagramAction.get(PrevDiagramAction.class).performAction(getModel());
             break;
-        case 1:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): next diagram");
+        case SHOW_NEXT:
             NextDiagramAction.get(NextDiagramAction.class).performAction(getModel());
             break;
-        case 2:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): relayout");
+        case RELAYOUT:
             enableSeaLayoutAction.setSelected(true);
             getModel().setShowSea(true);
             getModel().setNewLayout(false);
@@ -276,8 +310,7 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             getModel().setShowSea(false);
             getModel().setNewLayout(true);
             break;
-        case 3:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): extract node");
+        case EXTRACT_NODE:
             if (initialSelection.isEmpty() && !initialHidden.isEmpty()) {
                 // After some selection reduction operations, an empty graph is
                 // shown. Extracting a node in this situation is disallowed at
@@ -292,12 +325,10 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             getModel().setSelectedNodes(randomSelection);
             ExtractAction.get(ExtractAction.class).performAction(getModel());
             break;
-        case 4:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): show all");
+        case SHOW_ALL_NODES:
             ShowAllAction.get(ShowAllAction.class).performAction(getModel());
             break;
-        case 5:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): increase selection");
+        case EXTEND_SELECTION:
             List<Integer> boundaryNodeIds = new ArrayList<Integer>();
             for (InputEdge e : getModel().getGraph().getEdges()) {
                 if (initialSelection.contains(e.getFrom()) && !initialSelection.contains(e.getTo())) {
@@ -315,8 +346,7 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             getModel().setSelectedNodes(increasedSelection);
             ExtractAction.get(ExtractAction.class).performAction(getModel());
             break;
-        case 6:
-            System.out.println("MonkeyTestAction (" + getDisplayName() + "): reduce selection");
+        case REDUCE_SELECTION:
             if (initialSelection.isEmpty()) {
                 break;
             }
@@ -328,7 +358,7 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             ExtractAction.get(ExtractAction.class).performAction(getModel());
             break;
         default:
-            System.out.println("no action");
+            assert (false);
         }
     }
 
