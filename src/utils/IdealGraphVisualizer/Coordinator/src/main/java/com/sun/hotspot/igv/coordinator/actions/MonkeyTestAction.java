@@ -24,7 +24,6 @@
  */
 package com.sun.hotspot.igv.coordinator.actions;
 
-import com.sun.hotspot.igv.coordinator.OutlineTopComponent;
 import com.sun.hotspot.igv.view.EditorTopComponent;
 import javax.swing.Action;
 import org.openide.util.HelpCtx;
@@ -42,20 +41,23 @@ public final class MonkeyTestAction extends CallableSystemAction {
 
     @Override
     public void performAction() {
-        List<EditorTopComponent> topComponents = new ArrayList<>();
-        WindowManager manager = WindowManager.getDefault();
-        for (Mode m : manager.getModes()) {
-            for (TopComponent t : manager.getOpenedTopComponents(m)) {
-                if (t instanceof EditorTopComponent) {
-                    topComponents.add((EditorTopComponent) t);
+        for (int i = 0; i < 1; i++) {
+            List<EditorTopComponent> topComponents = new ArrayList<>();
+            WindowManager manager = WindowManager.getDefault();
+            for (Mode m : manager.getModes()) {
+                for (TopComponent t : manager.getOpenedTopComponents(m)) {
+                    if (t instanceof EditorTopComponent) {
+                        topComponents.add((EditorTopComponent) t);
+                    }
                 }
             }
+            if (topComponents.isEmpty()) {
+                return;
+            }
+            EditorTopComponent etc = topComponents.get(ThreadLocalRandom.current().nextInt(topComponents.size()));
+            etc.ensureDynamicSeaMode();
+            etc.doSomethingRandom();
         }
-        if (topComponents.isEmpty()) {
-            return;
-        }
-        EditorTopComponent etc = topComponents.get(ThreadLocalRandom.current().nextInt(topComponents.size()));
-        etc.doSomethingRandom();
     }
 
     @Override

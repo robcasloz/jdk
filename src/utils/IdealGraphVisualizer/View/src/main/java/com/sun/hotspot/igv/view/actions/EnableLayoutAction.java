@@ -39,7 +39,7 @@ public abstract class EnableLayoutAction extends AbstractAction implements Prope
     public EnableLayoutAction(EditorTopComponent etc) {
         editor = etc;
         putValue(AbstractAction.SMALL_ICON, new ImageIcon(ImageUtilities.loadImage(iconResource())));
-        putValue(SELECTED_KEY, false);
+        setSelected(false);
         putValue(Action.SHORT_DESCRIPTION, getDescription());
         this.addPropertyChangeListener(this);
     }
@@ -47,6 +47,10 @@ public abstract class EnableLayoutAction extends AbstractAction implements Prope
     protected abstract String getDescription();
 
     protected abstract String iconResource();
+
+    public void setSelected(boolean value) {
+        putValue(SELECTED_KEY, value);
+    }
 
     public boolean isSelected() {
         return (Boolean)getValue(SELECTED_KEY);

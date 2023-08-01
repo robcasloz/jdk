@@ -25,6 +25,7 @@ package com.sun.hotspot.igv.view;
 
 import com.sun.hotspot.igv.data.GraphDocument;
 import com.sun.hotspot.igv.data.Group;
+import com.sun.hotspot.igv.data.InputEdge;
 import com.sun.hotspot.igv.data.InputGraph;
 import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.data.services.InputGraphProvider;
@@ -74,6 +75,9 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
     private static final String PREFERRED_ID = "EditorTopComponent";
     private static final String SATELLITE_STRING = "satellite";
     private static final String SCENE_STRING = "scene";
+
+    private EnableNewLayoutAction enableNewLayoutAction;
+    private EnableSeaLayoutAction enableSeaLayoutAction;
 
     public EditorTopComponent(DiagramViewModel diagramViewModel) {
         initComponents();
@@ -176,12 +180,14 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
         toolBar.addSeparator();
         ButtonGroup layoutButtons = new ButtonGroup();
 
-        JToggleButton newLayoutButton = new JToggleButton(new EnableNewLayoutAction(this));
+        enableNewLayoutAction = new EnableNewLayoutAction(this);
+        JToggleButton newLayoutButton = new JToggleButton(enableNewLayoutAction);
         newLayoutButton.setSelected(diagramViewModel.getNewLayout());
         layoutButtons.add(newLayoutButton);
         toolBar.add(newLayoutButton);
 
-        JToggleButton seaLayoutButton = new JToggleButton(new EnableSeaLayoutAction(this));
+        enableSeaLayoutAction = new EnableSeaLayoutAction(this);
+        JToggleButton seaLayoutButton = new JToggleButton(enableSeaLayoutAction);
         seaLayoutButton.setSelected(diagramViewModel.getShowSea());
         layoutButtons.add(seaLayoutButton);
         toolBar.add(seaLayoutButton);
@@ -240,16 +246,86 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
         graphChanged(diagramViewModel);
     }
 
+    public void ensureDynamicSeaMode() {
+        if (!getModel().getNewLayout()) {
+            System.out.println("MonkeyTestAction: ensuring dynamic mode is on");
+            enableNewLayoutAction.setSelected(true);
+            getModel().setShowSea(false);
+            getModel().setNewLayout(true);
+        }
+    }
+
     public void doSomethingRandom() {
-        System.out.println("doSomethingRandom");
-        switch (ThreadLocalRandom.current().nextInt(2)) {
+        Set<Integer> initialSelection = getModel().getSelectedNodes();
+        Set<Integer> initialHidden = getModel().getHiddenNodes();
+        switch (ThreadLocalRandom.current().nextInt(7)) {
         case 0:
-            System.out.println("MonkeyTestAction (" + this.getDisplayName() + "): prev diagram");
-            PrevDiagramAction.get(PrevDiagramAction.class).performAction(this.getModel());
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): prev diagram");
+            PrevDiagramAction.get(PrevDiagramAction.class).performAction(getModel());
             break;
         case 1:
-            System.out.println("MonkeyTestAction (" + this.getDisplayName() + "): next diagram");
-            NextDiagramAction.get(NextDiagramAction.class).performAction(this.getModel());
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): next diagram");
+            NextDiagramAction.get(NextDiagramAction.class).performAction(getModel());
+            break;
+        case 2:
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): relayout");
+            enableSeaLayoutAction.setSelected(true);
+            getModel().setShowSea(true);
+            getModel().setNewLayout(false);
+            enableNewLayoutAction.setSelected(true);
+            getModel().setShowSea(false);
+            getModel().setNewLayout(true);
+            break;
+        case 3:
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): extract node");
+            if (initialSelection.isEmpty() && !initialHidden.isEmpty()) {
+                // After some selection reduction operations, an empty graph is
+                // shown. Extracting a node in this situation is disallowed at
+                // the UI level and leads to failure.
+                break;
+            }
+            Set<Integer> randomSelection = new HashSet<Integer>();
+            InputGraph graph = getModel().getGraph();
+            List<Integer> nodeIds = new ArrayList<Integer>(graph.getNodesAsSet());
+            Integer nodeId = nodeIds.get(ThreadLocalRandom.current().nextInt(nodeIds.size()));
+            randomSelection.add(nodeId);
+            getModel().setSelectedNodes(randomSelection);
+            ExtractAction.get(ExtractAction.class).performAction(getModel());
+            break;
+        case 4:
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): show all");
+            ShowAllAction.get(ShowAllAction.class).performAction(getModel());
+            break;
+        case 5:
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): increase selection");
+            List<Integer> boundaryNodeIds = new ArrayList<Integer>();
+            for (InputEdge e : getModel().getGraph().getEdges()) {
+                if (initialSelection.contains(e.getFrom()) && !initialSelection.contains(e.getTo())) {
+                    boundaryNodeIds.add(e.getTo());
+                } else if (initialSelection.contains(e.getTo()) && !initialSelection.contains(e.getFrom())) {
+                    boundaryNodeIds.add(e.getFrom());
+                }
+            }
+            if (boundaryNodeIds.isEmpty()) {
+                break;
+            }
+            Integer addedNodeId = boundaryNodeIds.get(ThreadLocalRandom.current().nextInt(boundaryNodeIds.size()));
+            Set<Integer> increasedSelection = new HashSet<Integer>(initialSelection);
+            increasedSelection.add(addedNodeId);
+            getModel().setSelectedNodes(increasedSelection);
+            ExtractAction.get(ExtractAction.class).performAction(getModel());
+            break;
+        case 6:
+            System.out.println("MonkeyTestAction (" + getDisplayName() + "): reduce selection");
+            if (initialSelection.isEmpty()) {
+                break;
+            }
+            List<Integer> selectionList = new ArrayList<Integer>(initialSelection);
+            Integer removedNodeId = selectionList.get(ThreadLocalRandom.current().nextInt(selectionList.size()));
+            Set<Integer> reducedSelection = new HashSet<Integer>(initialSelection);
+            reducedSelection.remove(removedNodeId);
+            getModel().setSelectedNodes(reducedSelection);
+            ExtractAction.get(ExtractAction.class).performAction(getModel());
             break;
         default:
             System.out.println("no action");
