@@ -279,28 +279,32 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
                 return p.getLeft();
             }
         }
-        assert (false);
+        assert(false);
         return null;
     }
 
     public void doSomethingRandom() {
         Set<Integer> initialSelection = getModel().getSelectedNodes();
         Set<Integer> initialHidden = getModel().getHiddenNodes();
+        ensureDynamicSeaMode();
         Set<Pair<RandomAction, Integer>> profile = new HashSet<>();
         profile.add(new Pair<>(RandomAction.SHOW_PREV, 10));
         profile.add(new Pair<>(RandomAction.SHOW_NEXT, 10));
+        profile.add(new Pair<>(RandomAction.RELAYOUT, 5));
         profile.add(new Pair<>(RandomAction.EXTRACT_NODE, 20));
         profile.add(new Pair<>(RandomAction.SHOW_ALL_NODES, 10));
-        profile.add(new Pair<>(RandomAction.EXTEND_SELECTION, 35));
+        profile.add(new Pair<>(RandomAction.EXTEND_SELECTION, 30));
         profile.add(new Pair<>(RandomAction.REDUCE_SELECTION, 15));
         RandomAction action = selectAction(profile);
-        System.out.println("MonkeyTestAction (" + getDisplayName() + "): " + action);
+        System.out.print("MonkeyTestAction (" + getDisplayName() + "): " + action);
         switch (action) {
         case SHOW_PREV:
             PrevDiagramAction.get(PrevDiagramAction.class).performAction(getModel());
+            System.out.println();
             break;
         case SHOW_NEXT:
             NextDiagramAction.get(NextDiagramAction.class).performAction(getModel());
+            System.out.println();
             break;
         case RELAYOUT:
             enableSeaLayoutAction.setSelected(true);
@@ -309,12 +313,14 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             enableNewLayoutAction.setSelected(true);
             getModel().setShowSea(false);
             getModel().setNewLayout(true);
+            System.out.println();
             break;
         case EXTRACT_NODE:
             if (initialSelection.isEmpty() && !initialHidden.isEmpty()) {
                 // After some selection reduction operations, an empty graph is
                 // shown. Extracting a node in this situation is disallowed at
                 // the UI level and leads to failure.
+                System.out.println("");
                 break;
             }
             Set<Integer> randomSelection = new HashSet<Integer>();
@@ -324,9 +330,11 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             randomSelection.add(nodeId);
             getModel().setSelectedNodes(randomSelection);
             ExtractAction.get(ExtractAction.class).performAction(getModel());
+            System.out.println(" (" + getModel().getGraph().getNode(nodeId) + ")");
             break;
         case SHOW_ALL_NODES:
             ShowAllAction.get(ShowAllAction.class).performAction(getModel());
+            System.out.println("");
             break;
         case EXTEND_SELECTION:
             List<Integer> boundaryNodeIds = new ArrayList<Integer>();
@@ -338,6 +346,7 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
                 }
             }
             if (boundaryNodeIds.isEmpty()) {
+                System.out.println("");
                 break;
             }
             Integer addedNodeId = boundaryNodeIds.get(ThreadLocalRandom.current().nextInt(boundaryNodeIds.size()));
@@ -345,9 +354,11 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             increasedSelection.add(addedNodeId);
             getModel().setSelectedNodes(increasedSelection);
             ExtractAction.get(ExtractAction.class).performAction(getModel());
+            System.out.println(" (" + getModel().getGraph().getNode(addedNodeId) + ")");
             break;
         case REDUCE_SELECTION:
-            if (initialSelection.isEmpty()) {
+            if (initialSelection.size() <= 1) {
+                System.out.println("");
                 break;
             }
             List<Integer> selectionList = new ArrayList<Integer>(initialSelection);
@@ -356,6 +367,7 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
             reducedSelection.remove(removedNodeId);
             getModel().setSelectedNodes(reducedSelection);
             ExtractAction.get(ExtractAction.class).performAction(getModel());
+            System.out.println(" (" + getModel().getGraph().getNode(removedNodeId) + ")");
             break;
         default:
             assert (false);

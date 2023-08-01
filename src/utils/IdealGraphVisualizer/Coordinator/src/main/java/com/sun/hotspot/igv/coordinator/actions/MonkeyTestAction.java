@@ -41,7 +41,7 @@ public final class MonkeyTestAction extends CallableSystemAction {
 
     @Override
     public void performAction() {
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 1000; i++) {
             List<EditorTopComponent> topComponents = new ArrayList<>();
             WindowManager manager = WindowManager.getDefault();
             for (Mode m : manager.getModes()) {
@@ -55,7 +55,6 @@ public final class MonkeyTestAction extends CallableSystemAction {
                 return;
             }
             EditorTopComponent etc = topComponents.get(ThreadLocalRandom.current().nextInt(topComponents.size()));
-            etc.ensureDynamicSeaMode();
             etc.doSomethingRandom();
         }
     }
