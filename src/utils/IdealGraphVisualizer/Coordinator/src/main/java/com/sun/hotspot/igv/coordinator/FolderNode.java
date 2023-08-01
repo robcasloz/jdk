@@ -25,16 +25,23 @@ package com.sun.hotspot.igv.coordinator;
 
 import com.sun.hotspot.igv.coordinator.actions.RemoveCookie;
 import com.sun.hotspot.igv.data.*;
+import com.sun.hotspot.igv.data.services.Scheduler;
+import com.sun.hotspot.igv.data.services.GraphViewer;
 import com.sun.hotspot.igv.util.PropertiesSheet;
 import com.sun.hotspot.igv.util.StringUtils;
 import java.awt.Image;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Set;
 import javax.swing.Action;
 import org.openide.actions.PropertiesAction;
 import org.openide.actions.RenameAction;
 import org.openide.nodes.*;
 import org.openide.util.ImageUtilities;
+import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
 
@@ -50,14 +57,17 @@ public class FolderNode extends AbstractNode {
     // focused graph in the Outline window.
     private static final Map<InputGraph, GraphNode> graphNodeMap = new HashMap<>();
     private boolean selected = false;
+    static private double GROUP_VIEW_LIKELIHOOD = 0.000005;
 
     private static class FolderChildren extends Children.Keys<FolderElement> implements ChangedListener {
 
         private final Folder folder;
+        private Set<String> visited;
 
         public FolderChildren(Folder folder) {
             this.folder = folder;
             folder.getChangedEvent().addListener(this);
+            visited = new HashSet<>();
         }
 
         public Folder getFolder() {
@@ -97,6 +107,38 @@ public class FolderNode extends AbstractNode {
 
         @Override
         public void changed(Object source) {
+            for (FolderElement e : folder.getElements()) {
+                if (e instanceof Group) {
+                    Group group = (Group)e;
+                    String key = group.getName();
+                    if (visited.contains(key)) {
+                        continue;
+                    }
+                    // With likelihood GROUP_VIEW_LIKELIHOOD, open randomly one
+                    // of the graphs in the group.
+                    if (ThreadLocalRandom.current().nextInt((int)(1.0/GROUP_VIEW_LIKELIHOOD)) != 0) {
+                        continue;
+                    }
+                    final GraphViewer viewer = Lookup.getDefault().lookup(GraphViewer.class);
+                    List<InputGraph> graphs = group.getGraphs();
+                    if (graphs.isEmpty()) {
+                        continue;
+                    }
+                    if (visited.contains(key)) {
+                        continue;
+                    }
+                    visited.add(key);
+                    // Open randomly one of the graphs in the group.
+                    InputGraph graph = graphs.get(ThreadLocalRandom.current().nextInt(graphs.size()));
+                    if (graph.getBlocks().isEmpty()) {
+                        Scheduler s = Lookup.getDefault().lookup(Scheduler.class);
+                        graph.clearBlocks();
+                        s.schedule(graph);
+                        graph.ensureNodesInBlocks();
+                    }
+                    viewer.view(graph, false);
+                }
+            }
             addNotify();
         }
     }
