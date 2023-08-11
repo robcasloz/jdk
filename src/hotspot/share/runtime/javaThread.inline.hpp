@@ -151,9 +151,7 @@ inline void JavaThread::set_thread_state(JavaThreadState s) {
   assert(current_or_null() == nullptr || current_or_null() == this,
          "state change should only be called by the current thread");
   JavaThreadState from = thread_state();
-  // TODO: avoid measuring pauses in compiler threads (is_Compiler_thread()) to
-  //       reduce overhead.
-  if (current_or_null() == this && from != s) {
+  if (current_or_null() == this && from != s && !is_Compiler_thread()) {
     if ((from == _thread_in_Java || from == _thread_in_native) &&
         (s == _thread_in_vm || s == _thread_blocked)) {
       // Transition from running application to paused.
