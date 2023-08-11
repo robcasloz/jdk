@@ -1992,6 +1992,9 @@ const int ObjectAlignmentInBytes = 8;
           "more eagerly at the cost of higher overhead. A value of 0 "      \
           "(default) disables native heap trimming.")                       \
           range(0, UINT_MAX)                                                \
+                                                                            \
+  product(uint, VMPauseClusterThreshold, 0,                                 \
+          "Maximum number of microseconds between two clustered pauses")    \
 
 // end of RUNTIME_FLAGS
 

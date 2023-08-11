@@ -155,12 +155,20 @@ inline void JavaThread::set_thread_state(JavaThreadState s) {
     if ((from == _thread_in_Java || from == _thread_in_native) &&
         (s == _thread_in_vm || s == _thread_blocked)) {
       // Transition from running application to paused.
-      pause_start = Ticks::now();
+      Ticks now = Ticks::now();
+      if (!_pause_init) {
+        _pause_start = now;
+        _pause_init = true;
+      } else if ((now - _pause_end).microseconds() > VMPauseClusterThreshold) {
+        // If the application has been running for a sufficient amount of time,
+        // emit event for previous pause and consider this a new one.
+        emit_pause_event(from, s, _pause_start, _pause_end);
+        _pause_start = now;
+      }
     } else if ((from == _thread_in_vm || from == _thread_blocked) &&
                (s == _thread_in_Java || s == _thread_in_native)) {
       // Transition from paused to running application.
-      Ticks pause_end = Ticks::now();
-      emit_pause_event(from, s, pause_start, pause_end);
+      _pause_end = Ticks::now();
     }
   }
 

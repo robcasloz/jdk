@@ -158,8 +158,14 @@ class JavaThread: public Thread {
   // One-element thread local free list
   JNIHandleBlock* _free_handle_block;
 
+  // Whether the first VM pause has already started
+  bool _pause_init;
+
   // Start point of VM pause for JFR recording
-  Ticks pause_start;
+  Ticks _pause_start;
+
+  // End point of current VM pause for JFR recording
+  Ticks _pause_end;
 
  public:
   volatile intptr_t _Stalled;
