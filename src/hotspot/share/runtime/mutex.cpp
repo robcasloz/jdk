@@ -99,7 +99,7 @@ void Mutex::lock_contended(Thread* self) {
       InFlightMutexRelease ifmr(this);
       assert(rank() > Mutex::nosafepoint, "Potential deadlock with nosafepoint or lesser rank mutex");
       {
-        ThreadBlockInVMPreprocess<InFlightMutexRelease> tbivmdc(JavaThread::cast(self), ifmr);
+        ThreadNativeInVMPreprocess<InFlightMutexRelease> tbivmdc(JavaThread::cast(self), ifmr);
         _lock.lock();
       }
       if (ifmr.not_released()) {

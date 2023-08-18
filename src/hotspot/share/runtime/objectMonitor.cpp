@@ -420,7 +420,7 @@ bool ObjectMonitor::enter(JavaThread* current) {
     for (;;) {
       ExitOnSuspend eos(this);
       {
-        ThreadBlockInVMPreprocess<ExitOnSuspend> tbivs(current, eos, true /* allow_suspend */);
+        ThreadNativeInVMPreprocess<ExitOnSuspend> tbivs(current, eos, true /* allow_suspend */);
         EnterI(current);
         current->set_current_pending_monitor(nullptr);
         // We can go to a safepoint at the end of this block. If we
@@ -968,7 +968,7 @@ void ObjectMonitor::ReenterI(JavaThread* current, ObjectWaiter* currentNode) {
 
       {
         ClearSuccOnSuspend csos(this);
-        ThreadBlockInVMPreprocess<ClearSuccOnSuspend> tbivs(current, csos, true /* allow_suspend */);
+        ThreadNativeInVMPreprocess<ClearSuccOnSuspend> tbivs(current, csos, true /* allow_suspend */);
         current->_ParkEvent->park();
       }
     }
