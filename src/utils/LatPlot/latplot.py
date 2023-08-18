@@ -24,8 +24,8 @@
 import argparse
 import warnings
 import json
-import matplotlib.pyplot as plt # v. 3.6.3
-import pandas as pd # v. 1.5.2
+import matplotlib.pyplot as plt # v. 3.7.2
+import pandas as pd # v. 2.0.3
 
 def add_feature_argument(parser, feature, help_msg, default):
     """
@@ -87,7 +87,9 @@ def main():
         thread_id = values['eventThread'][thread_key]
         if not thread_id in thread_events:
             thread_events[thread_id] = []
-        start = pd.to_datetime(values['startTime'],
+        # Remove e.g. '+02:00' suffix, if any
+        startTime = values['startTime'].split('+')[0]
+        start = pd.to_datetime(startTime,
                                format="%Y-%m-%dT%H:%M:%S.%f")
         if earliest_start == None or start < earliest_start:
             earliest_start = start
