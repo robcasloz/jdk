@@ -248,7 +248,7 @@ bool Monitor::wait(uint64_t timeout) {
   InFlightMutexRelease ifmr(this);
 
   {
-    ThreadBlockInVMPreprocess<InFlightMutexRelease> tbivmdc(self, ifmr);
+    ThreadNativeInVMPreprocess<InFlightMutexRelease> tbivmdc(self, ifmr);
     OSThreadWaitState osts(self->osthread(), false /* not Object.wait() */);
 
     wait_status = _lock.wait(timeout);
