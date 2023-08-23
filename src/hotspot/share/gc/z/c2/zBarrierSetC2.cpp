@@ -513,7 +513,8 @@ void ZBarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* a
 
   // The native clone we are calling here expects the instance size in words
   // Add header/offset size to payload size to get instance size.
-  Node* const base_offset = phase->longcon(arraycopy_payload_base_offset(ac->is_clone_array()) >> LogBytesPerLong);
+  int base_off = ac->is_clone_array() ? arraycopy_payload_base_offset_array() : arraycopy_payload_base_offset_instance();
+  Node* const base_offset = phase->longcon(base_off >> LogBytesPerLong);
   Node* const full_size = phase->transform_later(new AddLNode(size, base_offset));
 
   Node* const call = phase->make_leaf_call(ctrl,

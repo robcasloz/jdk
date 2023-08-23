@@ -236,7 +236,8 @@ public:
   virtual Node* atomic_xchg_at(C2AtomicParseAccess& access, Node* new_val, const Type* value_type) const;
   virtual Node* atomic_add_at(C2AtomicParseAccess& access, Node* new_val, const Type* value_type) const;
 
-  virtual void clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const;
+  virtual void clone_array(GraphKit* kit, Node* src, Node* dst, Node* size) const;
+  virtual void clone_instance(GraphKit* kit, Node* src, Node* dst, Node* size) const;
 
   virtual Node* obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes,
                              Node*& i_o, Node*& needgc_ctrl,
@@ -302,7 +303,8 @@ public:
   virtual int estimate_stub_size() const { return 0; }
   virtual void emit_stubs(CodeBuffer& cb) const { }
 
-  static int arraycopy_payload_base_offset(bool is_array);
+  static int arraycopy_payload_base_offset_array();
+  static int arraycopy_payload_base_offset_instance();
 
 #ifndef PRODUCT
   virtual void dump_barrier_data(const MachNode* mach, outputStream* st) const {

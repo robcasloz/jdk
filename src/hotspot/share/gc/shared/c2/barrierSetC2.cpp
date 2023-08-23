@@ -647,48 +647,73 @@ Node* BarrierSetC2::atomic_add_at(C2AtomicParseAccess& access, Node* new_val, co
   return atomic_add_at_resolved(access, new_val, value_type);
 }
 
-int BarrierSetC2::arraycopy_payload_base_offset(bool is_array) {
-  // Exclude the header but include array length to copy by 8 bytes words.
-  // Can't use base_offset_in_bytes(bt) since basic type is unknown.
-  int base_off = is_array ? arrayOopDesc::length_offset_in_bytes() :
-                            instanceOopDesc::base_offset_in_bytes();
+int BarrierSetC2::arraycopy_payload_base_offset_array() {
+  // Exclude the header but include a part of it (array length) if necessary to
+  // copy by 8 bytes words. Can't use base_offset_in_bytes(bt) since basic type
+  // is unknown.
+  int base_off = arrayOopDesc::length_offset_in_bytes();
   // base_off:
   // 8  - 32-bit VM
   // 12 - 64-bit VM, compressed klass
   // 16 - 64-bit VM, normal klass
   if (base_off % BytesPerLong != 0) {
     assert(UseCompressedClassPointers, "");
-    if (is_array) {
-      // Exclude length to copy by 8 bytes words.
-      base_off += sizeof(int);
-    } else {
-      // Include klass to copy by 8 bytes words.
-      base_off = instanceOopDesc::klass_offset_in_bytes();
-    }
+    // Exclude length to copy by 8 bytes words.
+    base_off += sizeof(int);
     assert(base_off % BytesPerLong == 0, "expect 8 bytes alignment");
   }
   return base_off;
 }
 
-void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* size, bool is_array) const {
-  int base_off = arraycopy_payload_base_offset(is_array);
+int BarrierSetC2::arraycopy_payload_base_offset_instance() {
+  // Exclude the header but include a part of it (klass) if necessary to copy by
+  // 8 bytes words. Can't use base_offset_in_bytes(bt) since basic type is
+  // unknown.
+  int base_off = instanceOopDesc::base_offset_in_bytes();
+  // base_off:
+  // 8  - 32-bit VM
+  // 12 - 64-bit VM, compressed klass
+  // 16 - 64-bit VM, normal klass
+  if (base_off % BytesPerLong != 0) {
+    assert(UseCompressedClassPointers, "");
+    // Include klass to copy by 8 bytes words.
+    base_off = instanceOopDesc::klass_offset_in_bytes();
+    assert(base_off % BytesPerLong == 0, "expect 8 bytes alignment");
+  }
+  return base_off;
+}
+
+void BarrierSetC2::clone_array(GraphKit* kit, Node* src_base, Node* dst_base, Node* size) const {
+  int base_off = arraycopy_payload_base_offset_array();
   Node* payload_size = size;
   Node* offset = kit->MakeConX(base_off);
   payload_size = kit->gvn().transform(new SubXNode(payload_size, offset));
-  if (is_array) {
-    // Ensure the array payload size is rounded up to the next BytesPerLong
-    // multiple when converting to double-words. This is necessary because array
-    // size does not include object alignment padding, so it might not be a
-    // multiple of BytesPerLong for sub-long element types.
-    payload_size = kit->gvn().transform(new AddXNode(payload_size, kit->MakeConX(BytesPerLong - 1)));
-  }
+  // Ensure the array payload size is rounded up to the next BytesPerLong
+  // multiple when converting to double-words. This is necessary because array
+  // size does not include object alignment padding, so it might not be a
+  // multiple of BytesPerLong for sub-long element types.
+  payload_size = kit->gvn().transform(new AddXNode(payload_size, kit->MakeConX(BytesPerLong - 1)));
   payload_size = kit->gvn().transform(new URShiftXNode(payload_size, kit->intcon(LogBytesPerLong)));
   ArrayCopyNode* ac = ArrayCopyNode::make(kit, false, src_base, offset, dst_base, offset, payload_size, true, false);
-  if (is_array) {
-    ac->set_clone_array();
+  ac->set_clone_array();
+  Node* n = kit->gvn().transform(ac);
+  if (n == ac) {
+    const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+    ac->set_adr_type(TypeRawPtr::BOTTOM);
+    kit->set_predefined_output_for_runtime_call(ac, ac->in(TypeFunc::Memory), raw_adr_type);
   } else {
-    ac->set_clone_inst();
+    kit->set_all_memory(n);
   }
+}
+
+void BarrierSetC2::clone_instance(GraphKit* kit, Node* src_base, Node* dst_base, Node* size) const {
+  int base_off = arraycopy_payload_base_offset_instance();
+  Node* payload_size = size;
+  Node* offset = kit->MakeConX(base_off);
+  payload_size = kit->gvn().transform(new SubXNode(payload_size, offset));
+  payload_size = kit->gvn().transform(new URShiftXNode(payload_size, kit->intcon(LogBytesPerLong)));
+  ArrayCopyNode* ac = ArrayCopyNode::make(kit, false, src_base, offset, dst_base, offset, payload_size, true, false);
+  ac->set_clone_inst();
   Node* n = kit->gvn().transform(ac);
   if (n == ac) {
     const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;

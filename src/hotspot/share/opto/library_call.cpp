@@ -4884,9 +4884,8 @@ bool LibraryCallKit::inline_unsafe_copyMemory() {
 
 #undef XTOP
 
-//------------------------clone_coping-----------------------------------
-// Helper function for inline_native_clone.
-void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array) {
+// Helper functions for inline_native_clone.
+void LibraryCallKit::copy_to_clone_array(Node* obj, Node* alloc_obj, Node* obj_size) {
   assert(obj_size != nullptr, "");
   Node* raw_obj = alloc_obj->in(1);
   assert(alloc_obj->is_CheckCastPP() && raw_obj->is_Proj() && raw_obj->in(0)->is_Allocate(), "");
@@ -4905,7 +4904,43 @@ void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, b
   }
 
   Node* size = _gvn.transform(obj_size);
-  access_clone(obj, alloc_obj, size, is_array);
+  access_clone_array(obj, alloc_obj, size);
+
+  // Do not let reads from the cloned object float above the arraycopy.
+  if (alloc != nullptr) {
+    // Do not let stores that initialize this object be reordered with
+    // a subsequent store that would make this object accessible by
+    // other threads.
+    // Record what AllocateNode this StoreStore protects so that
+    // escape analysis can go from the MemBarStoreStoreNode to the
+    // AllocateNode and eliminate the MemBarStoreStoreNode if possible
+    // based on the escape status of the AllocateNode.
+    insert_mem_bar(Op_MemBarStoreStore, alloc->proj_out_or_null(AllocateNode::RawAddress));
+  } else {
+    insert_mem_bar(Op_MemBarCPUOrder);
+  }
+}
+
+void LibraryCallKit::copy_to_clone_instance(Node* obj, Node* alloc_obj, Node* obj_size) {
+  assert(obj_size != nullptr, "");
+  Node* raw_obj = alloc_obj->in(1);
+  assert(alloc_obj->is_CheckCastPP() && raw_obj->is_Proj() && raw_obj->in(0)->is_Allocate(), "");
+
+  AllocateNode* alloc = nullptr;
+  if (ReduceBulkZeroing) {
+    // We will be completely responsible for initializing this object -
+    // mark Initialize node as complete.
+    alloc = AllocateNode::Ideal_allocation(alloc_obj);
+    // The object was just allocated - there should be no any stores!
+    guarantee(alloc != nullptr && alloc->maybe_set_complete(&_gvn), "");
+    // Mark as complete_with_arraycopy so that on AllocateNode
+    // expansion, we know this AllocateNode is initialized by an array
+    // copy and a StoreStore barrier exists after the array copy.
+    alloc->initialization()->set_complete_with_arraycopy();
+  }
+
+  Node* size = _gvn.transform(obj_size);
+  access_clone_instance(obj, alloc_obj, size);
 
   // Do not let reads from the cloned object float above the arraycopy.
   if (alloc != nullptr) {
@@ -5028,7 +5063,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       //  the object.)
 
       if (!stopped()) {
-        copy_to_clone(obj, alloc_obj, array_size, true);
+        copy_to_clone_array(obj, alloc_obj, array_size);
 
         // Present the results of the copy.
         result_reg->init_req(_array_path, control());
@@ -5074,7 +5109,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       // exception state between multiple Object.clone versions (reexecute=true vs reexecute=false).
       Node* alloc_obj = new_instance(obj_klass, nullptr, &obj_size, /*deoptimize_on_exception=*/true);
 
-      copy_to_clone(obj, alloc_obj, obj_size, false);
+      copy_to_clone_instance(obj, alloc_obj, obj_size);
 
       // Present the results of the slow call.
       result_reg->init_req(_instance_path, control());

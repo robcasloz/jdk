@@ -125,14 +125,13 @@ void CardTableBarrierSetC2::post_barrier(GraphKit* kit,
   kit->final_sync(ideal);
 }
 
-void CardTableBarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
-  BarrierSetC2::clone(kit, src, dst, size, is_array);
+void CardTableBarrierSetC2::clone_instance(GraphKit* kit, Node* src, Node* dst, Node* size) const {
+  BarrierSetC2::clone_instance(kit, src, dst, size);
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
 
-  // If necessary, emit some card marks afterwards.  (Non-arrays only.)
-  bool card_mark = !is_array && !use_ReduceInitialCardMarks();
+  // If necessary, emit some card marks afterwards.
+  bool card_mark = !false && !use_ReduceInitialCardMarks();
   if (card_mark) {
-    assert(!is_array, "");
     // Put in store barrier for any and all oops we are sticking
     // into this object.  (We could avoid this if we could prove
     // that the object type contains no oop fields at all.)
