@@ -1739,8 +1739,8 @@ Node* GraphKit::access_atomic_add_at(Node* obj,
   }
 }
 
-void GraphKit::access_clone_array(Node* src, Node* dst, Node* size) {
-  return _barrier_set->clone_array(this, src, dst, size);
+void GraphKit::access_clone_array(Node* src, Node* dst, int header_size, Node* length, int elem_size) {
+  return _barrier_set->clone_array(this, src, dst, header_size, length, elem_size);
 }
 
 void GraphKit::access_clone_instance(Node* src, Node* dst, Node* size) {
@@ -3516,6 +3516,31 @@ void GraphKit::shared_unlock(Node* box, Node* obj) {
   map()->pop_monitor( );
 }
 
+bool GraphKit::get_constant_layout_helper_value(Node* klass_node, jint& constant_value) {
+  const TypeKlassPtr* klass_t = _gvn.type(klass_node)->isa_klassptr();
+  if (klass_t == nullptr) {
+    return false;
+  }
+  bool xklass = klass_t->klass_is_exact();
+  if (xklass || (klass_t->isa_aryklassptr() && klass_t->is_aryklassptr()->elem() != Type::BOTTOM)) {
+    jint lhelper;
+    if (klass_t->isa_aryklassptr()) {
+      BasicType elem = klass_t->as_instance_type()->isa_aryptr()->elem()->array_element_basic_type();
+      if (is_reference_type(elem, true)) {
+        elem = T_OBJECT;
+      }
+      lhelper = Klass::array_layout_helper(elem);
+    } else {
+      lhelper = klass_t->is_instklassptr()->exact_klass()->layout_helper();
+    }
+      if (lhelper != Klass::_lh_neutral_value) {
+        constant_value = lhelper;
+        return true;
+      }
+  }
+  return false;
+}
+
 //-------------------------------get_layout_helper-----------------------------
 // If the given klass is a constant or known to be an array,
 // fetch the constant layout helper value into constant_value
@@ -3525,24 +3550,9 @@ void GraphKit::shared_unlock(Node* box, Node* obj) {
 // almost always feature constant types.
 Node* GraphKit::get_layout_helper(Node* klass_node, jint& constant_value) {
   const TypeKlassPtr* klass_t = _gvn.type(klass_node)->isa_klassptr();
-  if (!StressReflectiveCode && klass_t != nullptr) {
-    bool xklass = klass_t->klass_is_exact();
-    if (xklass || (klass_t->isa_aryklassptr() && klass_t->is_aryklassptr()->elem() != Type::BOTTOM)) {
-      jint lhelper;
-      if (klass_t->isa_aryklassptr()) {
-        BasicType elem = klass_t->as_instance_type()->isa_aryptr()->elem()->array_element_basic_type();
-        if (is_reference_type(elem, true)) {
-          elem = T_OBJECT;
-        }
-        lhelper = Klass::array_layout_helper(elem);
-      } else {
-        lhelper = klass_t->is_instklassptr()->exact_klass()->layout_helper();
-      }
-      if (lhelper != Klass::_lh_neutral_value) {
-        constant_value = lhelper;
-        return (Node*) nullptr;
-      }
-    }
+  if (!StressReflectiveCode &&
+      get_constant_layout_helper_value(klass_node, constant_value)) {
+    return nullptr;
   }
   constant_value = Klass::_lh_neutral_value;  // put in a known value
   Node* lhp = basic_plus_adr(klass_node, klass_node, in_bytes(Klass::layout_helper_offset()));

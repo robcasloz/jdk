@@ -4885,8 +4885,7 @@ bool LibraryCallKit::inline_unsafe_copyMemory() {
 #undef XTOP
 
 // Helper functions for inline_native_clone.
-void LibraryCallKit::copy_to_clone_array(Node* obj, Node* alloc_obj, Node* obj_size) {
-  assert(obj_size != nullptr, "");
+void LibraryCallKit::copy_to_clone_array(Node* obj, Node* alloc_obj, int header_size, Node* length, int elem_size) {
   Node* raw_obj = alloc_obj->in(1);
   assert(alloc_obj->is_CheckCastPP() && raw_obj->is_Proj() && raw_obj->in(0)->is_Allocate(), "");
 
@@ -4903,8 +4902,7 @@ void LibraryCallKit::copy_to_clone_array(Node* obj, Node* alloc_obj, Node* obj_s
     alloc->initialization()->set_complete_with_arraycopy();
   }
 
-  Node* size = _gvn.transform(obj_size);
-  access_clone_array(obj, alloc_obj, size);
+  access_clone_array(obj, alloc_obj, header_size, length, elem_size);
 
   // Do not let reads from the cloned object float above the arraycopy.
   if (alloc != nullptr) {
@@ -5029,8 +5027,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       PreserveJVMState pjvms(this);
       set_control(array_ctl);
       Node* obj_length = load_array_length(obj);
-      Node* array_size = nullptr; // Size of the array without object alignment padding.
-      Node* alloc_obj = new_array(obj_klass, obj_length, 0, &array_size, /*deoptimize_on_exception=*/true);
+      Node* alloc_obj = new_array(obj_klass, obj_length, 0, nullptr, /*deoptimize_on_exception=*/true);
 
       BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
       if (bs->array_copy_requires_gc_barriers(true, T_OBJECT, true, false, BarrierSetC2::Parsing)) {
@@ -5063,7 +5060,12 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       //  the object.)
 
       if (!stopped()) {
-        copy_to_clone_array(obj, alloc_obj, array_size);
+        jint  layout_con = Klass::_lh_neutral_value;
+        bool  layout_is_con = get_constant_layout_helper_value(obj_klass, layout_con);
+        assert(layout_is_con, "array layout should be constant for cloning");
+        int header_size = Klass::layout_helper_header_size(layout_con);
+        int elem_size   = 1 << Klass::layout_helper_log2_element_size(layout_con);
+        copy_to_clone_array(obj, alloc_obj, header_size, obj_length, elem_size);
 
         // Present the results of the copy.
         result_reg->init_req(_array_path, control());

@@ -655,7 +655,7 @@ class GraphKit : public Phase {
                              BasicType bt,
                              DecoratorSet decorators);
 
-  void access_clone_array(Node* src, Node* dst, Node* size);
+  void access_clone_array(Node* src, Node* dst, int header_size, Node* length, int elem_size);
   void access_clone_instance(Node* src, Node* dst, Node* size);
 
   // Return addressing for an array element.
@@ -861,6 +861,7 @@ class GraphKit : public Phase {
   Node* set_output_for_allocation(AllocateNode* alloc,
                                   const TypeOopPtr* oop_type,
                                   bool deoptimize_on_exception=false);
+  bool get_constant_layout_helper_value(Node* klass_node, jint& constant_value);
   Node* get_layout_helper(Node* klass_node, jint& constant_value);
   Node* new_instance(Node* klass_node,
                      Node* slow_test = nullptr,

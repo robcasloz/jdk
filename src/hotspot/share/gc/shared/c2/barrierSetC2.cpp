@@ -683,11 +683,14 @@ int BarrierSetC2::arraycopy_payload_base_offset_instance() {
   return base_off;
 }
 
-void BarrierSetC2::clone_array(GraphKit* kit, Node* src_base, Node* dst_base, Node* size) const {
-  int base_off = arraycopy_payload_base_offset_array();
-  Node* payload_size = size;
-  Node* offset = kit->MakeConX(base_off);
-  payload_size = kit->gvn().transform(new SubXNode(payload_size, offset));
+void BarrierSetC2::clone_array(GraphKit* kit, Node* src_base, Node* dst_base, int header_size, Node* length, int elem_size) const {
+  // Header size is 8-bytes aligned (includes internal padding if necessary).
+  // FIXME: this might change with "8139457: Array bases are aligned at HeapWord
+  // granularity".
+  assert(header_size % BytesPerLong == 0, "expect 8 bytes alignment");
+  Node* offset = kit->MakeConX(header_size);
+  Node* elem_shift = kit->intcon(exact_log2(elem_size));
+  Node* payload_size = kit->gvn().transform(new LShiftXNode(kit->ConvI2X(length), elem_shift));
   // Ensure the array payload size is rounded up to the next BytesPerLong
   // multiple when converting to double-words. This is necessary because array
   // size does not include object alignment padding, so it might not be a
