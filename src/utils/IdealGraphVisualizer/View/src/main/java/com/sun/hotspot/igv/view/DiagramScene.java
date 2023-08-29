@@ -713,7 +713,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         Diagram diagram = getModel().getDiagram();
         HierarchicalCFGLayoutManager m = new HierarchicalCFGLayoutManager();
         HierarchicalLayoutManager manager = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
-        manager.setMaxLayerLength(9);
+        manager.setMaxLayerLength(-1);
         manager.setMinLayerDifference(1);
         manager.setLayoutSelfEdges(true);
         manager.setXOffset(25);
