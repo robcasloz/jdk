@@ -21,9 +21,13 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Show custom node info"/>
         </file>
-        <file name="Simplify graph.js" url="filters/simplifyGraph.filter">
+        <file name="Show non-trivial types.js" url="filters/showNonTrivialTypes.filter">
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Show types"/>
+        </file>
+        <file name="Simplify graph.js" url="filters/simplifyGraph.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Show non-trivial types"/>
         </file>
         <file name="Condense graph.js" url="filters/condenseGraph.filter">
             <attr name="enabled" boolvalue="false"/>

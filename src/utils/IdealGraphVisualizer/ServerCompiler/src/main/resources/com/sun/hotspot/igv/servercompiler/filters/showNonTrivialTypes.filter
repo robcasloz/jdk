@@ -1,8 +1,3 @@
-// This filter appends simplified type information to the (possibly already
-// existing) extra-label line.
-// If the bottom type is available, show it. If the phase type is available and
-// differs from the bottom type, show it too (prefixed with 'P:').
-
 // Simplify a reference type of the form
 //   "my/package/Class (package1/Class1,package2/Class2,..)"
 // into
@@ -42,15 +37,13 @@ function simplifyType(type) {
   return type;
 }
 
-// Merge a possibly existing extra label, bottom type, and phase type into a
-// new, single extra label.
-function mergeAndAppendTypeInfo(extra_label, bottom_type, phase_type) {
-  if (bottom_type == null) {
+function mergeAndAppendTypeInfo(extra_label, is_trivial_bottom_type, bottom_type, phase_type) {
+  if (phase_type != null && bottom_type != null && phase_type != bottom_type) {
+    type = simplifyType(phase_type);
+  } else if (bottom_type != null && (is_trivial_bottom_type == null || is_trivial_bottom_type !== "true")) {
+    type = simplifyType(bottom_type);
+  } else {
     return extra_label;
-  }
-  type = simplifyType(bottom_type);
-  if (phase_type != null && phase_type !== bottom_type) {
-    type += ", P:" + simplifyType(phase_type);
   }
   new_extra_label = extra_label == null ? "" : (extra_label + " ");
   return new_extra_label + type;
@@ -58,5 +51,5 @@ function mergeAndAppendTypeInfo(extra_label, bottom_type, phase_type) {
 
 editProperty(not(or([matches("bottom_type", "bottom"),
                      matches("bottom_type", "abIO")])),
-             ["extra_label", "bottom_type", "phase_type"], "extra_label",
-             function(propertyValues) {return mergeAndAppendTypeInfo(propertyValues[0], propertyValues[1], propertyValues[2]);});
+             ["extra_label", "is_trivial_bottom_type", "bottom_type", "phase_type"], "extra_label",
+             function(propertyValues) {return mergeAndAppendTypeInfo(propertyValues[0], propertyValues[1], propertyValues[2], propertyValues[3]);});

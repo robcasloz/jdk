@@ -395,6 +395,19 @@ void IdealGraphPrinter::visit_node(Node *n, bool edges, VectorSet* temp_set) {
           print_prop("phase_type", buffer);
         }
       }
+      if (!node->is_Type() &&
+          !node->is_Mach() &&
+          !node->is_Proj() &&
+          !node->is_Call() &&
+          !node->is_Start() &&
+          !node->is_Load() &&
+          !node->is_LoadStore() &&
+          !node->is_AddP() &&
+          !node->is_Reduction() &&
+          node->Opcode() != Op_PrefetchAllocation &&
+          node->Opcode() != Op_VectorBox) {
+        print_prop("is_trivial_bottom_type", "true");
+      }
     }
 
     if (C->cfg() != nullptr) {
