@@ -29,9 +29,13 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Show non-trivial types"/>
         </file>
-        <file name="Simplify graph.js" url="filters/simplifyGraph.filter">
+        <file name="Show types as suggested by Christian.js" url="filters/showTypesAsSuggestedByChristian.filter">
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Show non-trivial or bottom types"/>
+        </file>
+        <file name="Simplify graph.js" url="filters/simplifyGraph.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Show types as suggested by Christian"/>
         </file>
         <file name="Condense graph.js" url="filters/condenseGraph.filter">
             <attr name="enabled" boolvalue="false"/>
