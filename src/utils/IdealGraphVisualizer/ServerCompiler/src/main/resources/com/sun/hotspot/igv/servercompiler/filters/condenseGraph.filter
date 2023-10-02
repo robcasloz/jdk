@@ -19,13 +19,13 @@ function replaceComparisonWithSign(propertyValues) {
 editSameProperty(matches("name", "Bool"), "dump_spec", replaceComparisonWithSign);
 
 function prettyPrintPointer(dump_spec) {
-  dump_components = split_string(dump_spec);
+  dump_components = split_string(dump_spec[0]);
   if (dump_components.length < 2) {
     return null;
   }
   return dump_components[1];
 }
-editProperty(matches("name", "ConP"), "dump_spec", "short_name", prettyPrintPointer);
+editProperty(matches("name", "ConP"), ["dump_spec"], "short_name", prettyPrintPointer);
 
 // Add a more informative text for null-pointer input slots.
 editSameProperty(and([matches("name", "ConP|ConN"), matches("dump_spec", "#.*(NULL|null)")]),
