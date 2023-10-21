@@ -654,49 +654,52 @@ void PhaseChaitin::Register_Allocate() {
   // Move important info out of the live_arena to longer lasting storage.
   alloc_node_regs(_lrg_map.size());
   for (uint i=0; i < _lrg_map.size(); i++) {
-    if (_lrg_map.live_range_id(i)) { // Live range associated with Node?
-      LRG &lrg = lrgs(_lrg_map.live_range_id(i));
-      if (!lrg.alive()) {
-        set_bad(i);
-      } else if ((lrg.num_regs() == 1 && !lrg.is_scalable()) ||
-                 (lrg.is_scalable() && lrg.scalable_reg_slots() == 1)) {
-        set1(i, lrg.reg());
-      } else {                  // Must be a register-set
-        if (!lrg._fat_proj) {   // Must be aligned adjacent register set
-          // Live ranges record the highest register in their mask.
-          // We want the low register for the AD file writer's convenience.
-          OptoReg::Name hi = lrg.reg(); // Get hi register
-          int num_regs = lrg.num_regs();
-          if (lrg.is_scalable() && OptoReg::is_stack(hi)) {
-            // For scalable vector registers, when they are allocated in physical
-            // registers, num_regs is RegMask::SlotsPerVecA for reg mask of scalable
-            // vector. If they are allocated on stack, we need to get the actual
-            // num_regs, which reflects the physical length of scalable registers.
-            num_regs = lrg.scalable_reg_slots();
-          }
-          if (num_regs == 1) {
-            set1(i, hi);
-          } else {
-            OptoReg::Name lo = OptoReg::add(hi, (1 - num_regs)); // Find lo
-            // We have to use pair [lo,lo+1] even for wide vectors/vmasks because
-            // the rest of code generation works only with pairs. It is safe
-            // since for registers encoding only 'lo' is used.
-            // Second reg from pair is used in ScheduleAndBundle with vector max
-            // size 8 which corresponds to registers pair.
-            // It is also used in BuildOopMaps but oop operations are not
-            // vectorized.
-            set2(i, lo);
-          }
-        } else {                // Misaligned; extract 2 bits
-          OptoReg::Name hi = lrg.reg(); // Get hi register
-          lrg.Remove(hi);       // Yank from mask
-          int lo = lrg.mask().find_first_elem(); // Find lo
-          set_pair(i, hi, lo);
+    if (!_lrg_map.live_range_id(i)) {
+      continue;
+    }
+    LRG &lrg = lrgs(_lrg_map.live_range_id(i));
+    if( lrg._is_oop ) {
+      // TODO: move after alive check?
+      _node_oops.set(i);
+    }
+    if (!lrg.alive()) {
+      continue;
+    }
+    if ((lrg.num_regs() == 1 && !lrg.is_scalable()) ||
+        (lrg.is_scalable() && lrg.scalable_reg_slots() == 1)) {
+      set1(i, lrg.reg());
+    } else {                  // Must be a register-set
+      if (!lrg._fat_proj) {   // Must be aligned adjacent register set
+        // Live ranges record the highest register in their mask.
+        // We want the low register for the AD file writer's convenience.
+        OptoReg::Name hi = lrg.reg(); // Get hi register
+        int num_regs = lrg.num_regs();
+        if (lrg.is_scalable() && OptoReg::is_stack(hi)) {
+          // For scalable vector registers, when they are allocated in physical
+          // registers, num_regs is RegMask::SlotsPerVecA for reg mask of scalable
+          // vector. If they are allocated on stack, we need to get the actual
+          // num_regs, which reflects the physical length of scalable registers.
+          num_regs = lrg.scalable_reg_slots();
         }
+        if (num_regs == 1) {
+          set1(i, hi);
+        } else {
+          OptoReg::Name lo = OptoReg::add(hi, (1 - num_regs)); // Find lo
+          // We have to use pair [lo,lo+1] even for wide vectors/vmasks because
+          // the rest of code generation works only with pairs. It is safe
+          // since for registers encoding only 'lo' is used.
+          // Second reg from pair is used in ScheduleAndBundle with vector max
+          // size 8 which corresponds to registers pair.
+          // It is also used in BuildOopMaps but oop operations are not
+          // vectorized.
+          set2(i, lo);
+        }
+      } else {                // Misaligned; extract 2 bits
+        OptoReg::Name hi = lrg.reg(); // Get hi register
+        lrg.Remove(hi);       // Yank from mask
+        int lo = lrg.mask().find_first_elem(); // Find lo
+        set_pair(i, hi, lo);
       }
-      if( lrg._is_oop ) _node_oops.set(i);
-    } else {
-      set_bad(i);
     }
   }
 
@@ -2032,7 +2035,7 @@ void PhaseChaitin::dump(const Node* n) const {
   uint r = (n->_idx < _lrg_map.size()) ? _lrg_map.find_const(n) : 0;
   tty->print("L%d",r);
   if (r && n->Opcode() != Op_Phi) {
-    if( _node_regs ) {          // Got a post-allocation copy of allocation?
+    if (_node_regs != nullptr) {          // Got a post-allocation copy of allocation?
       tty->print("[");
       OptoReg::Name second = get_reg_second(n);
       if( OptoReg::is_valid(second) ) {
@@ -2064,7 +2067,7 @@ void PhaseChaitin::dump(const Node* n) const {
       // Don't die while dumping them.
       int op = n->Opcode();
       if( r && op != Op_Phi && op != Op_Proj && op != Op_SCMemProj) {
-        if( _node_regs ) {
+        if (_node_regs != nullptr) {
           tty->print("[");
           OptoReg::Name second = get_reg_second(n->in(k));
           if( OptoReg::is_valid(second) ) {
@@ -2216,7 +2219,7 @@ static char *print_reg(OptoReg::Name reg, const PhaseChaitin* pc, char* buf, siz
 // Dump a register name into a buffer.  Be intelligent if we get called
 // before allocation is complete.
 char *PhaseChaitin::dump_register(const Node* n, char* buf, size_t buf_size) const {
-  if( _node_regs ) {
+  if (_node_regs != nullptr) {
     // Post allocation, use direct mappings, no LRG info available
     print_reg( get_reg_first(n), this, buf, buf_size);
   } else {

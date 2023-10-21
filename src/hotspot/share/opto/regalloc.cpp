@@ -38,7 +38,7 @@ PhaseRegAlloc::PhaseRegAlloc( uint unique, PhaseCFG &cfg,
                               Matcher &matcher,
                               void (*pr_stats)() ):
                Phase(Register_Allocation),
-               _node_regs(0),
+               _node_regs(nullptr),
                _node_regs_max_index(0),
                _cfg(cfg),
                _framesize(0xdeadbeef),
@@ -111,11 +111,7 @@ bool PhaseRegAlloc::is_oop( const Node *n ) const {
 // Allocate _node_regs table with at least "size" elements
 void PhaseRegAlloc::alloc_node_regs(int size) {
   _node_regs_max_index = size + (size >> 1) + NodeRegsOverflowSize;
-  _node_regs = NEW_RESOURCE_ARRAY( OptoRegPair, _node_regs_max_index );
-  // We assume our caller will fill in all elements up to size-1, so
-  // only the extra space we allocate is initialized here.
-  for( uint i = size; i < _node_regs_max_index; ++i )
-    _node_regs[i].set_bad();
+  _node_regs = new GrowableArray<OptoRegPair>(_node_regs_max_index, _node_regs_max_index, OptoRegPair());
 }
 
 #ifndef PRODUCT
