@@ -45,7 +45,6 @@ class PhaseRegAlloc : public Phase {
 
 protected:
   GrowableArray<OptoRegPair>* _node_regs;
-  uint                        _node_regs_max_index;
   VectorSet                   _node_oops;         // Mapping from node indices to oopiness
 
   void alloc_node_regs(int size);  // allocate _node_regs table with at least "size" elements
@@ -57,13 +56,23 @@ public:
   uint _framesize;              // Size of frame in stack-slots. not counting preserve area
   OptoReg::Name _max_reg;       // Past largest register seen
   Matcher &_matcher;            // Convert Ideal to MachNodes
-  uint node_regs_max_index() const { return _node_regs_max_index; }
+  uint node_regs_max_index() const {
+    return _node_regs == nullptr ? 0 : _node_regs->length();
+  }
 
   // Get the register associated with the Node
   OptoReg::Name get_reg_first( const Node *n ) const {
+    if (StressSeed == 42 && n->_idx >= (uint)_node_regs->length()) {
+      tty->print("get_reg_first ");
+      n->dump();
+    }
     return _node_regs->at(n->_idx).first();
   }
   OptoReg::Name get_reg_second( const Node *n ) const {
+    if (StressSeed == 42 && n->_idx >= (uint)_node_regs->length()) {
+      tty->print("get_reg_second ");
+      n->dump();
+    }
     return _node_regs->at(n->_idx).second();
   }
 
@@ -75,28 +84,31 @@ public:
   // to the value produced by "old_node"
   virtual void add_reference( const Node *node, const Node *old_node) = 0;
 
-
   // Set the register associated with a new Node
-  // TODO: specialize into no-grow (at()) for calls within Register_Allocate() and grow versions (at_grow()) for later calls.
-  void set_bad( uint idx ) {
-    if (StressSeed == 42) {tty->print_cr("set_bad(%d)", idx);};
-    _node_regs->at(idx).set_bad();
-    if (StressSeed == 42) {tty->print_cr(" -> %d.%d", _node_regs->at(idx).first(), _node_regs->at(idx).second());};
-  }
-  void set1( uint idx, OptoReg::Name reg ) {
-    if (StressSeed == 42) {tty->print_cr("set1(%d, %d)", idx, reg);};
+  void set1_no_grow(uint idx, OptoReg::Name reg) {
+    if (StressSeed == 42) {tty->print_cr("set1_no_grow(%d, %d)", idx, reg);};
     _node_regs->at(idx).set1(reg);
-    if (StressSeed == 42) {tty->print_cr(" -> %d.%d", _node_regs->at(idx).first(), _node_regs->at(idx).second());};
+    if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
-  void set2( uint idx, OptoReg::Name reg ) {
-    if (StressSeed == 42) {tty->print_cr("set2(%d, %d)", idx, reg);};
+  void set2_no_grow(uint idx, OptoReg::Name reg) {
+    if (StressSeed == 42) {tty->print_cr("set2_no_grow(%d, %d)", idx, reg);};
     _node_regs->at(idx).set2(reg);
-    if (StressSeed == 42) {tty->print_cr(" -> %d.%d", _node_regs->at(idx).first(), _node_regs->at(idx).second());};
+    if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
-  void set_pair( uint idx, OptoReg::Name hi, OptoReg::Name lo ) {
+  void set_pair_no_grow(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
+    if (StressSeed == 42) {tty->print_cr("set_pair_no_grow(%d, %d, %d)", idx, hi, lo);};
+    _node_regs->at_put(idx, OptoRegPair(hi, lo));
+    if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
+  }
+  void set_bad(uint idx) {
+    if (StressSeed == 42) {tty->print_cr("set_bad(%d)", idx);};
+    _node_regs->at_put_grow(idx, OptoRegPair());
+    if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
+  }
+  void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
     if (StressSeed == 42) {tty->print_cr("set_pair(%d, %d, %d)", idx, hi, lo);};
-    _node_regs->at(idx).set_pair(hi, lo);
-    if (StressSeed == 42) {tty->print_cr(" -> %d.%d", _node_regs->at(idx).first(), _node_regs->at(idx).second());};
+    _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
+    if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
 
   // Set and query if a node produces an oop
@@ -112,9 +124,8 @@ public:
 
   // Get the register encoding associated with the Node
   int get_encode(const Node *n) const {
-    assert( n->_idx < _node_regs_max_index, "Exceeded _node_regs array");
-    OptoReg::Name first = _node_regs->at(n->_idx).first();
-    OptoReg::Name second = _node_regs->at(n->_idx).second();
+    OptoReg::Name first  = get_reg_first(n);
+    OptoReg::Name second = get_reg_second(n);
     assert( !OptoReg::is_valid(second) || second == first+1, "" );
     assert(OptoReg::is_reg(first), "out of range");
     return Matcher::_regEncode[first];

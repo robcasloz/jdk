@@ -658,16 +658,12 @@ void PhaseChaitin::Register_Allocate() {
       continue;
     }
     LRG &lrg = lrgs(_lrg_map.live_range_id(i));
-    if( lrg._is_oop ) {
-      // TODO: move after alive check?
-      _node_oops.set(i);
-    }
     if (!lrg.alive()) {
       continue;
     }
     if ((lrg.num_regs() == 1 && !lrg.is_scalable()) ||
         (lrg.is_scalable() && lrg.scalable_reg_slots() == 1)) {
-      set1(i, lrg.reg());
+      set1_no_grow(i, lrg.reg());
     } else {                  // Must be a register-set
       if (!lrg._fat_proj) {   // Must be aligned adjacent register set
         // Live ranges record the highest register in their mask.
@@ -682,7 +678,7 @@ void PhaseChaitin::Register_Allocate() {
           num_regs = lrg.scalable_reg_slots();
         }
         if (num_regs == 1) {
-          set1(i, hi);
+          set1_no_grow(i, hi);
         } else {
           OptoReg::Name lo = OptoReg::add(hi, (1 - num_regs)); // Find lo
           // We have to use pair [lo,lo+1] even for wide vectors/vmasks because
@@ -692,14 +688,17 @@ void PhaseChaitin::Register_Allocate() {
           // size 8 which corresponds to registers pair.
           // It is also used in BuildOopMaps but oop operations are not
           // vectorized.
-          set2(i, lo);
+          set2_no_grow(i, lo);
         }
       } else {                // Misaligned; extract 2 bits
         OptoReg::Name hi = lrg.reg(); // Get hi register
         lrg.Remove(hi);       // Yank from mask
         int lo = lrg.mask().find_first_elem(); // Find lo
-        set_pair(i, hi, lo);
+        set_pair_no_grow(i, hi, lo);
       }
+    }
+    if (lrg._is_oop) {
+      _node_oops.set(i);
     }
   }
 

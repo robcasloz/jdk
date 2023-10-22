@@ -890,7 +890,6 @@
   c2_nonstatic_field(PhaseCFG,                 _root_block,                                   Block*)                                \
                                                                                                                                      \
   c2_nonstatic_field(PhaseRegAlloc,            _node_regs,                                    GrowableArray<OptoRegPair>*)           \
-  c2_nonstatic_field(PhaseRegAlloc,            _node_regs_max_index,                          uint)                                  \
   c2_nonstatic_field(PhaseRegAlloc,            _framesize,                                    uint)                                  \
   c2_nonstatic_field(PhaseRegAlloc,            _max_reg,                                      OptoReg::Name)                         \
                                                                                                                                      \

@@ -39,7 +39,6 @@ PhaseRegAlloc::PhaseRegAlloc( uint unique, PhaseCFG &cfg,
                               void (*pr_stats)() ):
                Phase(Register_Allocation),
                _node_regs(nullptr),
-               _node_regs_max_index(0),
                _cfg(cfg),
                _framesize(0xdeadbeef),
                _matcher(matcher)
@@ -110,7 +109,8 @@ bool PhaseRegAlloc::is_oop( const Node *n ) const {
 
 // Allocate _node_regs table with at least "size" elements
 void PhaseRegAlloc::alloc_node_regs(int size) {
-  _node_regs_max_index = size + (size >> 1) + NodeRegsOverflowSize;
+  uint _node_regs_max_index = size + (size >> 1) + NodeRegsOverflowSize;
+  // TODO: ensure _node_regs is allocated in the same arena as before.
   _node_regs = new GrowableArray<OptoRegPair>(_node_regs_max_index, _node_regs_max_index, OptoRegPair());
 }
 
