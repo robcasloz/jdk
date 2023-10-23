@@ -25,8 +25,6 @@
 #include "precompiled.hpp"
 #include "opto/regalloc.hpp"
 
-static const int NodeRegsOverflowSize = 200;
-
 void (*PhaseRegAlloc::_alloc_statistics[MAX_REG_ALLOCATORS])();
 int PhaseRegAlloc::_num_allocators = 0;
 #ifndef PRODUCT
@@ -109,12 +107,10 @@ bool PhaseRegAlloc::is_oop( const Node *n ) const {
 
 // Allocate _node_regs table with at least "size" elements
 void PhaseRegAlloc::alloc_node_regs(int size) {
-  // TODO: reduce size.
-  uint _node_regs_max_index = size + (size >> 1) + NodeRegsOverflowSize;
   // TODO: ensure _node_regs is allocated in the same arena as before.
-  _node_regs = new GrowableArray<OptoRegPair>(_node_regs_max_index, _node_regs_max_index, OptoRegPair());
+  _node_regs = new GrowableArray<OptoRegPair>(size, size, OptoRegPair());
   initial = size;
-  original = _node_regs_max_index;
+  original = size + (size >> 1) + 200;
   max = initial;
 }
 

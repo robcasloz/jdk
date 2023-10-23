@@ -360,8 +360,8 @@ void PhaseOutput::Output() {
 
   fill_buffer(cb, blk_starts);
 
-  if (StressSeed >= 42) {
-    tty->print_cr("initial: %d, original: %d, max: %d", C->regalloc()->initial, C->regalloc()->original, C->regalloc()->max);
+  if (UseNewCode2) {
+    tty->print_cr("%d, %d, %d", C->regalloc()->initial, C->regalloc()->original, C->regalloc()->max);
   }
 }
 
@@ -2019,7 +2019,9 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // Now that the nops are in the array, save the count
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
-  // TODO: review this
+  // TODO: review this. Risk of out-of-bounds access on the node_max-sized
+  // arrays? Late nodes such as MachProlog, MachEpilog etc. are never explicitly
+  // "inserted" in _regalloc.
   uint node_max = _regalloc->node_regs_max_index();
 
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
