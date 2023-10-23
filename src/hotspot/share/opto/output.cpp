@@ -360,6 +360,10 @@ void PhaseOutput::Output() {
   }
 
   fill_buffer(cb, blk_starts);
+
+  if (StressSeed >= 42) {
+    tty->print_cr("initial: %d, original: %d, max: %d", C->regalloc()->initial, C->regalloc()->original, C->regalloc()->max);
+  }
 }
 
 bool PhaseOutput::need_stack_bang(int frame_size_in_bytes) const {
@@ -2016,6 +2020,7 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // Now that the nops are in the array, save the count
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
+  // TODO: review this
   uint node_max = _regalloc->node_regs_max_index();
 
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
@@ -2909,6 +2914,7 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
     } else {
       pinch = new Node(1); // Pinch point to-be
     }
+    // TODO: review this
     if (pinch->_idx >= _regalloc->node_regs_max_index()) {
       DEBUG_ONLY( pinch->dump(); );
       assert(false, "too many D-U pinch points: %d >= %d", pinch->_idx, _regalloc->node_regs_max_index());

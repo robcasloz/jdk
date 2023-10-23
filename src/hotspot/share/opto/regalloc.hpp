@@ -59,6 +59,9 @@ public:
   uint node_regs_max_index() const {
     return _node_regs == nullptr ? 0 : _node_regs->length();
   }
+  uint initial;
+  uint original;
+  uint max;
 
   // Get the register associated with the Node
   OptoReg::Name get_reg_first( const Node *n ) const {
@@ -103,11 +106,17 @@ public:
   void set_bad(uint idx) {
     if (StressSeed == 42) {tty->print_cr("set_bad(%d)", idx);};
     _node_regs->at_put_grow(idx, OptoRegPair());
+    if ((uint)idx > max) {
+      max = idx;
+    }
     if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
   void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
     if (StressSeed == 42) {tty->print_cr("set_pair(%d, %d, %d)", idx, hi, lo);};
     _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
+    if ((uint)idx > max) {
+      max = idx;
+    }
     if (StressSeed == 42) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
 

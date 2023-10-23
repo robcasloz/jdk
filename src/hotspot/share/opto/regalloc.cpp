@@ -112,6 +112,9 @@ void PhaseRegAlloc::alloc_node_regs(int size) {
   uint _node_regs_max_index = size + (size >> 1) + NodeRegsOverflowSize;
   // TODO: ensure _node_regs is allocated in the same arena as before.
   _node_regs = new GrowableArray<OptoRegPair>(_node_regs_max_index, _node_regs_max_index, OptoRegPair());
+  initial = size;
+  original = _node_regs_max_index;
+  max = initial;
 }
 
 #ifndef PRODUCT
