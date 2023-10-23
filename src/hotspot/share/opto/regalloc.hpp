@@ -63,18 +63,25 @@ public:
   uint original;
   uint max;
 
-  // Get the register associated with the Node
-  OptoReg::Name get_reg_first( const Node *n ) const {
-    if (StressSeed == 42 && n->_idx >= (uint)_node_regs->length()) {
-      tty->print("get_reg_first ");
-      n->dump();
+  // Get the first/second registers associated with the Node, if explicitly
+  // assigned, or OptoReg::Bad otherwise.
+  OptoReg::Name get_reg_first(const Node* n) const {
+    if (n->_idx >= (uint)_node_regs->length()) {
+      if (StressSeed == 42) {
+        tty->print("get_reg_first ");
+        n->dump();
+      }
+      return OptoReg::Bad;
     }
     return _node_regs->at(n->_idx).first();
   }
   OptoReg::Name get_reg_second( const Node *n ) const {
-    if (StressSeed == 42 && n->_idx >= (uint)_node_regs->length()) {
-      tty->print("get_reg_second ");
-      n->dump();
+    if (n->_idx >= (uint)_node_regs->length()) {
+      if (StressSeed == 42) {
+        tty->print("get_reg_second ");
+        n->dump();
+      }
+      return OptoReg::Bad;
     }
     return _node_regs->at(n->_idx).second();
   }

@@ -321,7 +321,6 @@ void PhaseOutput::Output() {
         MachEpilogNode* epilog = new MachEpilogNode(m->as_Mach()->ideal_Opcode() == Op_Return);
         block->add_inst(epilog);
         C->cfg()->map_node_to_block(epilog, block);
-        C->regalloc()->set_bad(epilog->_idx);
       }
     }
   }
