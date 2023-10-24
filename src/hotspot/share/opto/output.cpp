@@ -81,8 +81,9 @@ private:
   // Number of nodes in the method
   uint _node_bundling_limit;
 
-  // Maximum number of nodes allowed during scheduling
-  uint _node_max;
+  uint _node_bundling_base_length;
+  uint _uses_length;
+  uint _current_latency_length;
 
   // List of scheduled nodes. Generated in reverse order
   Node_List _scheduled;
@@ -133,6 +134,50 @@ private:
   // Dump the available list
   void dump_available() const;
 
+  short uses(const Node* n) const {
+#ifndef PRODUCT
+    if (n->_idx >= _uses_length) {
+      tty->print("n: ");
+      n->dump();
+    }
+#endif
+    assert(n->_idx < _uses_length, "");
+    return _uses[n->_idx];
+  }
+
+  void set_uses(const Node* n, short u) {
+#ifndef PRODUCT
+    if (n->_idx >= _uses_length) {
+      tty->print("n: ");
+      n->dump();
+    }
+#endif
+    assert(n->_idx < _uses_length, "");
+    _uses[n->_idx] = u;
+  }
+
+  unsigned short current_latency(const Node* n) const {
+#ifndef PRODUCT
+    if (n->_idx >= _current_latency_length) {
+      tty->print("n: ");
+      n->dump();
+    }
+#endif
+    assert(n->_idx < _current_latency_length, "");
+    return _current_latency[n->_idx];
+  }
+
+  void set_current_latency(const Node* n, unsigned short l) {
+#ifndef PRODUCT
+    if (n->_idx >= _current_latency_length) {
+      tty->print("n: ");
+      n->dump();
+    }
+#endif
+    assert(n->_idx < _current_latency_length, "");
+    _current_latency[n->_idx] = l;
+  }
+
 public:
   Scheduling(Arena *arena, Compile &compile);
 
@@ -148,7 +193,13 @@ public:
 
   Bundle* node_bundling(const Node *n) {
     assert(valid_bundle_info(n), "oob");
-    assert(n->_idx < _node_max, "");
+#ifndef PRODUCT
+    if (n->_idx >= _node_bundling_base_length) {
+      tty->print("n: ");
+      n->dump();
+    }
+#endif
+    assert(n->_idx < _node_bundling_base_length, "");
     return (&_node_bundling_base[n->_idx]);
   }
 
@@ -157,7 +208,13 @@ public:
   }
 
   bool starts_bundle(const Node *n) const {
-    assert(n->_idx < _node_max, "");
+#ifndef PRODUCT
+    if (n->_idx >= _node_bundling_base_length) {
+      tty->print("n: ");
+      n->dump();
+    }
+#endif
+    assert(n->_idx < _node_bundling_base_length, "");
     return (_node_bundling_limit > n->_idx && _node_bundling_base[n->_idx].starts_bundle());
   }
 
@@ -288,6 +345,10 @@ void PhaseOutput::Output() {
 
   // Replace StartNode with prolog
   MachPrologNode *prolog = new MachPrologNode();
+  if (UseNewCode3) {
+    tty->print("New node: ");
+    prolog->dump();
+  }
   entry->map_node(prolog, 0);
   C->cfg()->map_node_to_block(prolog, entry);
   C->cfg()->unmap_node_from_block(start); // start is no longer in any block
@@ -324,6 +385,10 @@ void PhaseOutput::Output() {
       Node* m = block->end();
       if (m->is_Mach() && m->as_Mach()->ideal_Opcode() != Op_Halt) {
         MachEpilogNode* epilog = new MachEpilogNode(m->as_Mach()->ideal_Opcode() == Op_Return);
+        if (UseNewCode3) {
+          tty->print("New node: ");
+          epilog->dump();
+        }
         block->add_inst(epilog);
         C->cfg()->map_node_to_block(epilog, block);
       }
@@ -1503,6 +1568,10 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
           assert((padding % nop_size) == 0, "padding is not a multiple of NOP size");
           int nops_cnt = padding / nop_size;
           MachNode *nop = new MachNopNode(nops_cnt);
+          if (UseNewCode3) {
+            tty->print("New node: ");
+            nop->dump();
+          }
           block->insert_node(nop, j++);
           last_inst++;
           C->cfg()->map_node_to_block(nop, block);
@@ -1589,6 +1658,10 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
               // Insert padding between avoid_back_to_back branches.
               if (needs_padding && replacement->avoid_back_to_back(MachNode::AVOID_BEFORE)) {
                 MachNode *nop = new MachNopNode();
+                if (UseNewCode3) {
+                  tty->print("New node: ");
+                  nop->dump();
+                }
                 block->insert_node(nop, j++);
                 C->cfg()->map_node_to_block(nop, block);
                 last_inst++;
@@ -1768,6 +1841,10 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
       int padding = nb->alignment_padding(current_offset);
       if( padding > 0 ) {
         MachNode *nop = new MachNopNode(padding / nop_size);
+        if (UseNewCode3) {
+          tty->print("New node: ");
+          nop->dump();
+        }
         block->insert_node(nop, block->number_of_nodes());
         C->cfg()->map_node_to_block(nop, block);
         nop->emit(*cb, C->regalloc());
@@ -2020,28 +2097,35 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
 {
   // Create a MachNopNode
   _nop = new MachNopNode();
+  if (UseNewCode3) {
+    tty->print("New node: ");
+    _nop->dump();
+  }
 
   // Now that the nops are in the array, save the count
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
   // TODO: make '_node_bundling_base', '_uses', and '_current_latency' also growable?
-  _node_max = _regalloc->node_regs_max_index() + (_regalloc->node_regs_max_index() >> 2) + 200;
+  uint node_max = _regalloc->node_regs_max_index() + (_regalloc->node_regs_max_index() >> 2) + 200;
+  _node_bundling_base_length = node_max;
+  _uses_length = node_max;
+  _current_latency_length = node_max;
 
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
 
   // This one is persistent within the Compile class
-  _node_bundling_base = NEW_ARENA_ARRAY(compile.comp_arena(), Bundle, _node_max);
+  _node_bundling_base = NEW_ARENA_ARRAY(compile.comp_arena(), Bundle, _node_bundling_base_length);
 
   // Allocate space for fixed-size arrays
-  _uses            = NEW_ARENA_ARRAY(arena, short,          _node_max);
-  _current_latency = NEW_ARENA_ARRAY(arena, unsigned short, _node_max);
+  _uses            = NEW_ARENA_ARRAY(arena, short,          _uses_length);
+  _current_latency = NEW_ARENA_ARRAY(arena, unsigned short, _current_latency_length);
 
   // Clear the arrays
-  for (uint i = 0; i < _node_max; i++) {
+  for (uint i = 0; i < _node_bundling_base_length; i++) {
     ::new (&_node_bundling_base[i]) Bundle();
   }
-  memset(_uses,               0, _node_max * sizeof(short));
-  memset(_current_latency,    0, _node_max * sizeof(unsigned short));
+  memset(_uses,               0, _uses_length * sizeof(short));
+  memset(_current_latency,    0, _current_latency_length * sizeof(unsigned short));
 
   // Clear the bundling information
   memcpy(_bundle_use_elements, Pipeline_Use::elaborated_elements, sizeof(Pipeline_Use::elaborated_elements));
@@ -2174,12 +2258,11 @@ bool Scheduling::NodeFitsInBundle(Node *n) {
   }
 
   // If the node cannot be scheduled this cycle, skip it
-  assert(n_idx < _node_max, "");
-  if (_current_latency[n_idx] > _bundle_cycle_number) {
+  if (current_latency(n) > _bundle_cycle_number) {
 #ifndef PRODUCT
     if (_cfg->C->trace_opto_output())
       tty->print("#     NodeFitsInBundle [%4d]: FALSE; latency %4d > %d\n",
-                 n->_idx, _current_latency[n_idx], _bundle_cycle_number);
+                 n->_idx, current_latency(n), _bundle_cycle_number);
 #endif
     return (false);
   }
@@ -2291,14 +2374,12 @@ void Scheduling::AddNodeToAvailableList(Node *n) {
   }
 #endif
 
-  assert(n->_idx < _node_max, "");
-  int latency = _current_latency[n->_idx];
+  int latency = current_latency(n);
 
   // Insert in latency order (insertion sort)
   uint i;
   for ( i=0; i < _available.size(); i++ ) {
-    assert(_available[i]->_idx < _node_max, "");
-    if (_current_latency[_available[i]->_idx] > latency)
+    if (current_latency(_available[i]) > latency)
       break;
   }
 
@@ -2317,8 +2398,7 @@ void Scheduling::AddNodeToAvailableList(Node *n) {
 
       // Recalculate position, moving to front of same latency
       for ( i=0 ; i < _available.size(); i++ ) {
-        assert(_available[i]->_idx < _node_max, "");
-        if (_current_latency[_available[i]->_idx] >= latency)
+        if (current_latency(_available[i]) >= latency)
           break;
       }
     }
@@ -2346,13 +2426,12 @@ void Scheduling::DecrementUseCounts(Node *n, const Block *bb) {
 
     // Compute the latency
     uint l = _bundle_cycle_number + n->latency(i);
-    assert(def->_idx < _node_max, "");
-    if (_current_latency[def->_idx] < l)
-      _current_latency[def->_idx] = l;
+    if (current_latency(def) < l)
+      set_current_latency(def, l);
 
     // If this does not have uses then schedule it
-    assert(def->_idx < _node_max, "");
-    if ((--_uses[def->_idx]) == 0)
+    set_uses(def, uses(def) - 1);
+    if (uses(def) == 0)
       AddNodeToAvailableList(def);
   }
 }
@@ -2428,8 +2507,7 @@ void Scheduling::AddNodeToBundle(Node *n, const Block *bb) {
             node_bundling(n)->set_use_unconditional_delay();
             node_bundling(d)->set_used_in_unconditional_delay();
             _bundle_use.add_usage(avail_pipeline->resourceUse());
-            assert(d->_idx < _node_max, "");
-            _current_latency[d->_idx] = _bundle_cycle_number;
+            set_current_latency(d, _bundle_cycle_number);
             _next_node = d;
             ++_bundle_instr_count;
 #ifndef PRODUCT
@@ -2481,8 +2559,7 @@ void Scheduling::AddNodeToBundle(Node *n, const Block *bb) {
   uint delay = 0;
 
   if (instruction_count > 0 || !node_pipeline->mayHaveNoCode()) {
-    assert(n->_idx < _node_max, "");
-    int relative_latency = _current_latency[n->_idx] - _bundle_cycle_number;
+    int relative_latency = current_latency(n) - _bundle_cycle_number;
     if (relative_latency < 0)
       relative_latency = 0;
 
@@ -2526,8 +2603,7 @@ void Scheduling::AddNodeToBundle(Node *n, const Block *bb) {
       _bundle_instr_count++;
 
     // Set the node's latency
-    assert(n->_idx < _node_max, "");
-    _current_latency[n->_idx] = _bundle_cycle_number;
+    set_current_latency(n, _bundle_cycle_number);
 
     // Now merge the functional unit information
     if (instruction_count > 0 || !node_pipeline->mayHaveNoCode())
@@ -2596,20 +2672,17 @@ void Scheduling::ComputeUseCount(const Block *bb) {
 
 #ifdef ASSERT
   for( uint i=0; i < bb->number_of_nodes(); i++ ) {
-    assert(bb->get_node(i)->_idx < _node_max, "");
-    assert( _uses[bb->get_node(i)->_idx] == 0, "_use array not clean" );
+    assert(uses(bb->get_node(i)) == 0, "_use array not clean");
   }
 #endif
 
   // Force the _uses count to never go to zero for unscheduable pieces
   // of the block
   for( uint k = 0; k < _bb_start; k++ ) {
-    assert(bb->get_node(k)->_idx < _node_max, "");
-    _uses[bb->get_node(k)->_idx] = 1;
+    set_uses(bb->get_node(k), 1);
   }
   for( uint l = _bb_end; l < bb->number_of_nodes(); l++ ) {
-    assert(bb->get_node(l)->_idx < _node_max, "");
-    _uses[bb->get_node(l)->_idx] = 1;
+    set_uses(bb->get_node(l), 1);
   }
 
   // Iterate backwards over the instructions in the block.  Don't count the
@@ -2627,23 +2700,19 @@ void Scheduling::ComputeUseCount(const Block *bb) {
         if (inp->is_Proj()) { // Skip through Proj's
           inp = inp->in(0);
         }
-        assert(inp->_idx < _node_max, "");
-        ++_uses[inp->_idx];     // Count 1 block-local use
+        set_uses(inp, uses(inp) + 1);  // Count 1 block-local use
       }
     }
 
     // If this instruction has a 0 use count, then it is available
-    assert(n->_idx < _node_max, "");
-    if (!_uses[n->_idx]) {
-      assert(n->_idx < _node_max, "");
-      _current_latency[n->_idx] = _bundle_cycle_number;
+    if (!uses(n)) {
+      set_current_latency(n, _bundle_cycle_number);
       AddNodeToAvailableList(n);
     }
 
 #ifndef PRODUCT
     if (_cfg->C->trace_opto_output()) {
-      assert(n->_idx < _node_max, "");
-      tty->print("#   uses: %3d: ", _uses[n->_idx]);
+      tty->print("#   uses: %3d: ", uses(n));
       n->dump();
     }
 #endif
@@ -2938,8 +3007,12 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
       pinch = _pinch_free_list.pop();
     } else {
       pinch = new Node(1); // Pinch point to-be
+      if (UseNewCode3) {
+        tty->print("New node: ");
+        pinch->dump();
+      }
     }
-    if (pinch->_idx >= _node_max) {
+    if (pinch->_idx >= _uses_length + 100) { // TODO: fixme
       DEBUG_ONLY( pinch->dump(); );
       assert(false, "too many D-U pinch points: %d >= %d", pinch->_idx, _regalloc->node_regs_max_index());
       _cfg->C->record_method_not_compilable("too many D-U pinch points");
@@ -3213,8 +3286,7 @@ void Scheduling::cleanup_pinch( Node *pinch ) {
 void Scheduling::dump_available() const {
   tty->print("#Availist  ");
   for (uint i = 0; i < _available.size(); i++) {
-    assert(_available[i]->_idx < _node_max, "");
-    tty->print(" N%d/l%d", _available[i]->_idx,_current_latency[_available[i]->_idx]);
+    tty->print(" N%d/l%d", _available[i]->_idx, current_latency(_available[i]));
   }
   tty->cr();
 }
