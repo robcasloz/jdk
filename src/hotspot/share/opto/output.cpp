@@ -82,8 +82,6 @@ private:
   uint _node_bundling_limit;
 
   uint _node_bundling_base_length;
-  uint _uses_length;
-  uint _current_latency_length;
 
   // List of scheduled nodes. Generated in reverse order
   Node_List _scheduled;
@@ -102,7 +100,7 @@ private:
   Node_List _pinch_free_list;
 
   // Number of uses of this node within the containing basic block.
-  short *_uses;
+  GrowableArray<short>* _uses;
 
   // Schedulable portion of current block.  Skips Region/Phi/CreateEx up
   // front, branch+proj at end.  Also skips Catch/CProj (same as
@@ -110,7 +108,7 @@ private:
   uint _bb_start, _bb_end;
 
   // Latency from the end of the basic block as scheduled
-  unsigned short *_current_latency;
+  GrowableArray<unsigned short>* _current_latency;
 
   // Remember the next node
   Node *_next_node;
@@ -136,46 +134,42 @@ private:
 
   short uses(const Node* n) const {
 #ifndef PRODUCT
-    if (n->_idx >= _uses_length) {
-      tty->print("n: ");
+    if (UseNewCode3 && n->_idx >= (uint)_uses->length()) {
+      tty->print("possibly growing _uses due to get n: ");
       n->dump();
     }
 #endif
-    assert(n->_idx < _uses_length, "");
-    return _uses[n->_idx];
+    return _uses->at_grow(n->_idx, 0);
   }
 
   void set_uses(const Node* n, short u) {
 #ifndef PRODUCT
-    if (n->_idx >= _uses_length) {
-      tty->print("n: ");
+    if (UseNewCode3 && n->_idx >= (uint)_uses->length()) {
+      tty->print("possibly growing _uses due to set n: ");
       n->dump();
     }
 #endif
-    assert(n->_idx < _uses_length, "");
-    _uses[n->_idx] = u;
+    _uses->at_put_grow(n->_idx, u, 0);
   }
 
   unsigned short current_latency(const Node* n) const {
 #ifndef PRODUCT
-    if (n->_idx >= _current_latency_length) {
-      tty->print("n: ");
+    if (UseNewCode3 && n->_idx >= (uint)_current_latency->length()) {
+      tty->print("possibly growing _current_latency due to get n: ");
       n->dump();
     }
 #endif
-    assert(n->_idx < _current_latency_length, "");
-    return _current_latency[n->_idx];
+    return _current_latency->at_grow(n->_idx, 0);
   }
 
   void set_current_latency(const Node* n, unsigned short l) {
 #ifndef PRODUCT
-    if (n->_idx >= _current_latency_length) {
-      tty->print("n: ");
+    if (UseNewCode3 && n->_idx >= (uint)_current_latency->length()) {
+      tty->print("possibly growing _current_latency due to set n: ");
       n->dump();
     }
 #endif
-    assert(n->_idx < _current_latency_length, "");
-    _current_latency[n->_idx] = l;
+    _current_latency->at_put_grow(n->_idx, l, 0);
   }
 
 public:
@@ -2108,8 +2102,8 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // TODO: make '_node_bundling_base', '_uses', and '_current_latency' also growable?
   uint node_max = _regalloc->node_regs_max_index() + (_regalloc->node_regs_max_index() >> 2) + 200;
   _node_bundling_base_length = node_max;
-  _uses_length = node_max;
-  _current_latency_length = node_max;
+  uint uses_length = _regalloc->node_regs_max_index();
+  uint current_latency_length = node_max;
 
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
 
@@ -2117,15 +2111,14 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   _node_bundling_base = NEW_ARENA_ARRAY(compile.comp_arena(), Bundle, _node_bundling_base_length);
 
   // Allocate space for fixed-size arrays
-  _uses            = NEW_ARENA_ARRAY(arena, short,          _uses_length);
-  _current_latency = NEW_ARENA_ARRAY(arena, unsigned short, _current_latency_length);
+  // TODO: allocate in 'arena'
+  _uses            = new GrowableArray<short>(uses_length, uses_length, 0);
+  _current_latency = new GrowableArray<unsigned short>(current_latency_length, current_latency_length, 0);
 
   // Clear the arrays
   for (uint i = 0; i < _node_bundling_base_length; i++) {
     ::new (&_node_bundling_base[i]) Bundle();
   }
-  memset(_uses,               0, _uses_length * sizeof(short));
-  memset(_current_latency,    0, _current_latency_length * sizeof(unsigned short));
 
   // Clear the bundling information
   memcpy(_bundle_use_elements, Pipeline_Use::elaborated_elements, sizeof(Pipeline_Use::elaborated_elements));
@@ -3012,12 +3005,13 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
         pinch->dump();
       }
     }
-    if (pinch->_idx >= _uses_length + 100) { // TODO: fixme
+    // FIXME: set a reasonable limit
+    /*if (pinch->_idx >= ((uint)_uses->length() + 42)) {
       DEBUG_ONLY( pinch->dump(); );
       assert(false, "too many D-U pinch points: %d >= %d", pinch->_idx, _regalloc->node_regs_max_index());
       _cfg->C->record_method_not_compilable("too many D-U pinch points");
       return;
-    }
+      }*/
     _cfg->map_node_to_block(pinch, b);      // Pretend it's valid in this block (lazy init)
     _reg_node.map(def_reg,pinch); // Record pinch-point
     //regalloc()->set_bad(pinch->_idx); // Already initialized this way.
