@@ -93,7 +93,7 @@ private:
   CodeOffsets            _code_offsets;          // Offsets into the code for various interesting entries
 
   uint                   _node_bundling_limit;
-  Bundle*                _node_bundling_base;    // Information for instruction bundling
+  GrowableArray<Bundle>* _node_bundling_base;    // Information for instruction bundling
 
   // For deopt
   int                    _orig_pc_slot;
@@ -204,7 +204,7 @@ public:
   int               bang_size_in_bytes() const;
 
   void          set_node_bundling_limit(uint n) { _node_bundling_limit = n; }
-  void          set_node_bundling_base(Bundle* b) { _node_bundling_base = b; }
+  void          set_node_bundling_base(GrowableArray<Bundle>* b) { _node_bundling_base = b; }
 
   Bundle* node_bundling(const Node *n);
   bool valid_bundle_info(const Node *n);
