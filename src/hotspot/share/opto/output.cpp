@@ -2115,7 +2115,7 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   uint node_max = _regalloc->node_regs_max_index() + (_regalloc->node_regs_max_index() >> 2) + 200;
   _node_bundling_base_length = node_max;
   uint uses_length = _regalloc->node_regs_max_index();
-  uint current_latency_length = node_max;
+  uint current_latency_length = _regalloc->node_regs_max_index();
 
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
 
