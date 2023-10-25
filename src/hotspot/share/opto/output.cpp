@@ -190,8 +190,6 @@ public:
       n->dump();
     }
 #endif
-    // FIXME: grow if necessary, do this in a better way.
-    _node_bundling_base->at_grow(n->_idx, Bundle());
     return (&_node_bundling_base->at(n->_idx));
   }
 
@@ -2101,9 +2099,15 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
 
-  uint node_bundling_base_length = _regalloc->node_regs_max_index();
-  uint uses_length = _regalloc->node_regs_max_index();
-  uint current_latency_length = _regalloc->node_regs_max_index();
+  if (_node_bundling_limit < _regalloc->node_regs_max_index()) {
+    tty->print_cr("_regalloc->node_regs_max_index(): %d", _regalloc->node_regs_max_index());
+    tty->print_cr("_node_bundling_limit: %d", _node_bundling_limit);
+  }
+  assert(_node_bundling_limit >= _regalloc->node_regs_max_index(), "");
+
+  uint node_bundling_base_length = _node_bundling_limit;
+  uint uses_length = _node_bundling_limit;
+  uint current_latency_length = _node_bundling_limit;
 
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
 
@@ -3508,8 +3512,6 @@ Bundle* PhaseOutput::node_bundling(const Node *n) {
     n->dump();
   }
 #endif
-   // FIXME: grow if necessary, do this in a better way.
-  _node_bundling_base->at_grow(n->_idx, Bundle());
   return &_node_bundling_base->at(n->_idx);
 }
 
