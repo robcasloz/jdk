@@ -81,8 +81,6 @@ private:
   // Number of nodes in the method
   uint _node_bundling_limit;
 
-  uint _node_bundling_base_length;
-
   // List of scheduled nodes. Generated in reverse order
   Node_List _scheduled;
 
@@ -188,12 +186,11 @@ public:
   Bundle* node_bundling(const Node *n) {
     assert(valid_bundle_info(n), "oob");
 #ifndef PRODUCT
-    if (n->_idx >= _node_bundling_base_length) {
-      tty->print("n: ");
+    if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
+      tty->print("possibly growing _node_bundling_base due to get n: ");
       n->dump();
     }
 #endif
-    assert(n->_idx < _node_bundling_base_length, "");
     return (&_node_bundling_base->at(n->_idx));
   }
 
@@ -203,12 +200,11 @@ public:
 
   bool starts_bundle(const Node *n) const {
 #ifndef PRODUCT
-    if (n->_idx >= _node_bundling_base_length) {
-      tty->print("n: ");
+    if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
+      tty->print("possibly growing _node_bundling_base due to get n: ");
       n->dump();
     }
 #endif
-    assert(n->_idx < _node_bundling_base_length, "");
     return (_node_bundling_limit > n->_idx && _node_bundling_base->at(n->_idx).starts_bundle());
   }
 
@@ -1024,6 +1020,12 @@ void PhaseOutput::FillLocArray( int idx, MachSafePointNode* sfpt, Node *local,
 
 // Determine if this node starts a bundle
 bool PhaseOutput::starts_bundle(const Node *n) const {
+#ifndef PRODUCT
+  if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
+    tty->print("possibly growing _node_bundling_base due to get n: ");
+    n->dump();
+  }
+#endif
   return (_node_bundling_limit > n->_idx &&
           _node_bundling_base->at(n->_idx).starts_bundle());
 }
@@ -2113,7 +2115,7 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   _node_bundling_limit = compile.unique();
   // TODO: make '_node_bundling_base', '_uses', and '_current_latency' also growable?
   uint node_max = _regalloc->node_regs_max_index() + (_regalloc->node_regs_max_index() >> 2) + 200;
-  _node_bundling_base_length = node_max;
+  uint node_bundling_base_length = node_max;
   uint uses_length = _regalloc->node_regs_max_index();
   uint current_latency_length = _regalloc->node_regs_max_index();
 
@@ -2121,7 +2123,7 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
 
   // This one is persistent within the Compile class
   // TODO: allocate in 'compile.comp_arena()'
-  _node_bundling_base = new GrowableArray<Bundle>(_node_bundling_base_length, _node_bundling_base_length, Bundle());
+  _node_bundling_base = new GrowableArray<Bundle>(node_bundling_base_length, node_bundling_base_length, Bundle());
 
   // Allocate space for fixed-size arrays
   // TODO: allocate in 'arena'
@@ -3515,6 +3517,12 @@ void PhaseOutput::install_stub(const char* stub_name) {
 // Support for bundling info
 Bundle* PhaseOutput::node_bundling(const Node *n) {
   assert(valid_bundle_info(n), "oob");
+#ifndef PRODUCT
+  if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
+    tty->print("possibly growing _node_bundling_base due to get n: ");
+    n->dump();
+  }
+#endif
   return &_node_bundling_base->at(n->_idx);
 }
 
