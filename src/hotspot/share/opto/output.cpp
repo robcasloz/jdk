@@ -184,7 +184,6 @@ public:
   void step_and_clear();
 
   Bundle* node_bundling(const Node *n) {
-    assert(valid_bundle_info(n), "oob");
 #ifndef PRODUCT
     if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
       tty->print("possibly growing _node_bundling_base due to get n: ");
@@ -192,10 +191,6 @@ public:
     }
 #endif
     return (&_node_bundling_base->at(n->_idx));
-  }
-
-  bool valid_bundle_info(const Node *n) const {
-    return (_node_bundling_limit > n->_idx);
   }
 
   bool starts_bundle(const Node *n) const {
@@ -2861,14 +2856,13 @@ void Scheduling::DoScheduling() {
       uint current = 0;
       for (uint j = 0; j < bb->number_of_nodes(); j++) {
         Node *n = bb->get_node(j);
-        if( valid_bundle_info(n) ) {
-          Bundle *bundle = node_bundling(n);
-          if (bundle->instr_count() > 0 || bundle->flags() > 0) {
-            tty->print("*** Bundle: ");
-            bundle->dump();
-          }
-          n->dump();
+        // TODO: do we need to test if n->idx is within the bounds of _node_bundling_base?
+        Bundle *bundle = node_bundling(n);
+        if (bundle->instr_count() > 0 || bundle->flags() > 0) {
+          tty->print("*** Bundle: ");
+          bundle->dump();
         }
+        n->dump();
       }
     }
 #endif
