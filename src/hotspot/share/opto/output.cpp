@@ -339,10 +339,12 @@ void PhaseOutput::Output() {
 
   // Replace StartNode with prolog
   MachPrologNode *prolog = new MachPrologNode();
+#ifndef PRODUCT
   if (UseNewCode3) {
     tty->print("New node: ");
     prolog->dump();
   }
+#endif
   entry->map_node(prolog, 0);
   C->cfg()->map_node_to_block(prolog, entry);
   C->cfg()->unmap_node_from_block(start); // start is no longer in any block
@@ -379,10 +381,12 @@ void PhaseOutput::Output() {
       Node* m = block->end();
       if (m->is_Mach() && m->as_Mach()->ideal_Opcode() != Op_Halt) {
         MachEpilogNode* epilog = new MachEpilogNode(m->as_Mach()->ideal_Opcode() == Op_Return);
+#ifndef PRODUCT
         if (UseNewCode3) {
           tty->print("New node: ");
           epilog->dump();
         }
+#endif
         block->add_inst(epilog);
         C->cfg()->map_node_to_block(epilog, block);
       }
@@ -1562,10 +1566,12 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
           assert((padding % nop_size) == 0, "padding is not a multiple of NOP size");
           int nops_cnt = padding / nop_size;
           MachNode *nop = new MachNopNode(nops_cnt);
+#ifndef PRODUCT
           if (UseNewCode3) {
             tty->print("New node: ");
             nop->dump();
           }
+#endif
           block->insert_node(nop, j++);
           last_inst++;
           C->cfg()->map_node_to_block(nop, block);
@@ -1652,10 +1658,12 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
               // Insert padding between avoid_back_to_back branches.
               if (needs_padding && replacement->avoid_back_to_back(MachNode::AVOID_BEFORE)) {
                 MachNode *nop = new MachNopNode();
+#ifndef PRODUCT
                 if (UseNewCode3) {
                   tty->print("New node: ");
                   nop->dump();
                 }
+#endif
                 block->insert_node(nop, j++);
                 C->cfg()->map_node_to_block(nop, block);
                 last_inst++;
@@ -1835,10 +1843,12 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
       int padding = nb->alignment_padding(current_offset);
       if( padding > 0 ) {
         MachNode *nop = new MachNopNode(padding / nop_size);
+#ifndef PRODUCT
         if (UseNewCode3) {
           tty->print("New node: ");
           nop->dump();
         }
+#endif
         block->insert_node(nop, block->number_of_nodes());
         C->cfg()->map_node_to_block(nop, block);
         nop->emit(*cb, C->regalloc());
@@ -2091,10 +2101,12 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
 {
   // Create a MachNopNode
   _nop = new MachNopNode();
+#ifndef PRODUCT
   if (UseNewCode3) {
     tty->print("New node: ");
     _nop->dump();
   }
+#endif
 
   // Now that the nops are in the array, save the count
   // (but allow entries for the nops)
@@ -3000,10 +3012,12 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
       pinch = _pinch_free_list.pop();
     } else {
       pinch = new Node(1); // Pinch point to-be
+#ifndef PRODUCT
       if (UseNewCode3) {
         tty->print("New node: ");
         pinch->dump();
       }
+#endif
     }
     // FIXME: set a reasonable limit
     /*if (pinch->_idx >= ((uint)_uses->length() + 42)) {
