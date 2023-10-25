@@ -186,21 +186,13 @@ public:
   Bundle* node_bundling(const Node *n) {
 #ifndef PRODUCT
     if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-      tty->print("possibly growing _node_bundling_base due to get n: ");
+      tty->print("possibly growing Scheduling::_node_bundling_base due to get &n (node_bundling): ");
       n->dump();
     }
 #endif
+    // FIXME: grow if necessary, do this in a better way.
+    _node_bundling_base->at_grow(n->_idx, Bundle());
     return (&_node_bundling_base->at(n->_idx));
-  }
-
-  bool starts_bundle(const Node *n) const {
-#ifndef PRODUCT
-    if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-      tty->print("possibly growing _node_bundling_base due to get n: ");
-      n->dump();
-    }
-#endif
-    return (_node_bundling_limit > n->_idx && _node_bundling_base->at(n->_idx).starts_bundle());
   }
 
   // Do the scheduling
@@ -1017,7 +1009,7 @@ void PhaseOutput::FillLocArray( int idx, MachSafePointNode* sfpt, Node *local,
 bool PhaseOutput::starts_bundle(const Node *n) const {
 #ifndef PRODUCT
   if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-    tty->print("possibly growing _node_bundling_base due to get n: ");
+    tty->print("possibly growing PhaseOutput::_node_bundling_base due to get n: ");
     n->dump();
   }
 #endif
@@ -2108,9 +2100,8 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // Now that the nops are in the array, save the count
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
-  // TODO: make '_node_bundling_base', '_uses', and '_current_latency' also growable?
-  uint node_max = _regalloc->node_regs_max_index() + (_regalloc->node_regs_max_index() >> 2) + 200;
-  uint node_bundling_base_length = node_max;
+
+  uint node_bundling_base_length = _regalloc->node_regs_max_index();
   uint uses_length = _regalloc->node_regs_max_index();
   uint current_latency_length = _regalloc->node_regs_max_index();
 
@@ -3513,10 +3504,12 @@ Bundle* PhaseOutput::node_bundling(const Node *n) {
   assert(valid_bundle_info(n), "oob");
 #ifndef PRODUCT
   if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-    tty->print("possibly growing _node_bundling_base due to get n: ");
+    tty->print("possibly growing PhaseOutput::_node_bundling_base due to get n: ");
     n->dump();
   }
 #endif
+   // FIXME: grow if necessary, do this in a better way.
+  _node_bundling_base->at_grow(n->_idx, Bundle());
   return &_node_bundling_base->at(n->_idx);
 }
 
