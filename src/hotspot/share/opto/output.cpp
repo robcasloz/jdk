@@ -131,40 +131,54 @@ private:
   void dump_available() const;
 
   short uses(const Node* n) const {
+    short u = _uses->at_grow(n->_idx, 0);
 #ifndef PRODUCT
-    if (UseNewCode3 && n->_idx >= (uint)_uses->length()) {
-      tty->print("possibly growing _uses due to get n: ");
-      n->dump();
+    if (n->_idx >= _node_bundling_limit) {
+      if (UseNewCode3) {
+        tty->print("trying to get _uses for new n: ");
+        n->dump();
+        tty->print_cr(" -> %d", u);
+      }
     }
 #endif
-    return _uses->at_grow(n->_idx, 0);
+    return u;
   }
 
   void set_uses(const Node* n, short u) {
 #ifndef PRODUCT
-    if (UseNewCode3 && n->_idx >= (uint)_uses->length()) {
-      tty->print("possibly growing _uses due to set n: ");
-      n->dump();
+    if (n->_idx >= _node_bundling_limit) {
+      if (UseNewCode3) {
+        tty->print("trying to set _uses for new n: ");
+        n->dump();
+        tty->print_cr(" -> %d", u);
+      }
     }
 #endif
     _uses->at_put_grow(n->_idx, u, 0);
   }
 
   unsigned short current_latency(const Node* n) const {
+    unsigned short l = _current_latency->at_grow(n->_idx, 0);
 #ifndef PRODUCT
-    if (UseNewCode3 && n->_idx >= (uint)_current_latency->length()) {
-      tty->print("possibly growing _current_latency due to get n: ");
-      n->dump();
+    if (n->_idx >= _node_bundling_limit) {
+      if (UseNewCode3) {
+        tty->print("trying get _current_latency for new n: ");
+        n->dump();
+        tty->print_cr(" -> %d", l);
+      }
     }
 #endif
-    return _current_latency->at_grow(n->_idx, 0);
+    return l;
   }
 
   void set_current_latency(const Node* n, unsigned short l) {
 #ifndef PRODUCT
-    if (UseNewCode3 && n->_idx >= (uint)_current_latency->length()) {
-      tty->print("possibly growing _current_latency due to set n: ");
-      n->dump();
+    if (n->_idx >= _node_bundling_limit) {
+      if (UseNewCode3) {
+        tty->print("trying to set _current_latency for new n: ");
+        n->dump();
+        tty->print_cr(" -> %d", l);
+      }
     }
 #endif
     _current_latency->at_put_grow(n->_idx, l, 0);
