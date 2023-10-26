@@ -2107,7 +2107,6 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
 
-  uint node_bundling_base_length = _node_bundling_limit;
   uint uses_length = _node_bundling_limit;
   uint current_latency_length = _node_bundling_limit;
 
