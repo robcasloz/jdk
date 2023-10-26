@@ -193,6 +193,10 @@ public:
     return (&_node_bundling_base->at(n->_idx));
   }
 
+  bool valid_bundle_info(const Node *n) const {
+    return (_node_bundling_limit > n->_idx);
+  }
+
   // Do the scheduling
   void DoScheduling();
 
@@ -2851,13 +2855,14 @@ void Scheduling::DoScheduling() {
       uint current = 0;
       for (uint j = 0; j < bb->number_of_nodes(); j++) {
         Node *n = bb->get_node(j);
-        // TODO: do we need to test if n->idx is within the bounds of _node_bundling_base?
-        Bundle *bundle = node_bundling(n);
-        if (bundle->instr_count() > 0 || bundle->flags() > 0) {
-          tty->print("*** Bundle: ");
-          bundle->dump();
+        if( valid_bundle_info(n) ) {
+          Bundle *bundle = node_bundling(n);
+          if (bundle->instr_count() > 0 || bundle->flags() > 0) {
+            tty->print("*** Bundle: ");
+            bundle->dump();
+          }
+          n->dump();
         }
-        n->dump();
       }
     }
 #endif
