@@ -114,16 +114,16 @@ public:
   void set_bad(uint idx) {
     if (UseNewCode) {tty->print_cr("set_bad(%d)", idx);};
     _node_regs->at_put_grow(idx, OptoRegPair());
-    if ((uint)idx > max) {
-      max = idx;
+    if ((uint)idx + 1 > max) {
+      max = idx + 1;
     }
     if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
   void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
     if (UseNewCode) {tty->print_cr("set_pair(%d, %d, %d)", idx, hi, lo);};
     _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
-    if ((uint)idx > max) {
-      max = idx;
+    if ((uint)idx + 1 > max) {
+      max = idx + 1;
     }
     if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }

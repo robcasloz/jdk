@@ -141,6 +141,10 @@ private:
       }
     }
 #endif
+    Compile* C = Compile::current();
+    if (n->_idx + 1 > C->output()->uses_max) {
+      C->output()->uses_max = n->_idx + 1;
+    }
     return u;
   }
 
@@ -154,6 +158,10 @@ private:
       }
     }
 #endif
+    Compile* C = Compile::current();
+    if (n->_idx + 1 > C->output()->uses_max) {
+      C->output()->uses_max = n->_idx + 1;
+    }
     _uses->at_put_grow(n->_idx, u, 0);
   }
 
@@ -168,6 +176,10 @@ private:
       }
     }
 #endif
+    Compile* C = Compile::current();
+    if (n->_idx + 1 > C->output()->current_latency_max) {
+      C->output()->current_latency_max = n->_idx + 1;
+    }
     return l;
   }
 
@@ -181,6 +193,10 @@ private:
       }
     }
 #endif
+    Compile* C = Compile::current();
+    if (n->_idx + 1 > C->output()->current_latency_max) {
+      C->output()->current_latency_max = n->_idx + 1;
+    }
     _current_latency->at_put_grow(n->_idx, l, 0);
   }
 
@@ -422,8 +438,12 @@ void PhaseOutput::Output() {
 
   fill_buffer(cb, blk_starts);
 
-  if (UseNewCode2) {
-    tty->print_cr("%d, %d, %d", C->regalloc()->initial, C->regalloc()->original, C->regalloc()->max);
+  if (UseNewCode2 && C->compile_id() != 0) {
+    tty->print_cr("codegen-array-size-stats, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
+                  C->regalloc()->initial,     C->regalloc()->max,         C->regalloc()->original,
+                  node_bundling_base_initial, node_bundling_base_initial, C->regalloc()->original,
+                  uses_initial,               uses_max,                   C->regalloc()->original,
+                  current_latency_initial,    current_latency_max,        C->regalloc()->original);
   }
 }
 
@@ -2118,11 +2138,16 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   for (uint i = 0; i < _node_bundling_limit; i++) {
     ::new (&_node_bundling_base[i]) Bundle();
   }
+  compile.output()->node_bundling_base_initial = _node_bundling_limit;
 
   // Allocate space for fixed-size arrays
   // TODO: allocate in 'arena'
   _uses            = new GrowableArray<short>(uses_length, uses_length, 0);
+  compile.output()->uses_initial = uses_length;
+  compile.output()->uses_max = uses_length;
   _current_latency = new GrowableArray<unsigned short>(current_latency_length, current_latency_length, 0);
+  compile.output()->current_latency_initial = current_latency_length;
+  compile.output()->current_latency_max = current_latency_length;
 
 
   // Clear the bundling information

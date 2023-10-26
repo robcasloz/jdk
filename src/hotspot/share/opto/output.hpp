@@ -112,6 +112,12 @@ public:
   PhaseOutput();
   ~PhaseOutput();
 
+  uint                   node_bundling_base_initial;
+  uint                   uses_initial;
+  uint                   uses_max;
+  uint                   current_latency_initial;
+  uint                   current_latency_max;
+
   // Convert Nodes to instruction bits and pass off to the VM
   void Output();
   bool need_stack_bang(int frame_size_in_bytes) const;
