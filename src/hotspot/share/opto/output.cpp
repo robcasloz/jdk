@@ -1018,6 +1018,7 @@ void PhaseOutput::FillLocArray( int idx, MachSafePointNode* sfpt, Node *local,
 
 // Determine if this node starts a bundle
 bool PhaseOutput::starts_bundle(const Node *n) const {
+  assert(false, "Dead code: !Pipeline::requires_bundling() for all targets");
   return (_node_bundling_limit > n->_idx &&
           _node_bundling_base[n->_idx].starts_bundle());
 }
