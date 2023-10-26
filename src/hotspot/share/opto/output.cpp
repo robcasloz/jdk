@@ -89,7 +89,7 @@ private:
 
   // For each instruction beginning a bundle, the number of following
   // nodes to be bundled with it.
-  GrowableArray<Bundle>* _node_bundling_base;
+  Bundle *_node_bundling_base;
 
   // Mapping from register to Node
   Node_List _reg_node;
@@ -198,13 +198,8 @@ public:
   void step_and_clear();
 
   Bundle* node_bundling(const Node *n) {
-#ifndef PRODUCT
-    if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-      tty->print("possibly growing Scheduling::_node_bundling_base due to get &n (node_bundling): ");
-      n->dump();
-    }
-#endif
-    return (&_node_bundling_base->at(n->_idx));
+    assert(valid_bundle_info(n), "oob");
+    return (&_node_bundling_base[n->_idx]);
   }
 
   bool valid_bundle_info(const Node *n) const {
@@ -1023,14 +1018,8 @@ void PhaseOutput::FillLocArray( int idx, MachSafePointNode* sfpt, Node *local,
 
 // Determine if this node starts a bundle
 bool PhaseOutput::starts_bundle(const Node *n) const {
-#ifndef PRODUCT
-  if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-    tty->print("possibly growing PhaseOutput::_node_bundling_base due to get n: ");
-    n->dump();
-  }
-#endif
   return (_node_bundling_limit > n->_idx &&
-          _node_bundling_base->at(n->_idx).starts_bundle());
+          _node_bundling_base[n->_idx].starts_bundle());
 }
 
 // Determine if there is a monitor that has 'ov' as its owner.
@@ -2131,12 +2120,16 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
 
   // This one is persistent within the Compile class
   // TODO: allocate in 'compile.comp_arena()'
-  _node_bundling_base = new GrowableArray<Bundle>(node_bundling_base_length, node_bundling_base_length, Bundle());
+  _node_bundling_base = NEW_ARENA_ARRAY(compile.comp_arena(), Bundle, _node_bundling_limit);
+  for (uint i = 0; i < _node_bundling_limit; i++) {
+    ::new (&_node_bundling_base[i]) Bundle();
+  }
 
   // Allocate space for fixed-size arrays
   // TODO: allocate in 'arena'
   _uses            = new GrowableArray<short>(uses_length, uses_length, 0);
   _current_latency = new GrowableArray<unsigned short>(current_latency_length, current_latency_length, 0);
+
 
   // Clear the bundling information
   memcpy(_bundle_use_elements, Pipeline_Use::elaborated_elements, sizeof(Pipeline_Use::elaborated_elements));
@@ -3525,13 +3518,7 @@ void PhaseOutput::install_stub(const char* stub_name) {
 // Support for bundling info
 Bundle* PhaseOutput::node_bundling(const Node *n) {
   assert(valid_bundle_info(n), "oob");
-#ifndef PRODUCT
-  if (UseNewCode3 && n->_idx >= (uint)_node_bundling_base->length()) {
-    tty->print("possibly growing PhaseOutput::_node_bundling_base due to get n: ");
-    n->dump();
-  }
-#endif
-  return &_node_bundling_base->at(n->_idx);
+  return &_node_bundling_base[n->_idx];
 }
 
 bool PhaseOutput::valid_bundle_info(const Node *n) {
