@@ -2034,7 +2034,7 @@ void PhaseChaitin::dump(const Node* n) const {
   uint r = (n->_idx < _lrg_map.size()) ? _lrg_map.find_const(n) : 0;
   tty->print("L%d",r);
   if (r && n->Opcode() != Op_Phi) {
-    if (_node_regs != nullptr) {          // Got a post-allocation copy of allocation?
+    if (is_node_reg_info_available()) {          // Got a post-allocation copy of allocation?
       tty->print("[");
       OptoReg::Name second = get_reg_second(n);
       if( OptoReg::is_valid(second) ) {
@@ -2066,7 +2066,7 @@ void PhaseChaitin::dump(const Node* n) const {
       // Don't die while dumping them.
       int op = n->Opcode();
       if( r && op != Op_Phi && op != Op_Proj && op != Op_SCMemProj) {
-        if (_node_regs != nullptr) {
+        if (is_node_reg_info_available()) {
           tty->print("[");
           OptoReg::Name second = get_reg_second(n->in(k));
           if( OptoReg::is_valid(second) ) {
@@ -2218,7 +2218,7 @@ static char *print_reg(OptoReg::Name reg, const PhaseChaitin* pc, char* buf, siz
 // Dump a register name into a buffer.  Be intelligent if we get called
 // before allocation is complete.
 char *PhaseChaitin::dump_register(const Node* n, char* buf, size_t buf_size) const {
-  if (_node_regs != nullptr) {
+  if (is_node_reg_info_available()) {
     // Post allocation, use direct mappings, no LRG info available
     print_reg( get_reg_first(n), this, buf, buf_size);
   } else {

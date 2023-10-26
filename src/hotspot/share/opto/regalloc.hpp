@@ -56,9 +56,6 @@ public:
   uint _framesize;              // Size of frame in stack-slots. not counting preserve area
   OptoReg::Name _max_reg;       // Past largest register seen
   Matcher &_matcher;            // Convert Ideal to MachNodes
-  uint node_regs_max_index() const {
-    return _node_regs == nullptr ? 0 : _node_regs->length();
-  }
   uint initial;
   uint original;
   uint max;
@@ -155,6 +152,9 @@ public:
   static int _total_framesize;
   static int _max_framesize;
 
+  bool is_node_reg_info_available() const {
+    return _node_regs != nullptr;
+  }
   virtual void dump_frame() const = 0;
   virtual char *dump_register( const Node *n, char *buf, size_t buf_size) const = 0;
   static void print_statistics();

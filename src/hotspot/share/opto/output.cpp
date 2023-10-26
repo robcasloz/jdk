@@ -2107,12 +2107,6 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
 
-  if (_node_bundling_limit < _regalloc->node_regs_max_index()) {
-    tty->print_cr("_regalloc->node_regs_max_index(): %d", _regalloc->node_regs_max_index());
-    tty->print_cr("_node_bundling_limit: %d", _node_bundling_limit);
-  }
-  assert(_node_bundling_limit >= _regalloc->node_regs_max_index(), "");
-
   uint node_bundling_base_length = _node_bundling_limit;
   uint uses_length = _node_bundling_limit;
   uint current_latency_length = _node_bundling_limit;
