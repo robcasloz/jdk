@@ -112,11 +112,11 @@ public:
   PhaseOutput();
   ~PhaseOutput();
 
-  uint                   node_bundling_base_initial;
-  uint                   uses_initial;
-  uint                   uses_max;
-  uint                   current_latency_initial;
-  uint                   current_latency_max;
+  uint _node_bundling_base_initial;
+  uint _uses_initial;
+  uint _uses_max;
+  uint _current_latency_initial;
+  uint _current_latency_max;
 
   // Convert Nodes to instruction bits and pass off to the VM
   void Output();
