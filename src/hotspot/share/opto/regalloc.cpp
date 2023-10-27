@@ -39,7 +39,11 @@ PhaseRegAlloc::PhaseRegAlloc( uint unique, PhaseCFG &cfg,
                _node_regs(nullptr),
                _cfg(cfg),
                _framesize(0xdeadbeef),
-               _matcher(matcher)
+               _matcher(matcher),
+               initial(0),
+               original(0),
+               max(0),
+               max_expand_limit(0)
 {
     int i;
 

@@ -308,7 +308,8 @@ PhaseOutput::PhaseOutput()
     _uses_initial(0),
     _uses_max(0),
     _current_latency_initial(0),
-    _current_latency_max(0) {
+    _current_latency_max(0),
+    _pinch_max(0) {
   C->set_output(this);
   if (C->stub_name() == nullptr) {
     _orig_pc_slot = C->fixed_slots() - (sizeof(address) / VMRegImpl::stack_slot_size);
@@ -443,12 +444,14 @@ void PhaseOutput::Output() {
   fill_buffer(cb, blk_starts);
 
   if (UseNewCode2) {
-    tty->print_cr("codegen-array-size-stats, %d, %d, %d, %d, %d, %d, %d, %d, %d",
+    tty->print_cr("codegen-array-size-stats, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
                   C->regalloc()->initial,     C->regalloc()->max,
                   _node_bundling_base_initial, _node_bundling_base_initial,
                   _uses_initial,               _uses_max,
                   _current_latency_initial,    _current_latency_max,
-                  C->regalloc()->original);
+                  C->regalloc()->original,
+                  _pinch_max,
+                  C->regalloc()->max_expand_limit);
     assert(C->regalloc()->max >= C->regalloc()->initial, "");
     assert(_uses_max >= _uses_initial, "");
     assert(_current_latency_max >= _current_latency_initial, "");
@@ -3053,6 +3056,9 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
       _cfg->C->record_method_not_compilable("too many D-U pinch points");
       return;
       }*/
+    if (pinch->_idx > _output->_pinch_max) {
+      _output->_pinch_max = pinch->_idx;
+    }
     _cfg->map_node_to_block(pinch, b);      // Pretend it's valid in this block (lazy init)
     _reg_node.map(def_reg,pinch); // Record pinch-point
     //regalloc()->set_bad(pinch->_idx); // Already initialized this way.

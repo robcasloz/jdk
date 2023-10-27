@@ -59,6 +59,7 @@ public:
   uint initial;
   uint original;
   uint max;
+  uint max_expand_limit;
 
   // Get the first/second registers associated with the Node, if explicitly
   // assigned, or OptoReg::Bad otherwise.

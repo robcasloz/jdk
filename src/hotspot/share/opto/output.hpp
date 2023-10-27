@@ -117,6 +117,7 @@ public:
   uint _uses_max;
   uint _current_latency_initial;
   uint _current_latency_max;
+  uint _pinch_max;
 
   // Convert Nodes to instruction bits and pass off to the VM
   void Output();
