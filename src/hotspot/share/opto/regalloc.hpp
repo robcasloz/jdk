@@ -44,6 +44,7 @@ class PhaseRegAlloc : public Phase {
   static int _num_allocators;
 
 protected:
+  uint                        _post_alloc_node_limit;
   GrowableArray<OptoRegPair>* _node_regs;
   VectorSet                   _node_oops;         // Mapping from node indices to oopiness
 
@@ -56,6 +57,7 @@ public:
   uint _framesize;              // Size of frame in stack-slots. not counting preserve area
   OptoReg::Name _max_reg;       // Past largest register seen
   Matcher &_matcher;            // Convert Ideal to MachNodes
+  uint post_alloc_node_limit() const { return _post_alloc_node_limit; }
   uint initial;
   uint original;
   uint max;

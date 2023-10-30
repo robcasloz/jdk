@@ -36,6 +36,7 @@ PhaseRegAlloc::PhaseRegAlloc( uint unique, PhaseCFG &cfg,
                               Matcher &matcher,
                               void (*pr_stats)() ):
                Phase(Register_Allocation),
+               _post_alloc_node_limit(0),
                _node_regs(nullptr),
                _cfg(cfg),
                _framesize(0xdeadbeef),

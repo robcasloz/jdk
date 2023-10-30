@@ -3049,13 +3049,12 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
       }
 #endif
     }
-    // FIXME: set a reasonable limit
-    /*if (pinch->_idx >= ((uint)_uses->length() + 42)) {
+    if (pinch->_idx >= _regalloc->post_alloc_node_limit()) {
       DEBUG_ONLY( pinch->dump(); );
-      assert(false, "too many D-U pinch points: %d >= %d", pinch->_idx, _regalloc->node_regs_max_index());
+      assert(false, "too many D-U pinch points: %d >= %d", pinch->_idx, _regalloc->post_alloc_node_limit());
       _cfg->C->record_method_not_compilable("too many D-U pinch points");
       return;
-      }*/
+    }
     if (pinch->_idx > _output->_pinch_max) {
       _output->_pinch_max = pinch->_idx;
     }

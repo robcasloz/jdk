@@ -43,6 +43,8 @@
 #include "opto/rootnode.hpp"
 #include "utilities/align.hpp"
 
+static const int PostAllocExtraNodes = 200;
+
 #ifndef PRODUCT
 void LRG::dump() const {
   ttyLocker ttyl;
@@ -702,6 +704,7 @@ void PhaseChaitin::Register_Allocate() {
     }
   }
 
+  _post_alloc_node_limit = _lrg_map.size() + (_lrg_map.size() >> 1) + PostAllocExtraNodes;
   // Done!
   _live = nullptr;
   _ifg = nullptr;

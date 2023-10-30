@@ -1133,23 +1133,18 @@ void PhaseCFG::postalloc_expand(PhaseRegAlloc* _ra) {
           }
         }
 
-        uint unique_limit = C->unique() + 40;
-        if (unique_limit > _ra->max_expand_limit) {
-          _ra->max_expand_limit = unique_limit;
-        }
-        /*
-          TODO: find a reasonable limit.
         // Check whether we can allocate enough nodes. We set a fix limit for
         // the size of postalloc expands with this.
         uint unique_limit = C->unique() + 40;
-        if (unique_limit >= _ra->node_regs_max_index()) {
+        if (unique_limit >= _ra->post_alloc_node_limit()) {
           Compile::current()->record_failure("out of nodes in postalloc expand");
           return;
         }
-        */
 
         // Emit (i.e. generate new nodes).
         n->as_Mach()->postalloc_expand(&new_nodes, _ra);
+
+        assert(C->unique() < unique_limit, "You allocated too many nodes in your postalloc expand.");
 
         // Disconnect the inputs of the old node.
         //
