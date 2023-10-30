@@ -67,24 +67,12 @@ public:
   // assigned, or OptoReg::Bad otherwise.
   OptoReg::Name get_reg_first(const Node* n) const {
     if (n->_idx >= (uint)_node_regs->length()) {
-#ifndef PRODUCT
-      if (UseNewCode) {
-        tty->print("get_reg_first ");
-        n->dump();
-      }
-#endif
       return OptoReg::Bad;
     }
     return _node_regs->at(n->_idx).first();
   }
   OptoReg::Name get_reg_second( const Node *n ) const {
     if (n->_idx >= (uint)_node_regs->length()) {
-#ifndef PRODUCT
-      if (UseNewCode) {
-        tty->print("get_reg_second ");
-        n->dump();
-      }
-#endif
       return OptoReg::Bad;
     }
     return _node_regs->at(n->_idx).second();
@@ -100,35 +88,25 @@ public:
 
   // Set the register associated with a new Node
   void set1_no_grow(uint idx, OptoReg::Name reg) {
-    if (UseNewCode) {tty->print_cr("set1_no_grow(%d, %d)", idx, reg);};
     _node_regs->at(idx).set1(reg);
-    if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
   void set2_no_grow(uint idx, OptoReg::Name reg) {
-    if (UseNewCode) {tty->print_cr("set2_no_grow(%d, %d)", idx, reg);};
     _node_regs->at(idx).set2(reg);
-    if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
   void set_pair_no_grow(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
-    if (UseNewCode) {tty->print_cr("set_pair_no_grow(%d, %d, %d)", idx, hi, lo);};
     _node_regs->at_put(idx, OptoRegPair(hi, lo));
-    if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
   void set_bad(uint idx) {
-    if (UseNewCode) {tty->print_cr("set_bad(%d)", idx);};
     _node_regs->at_put_grow(idx, OptoRegPair());
     if ((uint)idx + 1 > max) {
       max = idx + 1;
     }
-    if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
   void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
-    if (UseNewCode) {tty->print_cr("set_pair(%d, %d, %d)", idx, hi, lo);};
     _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
     if ((uint)idx + 1 > max) {
       max = idx + 1;
     }
-    if (UseNewCode) {tty->print_cr(" length: %d, capacity: %d", _node_regs->length(), _node_regs->capacity());};
   }
 
   // Set and query if a node produces an oop

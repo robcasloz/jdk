@@ -135,15 +135,6 @@ private:
 
   short uses(const Node* n) const {
     short u = _uses->at_grow(n->_idx, 0);
-#ifndef PRODUCT
-    if (n->_idx >= _node_bundling_limit) {
-      if (UseNewCode3) {
-        tty->print("trying to get _uses for new n: ");
-        n->dump();
-        tty->print_cr(" -> %d", u);
-      }
-    }
-#endif
     if (n->_idx + 1 > _output->_uses_max) {
       _output->_uses_max = n->_idx + 1;
     }
@@ -151,15 +142,6 @@ private:
   }
 
   void set_uses(const Node* n, short u) {
-#ifndef PRODUCT
-    if (n->_idx >= _node_bundling_limit) {
-      if (UseNewCode3) {
-        tty->print("trying to set _uses for new n: ");
-        n->dump();
-        tty->print_cr(" -> %d", u);
-      }
-    }
-#endif
     if (n->_idx + 1 > _output->_uses_max) {
       _output->_uses_max = n->_idx + 1;
     }
@@ -168,15 +150,6 @@ private:
 
   unsigned short current_latency(const Node* n) const {
     unsigned short l = _current_latency->at_grow(n->_idx, 0);
-#ifndef PRODUCT
-    if (n->_idx >= _node_bundling_limit) {
-      if (UseNewCode3) {
-        tty->print("trying get _current_latency for new n: ");
-        n->dump();
-        tty->print_cr(" -> %d", l);
-      }
-    }
-#endif
     if (n->_idx + 1 > _output->_current_latency_max) {
       _output->_current_latency_max = n->_idx + 1;
     }
@@ -184,15 +157,6 @@ private:
   }
 
   void set_current_latency(const Node* n, unsigned short l) {
-#ifndef PRODUCT
-    if (n->_idx >= _node_bundling_limit) {
-      if (UseNewCode3) {
-        tty->print("trying to set _current_latency for new n: ");
-        n->dump();
-        tty->print_cr(" -> %d", l);
-      }
-    }
-#endif
     if (n->_idx + 1 > _output->_current_latency_max) {
       _output->_current_latency_max = n->_idx + 1;
     }
@@ -354,12 +318,6 @@ void PhaseOutput::Output() {
 
   // Replace StartNode with prolog
   MachPrologNode *prolog = new MachPrologNode();
-#ifndef PRODUCT
-  if (UseNewCode3) {
-    tty->print("New node: ");
-    prolog->dump();
-  }
-#endif
   entry->map_node(prolog, 0);
   C->cfg()->map_node_to_block(prolog, entry);
   C->cfg()->unmap_node_from_block(start); // start is no longer in any block
@@ -396,12 +354,6 @@ void PhaseOutput::Output() {
       Node* m = block->end();
       if (m->is_Mach() && m->as_Mach()->ideal_Opcode() != Op_Halt) {
         MachEpilogNode* epilog = new MachEpilogNode(m->as_Mach()->ideal_Opcode() == Op_Return);
-#ifndef PRODUCT
-        if (UseNewCode3) {
-          tty->print("New node: ");
-          epilog->dump();
-        }
-#endif
         block->add_inst(epilog);
         C->cfg()->map_node_to_block(epilog, block);
       }
@@ -1592,12 +1544,6 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
           assert((padding % nop_size) == 0, "padding is not a multiple of NOP size");
           int nops_cnt = padding / nop_size;
           MachNode *nop = new MachNopNode(nops_cnt);
-#ifndef PRODUCT
-          if (UseNewCode3) {
-            tty->print("New node: ");
-            nop->dump();
-          }
-#endif
           block->insert_node(nop, j++);
           last_inst++;
           C->cfg()->map_node_to_block(nop, block);
@@ -1684,12 +1630,6 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
               // Insert padding between avoid_back_to_back branches.
               if (needs_padding && replacement->avoid_back_to_back(MachNode::AVOID_BEFORE)) {
                 MachNode *nop = new MachNopNode();
-#ifndef PRODUCT
-                if (UseNewCode3) {
-                  tty->print("New node: ");
-                  nop->dump();
-                }
-#endif
                 block->insert_node(nop, j++);
                 C->cfg()->map_node_to_block(nop, block);
                 last_inst++;
@@ -1869,12 +1809,6 @@ void PhaseOutput::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
       int padding = nb->alignment_padding(current_offset);
       if( padding > 0 ) {
         MachNode *nop = new MachNopNode(padding / nop_size);
-#ifndef PRODUCT
-        if (UseNewCode3) {
-          tty->print("New node: ");
-          nop->dump();
-        }
-#endif
         block->insert_node(nop, block->number_of_nodes());
         C->cfg()->map_node_to_block(nop, block);
         nop->emit(*cb, C->regalloc());
@@ -2128,12 +2062,6 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
 {
   // Create a MachNopNode
   _nop = new MachNopNode();
-#ifndef PRODUCT
-  if (UseNewCode3) {
-    tty->print("New node: ");
-    _nop->dump();
-  }
-#endif
 
   // Now that the nops are in the array, save the count
   // (but allow entries for the nops)
@@ -3042,12 +2970,6 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
       pinch = _pinch_free_list.pop();
     } else {
       pinch = new Node(1); // Pinch point to-be
-#ifndef PRODUCT
-      if (UseNewCode3) {
-        tty->print("New node: ");
-        pinch->dump();
-      }
-#endif
     }
     if (pinch->_idx >= _regalloc->post_alloc_node_limit()) {
       DEBUG_ONLY( pinch->dump(); );
