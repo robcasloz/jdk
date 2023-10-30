@@ -134,31 +134,29 @@ private:
   void dump_available() const;
 
   short uses(const Node* n) const {
-    short u = _uses->at_grow(n->_idx, 0);
-    if (n->_idx + 1 > _output->_uses_max) {
-      _output->_uses_max = n->_idx + 1;
+    if (UseNewCode && n->_idx >= (uint)_uses->length() && n->_idx >= (uint)_uses->capacity()) {
+      tty->print_cr("_uses: length=%d, capacity=%d, idx=%d -> grow", _uses->length(), _uses->capacity(), n->_idx);
     }
-    return u;
+    return _uses->at_grow(n->_idx, 0);
   }
 
   void set_uses(const Node* n, short u) {
-    if (n->_idx + 1 > _output->_uses_max) {
-      _output->_uses_max = n->_idx + 1;
+    if (UseNewCode && n->_idx >= (uint)_uses->length() && n->_idx >= (uint)_uses->capacity()) {
+      tty->print_cr("_uses: length=%d, capacity=%d, idx=%d -> grow", _uses->length(), _uses->capacity(), n->_idx);
     }
     _uses->at_put_grow(n->_idx, u, 0);
   }
 
   unsigned short current_latency(const Node* n) const {
-    unsigned short l = _current_latency->at_grow(n->_idx, 0);
-    if (n->_idx + 1 > _output->_current_latency_max) {
-      _output->_current_latency_max = n->_idx + 1;
+    if (UseNewCode && n->_idx >= (uint)_current_latency->length() && n->_idx >= (uint)_current_latency->capacity()) {
+      tty->print_cr("_current_latency: length=%d, capacity=%d, idx=%d -> grow", _current_latency->length(), _current_latency->capacity(), n->_idx);
     }
-    return l;
+    return _current_latency->at_grow(n->_idx, 0);
   }
 
   void set_current_latency(const Node* n, unsigned short l) {
-    if (n->_idx + 1 > _output->_current_latency_max) {
-      _output->_current_latency_max = n->_idx + 1;
+    if (UseNewCode && n->_idx >= (uint)_current_latency->length() && n->_idx >= (uint)_current_latency->capacity()) {
+      tty->print_cr("_current_latency: length=%d, capacity=%d, idx=%d -> grow", _current_latency->length(), _current_latency->capacity(), n->_idx);
     }
     _current_latency->at_put_grow(n->_idx, l, 0);
   }
@@ -267,13 +265,7 @@ PhaseOutput::PhaseOutput()
     _orig_pc_slot_offset_in_bytes(0),
     _buf_sizes(),
     _block(nullptr),
-    _index(0),
-    _node_bundling_base_initial(0),
-    _uses_initial(0),
-    _uses_max(0),
-    _current_latency_initial(0),
-    _current_latency_max(0),
-    _pinch_max(0) {
+    _index(0) {
   C->set_output(this);
   if (C->stub_name() == nullptr) {
     _orig_pc_slot = C->fixed_slots() - (sizeof(address) / VMRegImpl::stack_slot_size);
@@ -394,20 +386,6 @@ void PhaseOutput::Output() {
   }
 
   fill_buffer(cb, blk_starts);
-
-  if (UseNewCode2) {
-    tty->print_cr("codegen-array-size-stats, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
-                  C->regalloc()->initial,     C->regalloc()->max,
-                  _node_bundling_base_initial, _node_bundling_base_initial,
-                  _uses_initial,               _uses_max,
-                  _current_latency_initial,    _current_latency_max,
-                  C->regalloc()->original,
-                  _pinch_max,
-                  C->regalloc()->max_expand_limit);
-    assert(C->regalloc()->max >= C->regalloc()->initial, "");
-    assert(_uses_max >= _uses_initial, "");
-    assert(_current_latency_max >= _current_latency_initial, "");
-  }
 }
 
 bool PhaseOutput::need_stack_bang(int frame_size_in_bytes) const {
@@ -1001,7 +979,6 @@ void PhaseOutput::FillLocArray( int idx, MachSafePointNode* sfpt, Node *local,
 
 // Determine if this node starts a bundle
 bool PhaseOutput::starts_bundle(const Node *n) const {
-  assert(false, "Dead code: !Pipeline::requires_bundling() for all targets");
   return (_node_bundling_limit > n->_idx &&
           _node_bundling_base[n->_idx].starts_bundle());
 }
@@ -2067,9 +2044,6 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // (but allow entries for the nops)
   _node_bundling_limit = compile.unique();
 
-  uint uses_length = _node_bundling_limit;
-  uint current_latency_length = _node_bundling_limit;
-
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
 
   // This one is persistent within the Compile class
@@ -2078,17 +2052,15 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   for (uint i = 0; i < _node_bundling_limit; i++) {
     ::new (&_node_bundling_base[i]) Bundle();
   }
-  compile.output()->_node_bundling_base_initial = _node_bundling_limit;
 
-  // Allocate space for fixed-size arrays
+  // Allocate space for growable arrays.
+  // The initial length is found experimentally to only cause array growth in
+  // around 0.02% of the compilations for common benchmarks (SPECjvm2008,
+  // DaCapo, SPECjbb2015), on x64 and aarch64.
+  uint initial_length = _node_bundling_limit + (_node_bundling_limit >> 3);
   // TODO: allocate in 'arena'
-  _uses            = new GrowableArray<short>(uses_length, uses_length, 0);
-  _output->_uses_initial    = uses_length;
-  _output->_uses_max        = uses_length;
-  _current_latency = new GrowableArray<unsigned short>(current_latency_length, current_latency_length, 0);
-  _output->_current_latency_initial = current_latency_length;
-  _output->_current_latency_max = current_latency_length;
-
+  _uses            = new GrowableArray<short>(initial_length, initial_length, 0);
+  _current_latency = new GrowableArray<unsigned short>(initial_length, initial_length, 0);
 
   // Clear the bundling information
   memcpy(_bundle_use_elements, Pipeline_Use::elaborated_elements, sizeof(Pipeline_Use::elaborated_elements));
@@ -2389,13 +2361,15 @@ void Scheduling::DecrementUseCounts(Node *n, const Block *bb) {
 
     // Compute the latency
     uint l = _bundle_cycle_number + n->latency(i);
-    if (current_latency(def) < l)
+    if (current_latency(def) < l) {
       set_current_latency(def, l);
+    }
 
     // If this does not have uses then schedule it
     set_uses(def, uses(def) - 1);
-    if (uses(def) == 0)
+    if (uses(def) == 0) {
       AddNodeToAvailableList(def);
+    }
   }
 }
 
@@ -2976,9 +2950,6 @@ void Scheduling::anti_do_def( Block *b, Node *def, OptoReg::Name def_reg, int is
       assert(false, "too many D-U pinch points: %d >= %d", pinch->_idx, _regalloc->post_alloc_node_limit());
       _cfg->C->record_method_not_compilable("too many D-U pinch points");
       return;
-    }
-    if (pinch->_idx > _output->_pinch_max) {
-      _output->_pinch_max = pinch->_idx;
     }
     _cfg->map_node_to_block(pinch, b);      // Pretend it's valid in this block (lazy init)
     _reg_node.map(def_reg,pinch); // Record pinch-point

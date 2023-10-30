@@ -36,15 +36,11 @@ PhaseRegAlloc::PhaseRegAlloc( uint unique, PhaseCFG &cfg,
                               Matcher &matcher,
                               void (*pr_stats)() ):
                Phase(Register_Allocation),
-               _post_alloc_node_limit(0),
                _node_regs(nullptr),
+               _post_alloc_node_limit(0),
                _cfg(cfg),
                _framesize(0xdeadbeef),
-               _matcher(matcher),
-               initial(0),
-               original(0),
-               max(0),
-               max_expand_limit(0)
+               _matcher(matcher)
 {
     int i;
 
@@ -113,10 +109,11 @@ bool PhaseRegAlloc::is_oop( const Node *n ) const {
 // Allocate _node_regs table with at least "size" elements
 void PhaseRegAlloc::alloc_node_regs(int size) {
   // TODO: ensure _node_regs is allocated in the same arena as before.
-  _node_regs = new GrowableArray<OptoRegPair>(size, size, OptoRegPair());
-  initial = size;
-  original = size + (size >> 1) + 200;
-  max = initial;
+
+  // This initial length is found experimentally to not cause any array growth on
+  // common benchmarks (SPECjvm2008, DaCapo, SPECjbb2015), on x64 and aarch64.
+  uint initial_length = size + (size >> 3);
+  _node_regs = new GrowableArray<OptoRegPair>(initial_length, initial_length, OptoRegPair());
 }
 
 #ifndef PRODUCT

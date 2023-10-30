@@ -44,8 +44,8 @@ class PhaseRegAlloc : public Phase {
   static int _num_allocators;
 
 protected:
-  uint                        _post_alloc_node_limit;
   GrowableArray<OptoRegPair>* _node_regs;
+  uint                        _post_alloc_node_limit;
   VectorSet                   _node_oops;         // Mapping from node indices to oopiness
 
   void alloc_node_regs(int size);  // allocate _node_regs table with at least "size" elements
@@ -58,10 +58,6 @@ public:
   OptoReg::Name _max_reg;       // Past largest register seen
   Matcher &_matcher;            // Convert Ideal to MachNodes
   uint post_alloc_node_limit() const { return _post_alloc_node_limit; }
-  uint initial;
-  uint original;
-  uint max;
-  uint max_expand_limit;
 
   // Get the first/second registers associated with the Node, if explicitly
   // assigned, or OptoReg::Bad otherwise.
@@ -97,16 +93,16 @@ public:
     _node_regs->at_put(idx, OptoRegPair(hi, lo));
   }
   void set_bad(uint idx) {
-    _node_regs->at_put_grow(idx, OptoRegPair());
-    if ((uint)idx + 1 > max) {
-      max = idx + 1;
+    if (UseNewCode && idx >= (uint)_node_regs->length() && idx >= (uint)_node_regs->capacity()) {
+      tty->print_cr("_node_regs: length=%d, capacity=%d, idx=%d -> grow", _node_regs->length(), _node_regs->capacity(), idx);
     }
+    _node_regs->at_put_grow(idx, OptoRegPair());
   }
   void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
-    _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
-    if ((uint)idx + 1 > max) {
-      max = idx + 1;
+    if (UseNewCode && idx >= (uint)_node_regs->length() && idx >= (uint)_node_regs->capacity()) {
+      tty->print_cr("_node_regs: length=%d, capacity=%d, idx=%d -> grow", _node_regs->length(), _node_regs->capacity(), idx);
     }
+    _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
   }
 
   // Set and query if a node produces an oop
