@@ -67,7 +67,7 @@ public:
     }
     return _node_regs->at(n->_idx).first();
   }
-  OptoReg::Name get_reg_second( const Node *n ) const {
+  OptoReg::Name get_reg_second(const Node* n) const {
     if (n->_idx >= (uint)_node_regs->length()) {
       return OptoReg::Bad;
     }

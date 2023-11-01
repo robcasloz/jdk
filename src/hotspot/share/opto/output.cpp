@@ -2177,9 +2177,10 @@ bool Scheduling::NodeFitsInBundle(Node *n) {
   // If the node cannot be scheduled this cycle, skip it
   if (current_latency(n) > _bundle_cycle_number) {
 #ifndef PRODUCT
-    if (_cfg->C->trace_opto_output())
+    if (_cfg->C->trace_opto_output()) {
       tty->print("#     NodeFitsInBundle [%4d]: FALSE; latency %4d > %d\n",
                  n->_idx, current_latency(n), _bundle_cycle_number);
+    }
 #endif
     return (false);
   }
@@ -2295,9 +2296,10 @@ void Scheduling::AddNodeToAvailableList(Node *n) {
 
   // Insert in latency order (insertion sort)
   uint i;
-  for ( i=0; i < _available.size(); i++ ) {
-    if (current_latency(_available[i]) > latency)
+  for (i=0; i < _available.size(); i++) {
+    if (current_latency(_available[i]) > latency) {
       break;
+    }
   }
 
   // Special Check for compares following branches
@@ -2314,9 +2316,10 @@ void Scheduling::AddNodeToAvailableList(Node *n) {
           op == Op_CmpL ) ) {
 
       // Recalculate position, moving to front of same latency
-      for ( i=0 ; i < _available.size(); i++ ) {
-        if (current_latency(_available[i]) >= latency)
+      for (i=0; i < _available.size(); i++) {
+        if (current_latency(_available[i]) >= latency) {
           break;
+        }
       }
     }
   }
@@ -2590,17 +2593,17 @@ void Scheduling::ComputeUseCount(const Block *bb) {
   _unconditional_delay_slot = nullptr;
 
 #ifdef ASSERT
-  for( uint i=0; i < bb->number_of_nodes(); i++ ) {
+  for (uint i=0; i < bb->number_of_nodes(); i++) {
     assert(uses(bb->get_node(i)) == 0, "_use array not clean");
   }
 #endif
 
   // Force the _uses count to never go to zero for unscheduable pieces
   // of the block
-  for( uint k = 0; k < _bb_start; k++ ) {
+  for (uint k = 0; k < _bb_start; k++) {
     set_uses(bb->get_node(k), 1);
   }
-  for( uint l = _bb_end; l < bb->number_of_nodes(); l++ ) {
+  for (uint l = _bb_end; l < bb->number_of_nodes(); l++) {
     set_uses(bb->get_node(l), 1);
   }
 
