@@ -361,7 +361,7 @@ static void format_helper( PhaseRegAlloc *regalloc, outputStream* st, Node *n, c
     st->print(" %s%d]=#ScObj" INT32_FORMAT, msg, i, sco_n);
     return;
   }
-  if (regalloc->node_regs_max_index() > 0 &&
+  if (regalloc->is_node_reg_info_available() &&
       OptoReg::is_valid(regalloc->get_reg_first(n))) { // Check for undefined
     char buf[50];
     regalloc->dump_register(n,buf,sizeof(buf));
@@ -450,7 +450,7 @@ void JVMState::format(PhaseRegAlloc *regalloc, const Node *n, outputStream* st) 
     for (i = 0; (int)i < nof_monitors(); i++) {
       Node *box = mcall->monitor_box(this, i);
       Node *obj = mcall->monitor_obj(this, i);
-      if (regalloc->node_regs_max_index() > 0 &&
+      if (regalloc->is_node_reg_info_available() &&
           OptoReg::is_valid(regalloc->get_reg_first(box))) {
         box = BoxLockNode::box_node(box);
         format_helper(regalloc, st, box, "MON-BOX[", i, &scobjs);
