@@ -78,9 +78,6 @@ private:
   // Register Allocation info
   PhaseRegAlloc *_regalloc;
 
-  // Output info
-  PhaseOutput *_output;
-
   // Number of nodes in the method
   uint _node_bundling_limit;
 
@@ -2011,7 +2008,6 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
         : _arena(arena),
           _cfg(compile.cfg()),
           _regalloc(compile.regalloc()),
-          _output(compile.output()),
           _scheduled(arena),
           _available(arena),
           _reg_node(arena),
