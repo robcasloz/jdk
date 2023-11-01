@@ -2047,7 +2047,6 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   compile.output()->set_node_bundling_limit(_node_bundling_limit);
 
   // This one is persistent within the Compile class
-  // TODO: allocate in 'compile.comp_arena()'
   _node_bundling_base = NEW_ARENA_ARRAY(compile.comp_arena(), Bundle, _node_bundling_limit);
   for (uint i = 0; i < _node_bundling_limit; i++) {
     ::new (&_node_bundling_base[i]) Bundle();
@@ -2058,9 +2057,8 @@ Scheduling::Scheduling(Arena *arena, Compile &compile)
   // around 0.02% of the compilations for common benchmarks (SPECjvm2008,
   // DaCapo, SPECjbb2015), on x64 and aarch64.
   uint initial_length = _node_bundling_limit + (_node_bundling_limit >> 3);
-  // TODO: allocate in 'arena'
-  _uses            = new GrowableArray<short>(initial_length, initial_length, 0);
-  _current_latency = new GrowableArray<unsigned short>(initial_length, initial_length, 0);
+  _uses            = new (compile.comp_arena()) GrowableArray<short>(compile.comp_arena(), initial_length, initial_length, 0);
+  _current_latency = new (compile.comp_arena()) GrowableArray<unsigned short>(compile.comp_arena(), initial_length, initial_length, 0);
 
   // Clear the bundling information
   memcpy(_bundle_use_elements, Pipeline_Use::elaborated_elements, sizeof(Pipeline_Use::elaborated_elements));

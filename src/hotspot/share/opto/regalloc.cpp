@@ -108,8 +108,6 @@ bool PhaseRegAlloc::is_oop( const Node *n ) const {
 
 // Allocate _node_regs table with at least "size" elements
 void PhaseRegAlloc::alloc_node_regs(int size) {
-  // TODO: ensure _node_regs is allocated in the same arena as before.
-
   // This initial length is found experimentally to not cause any array growth on
   // common benchmarks (SPECjvm2008, DaCapo, SPECjbb2015), on x64 and aarch64.
   uint initial_length = size + (size >> 3);
