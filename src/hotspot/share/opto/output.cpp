@@ -2598,7 +2598,7 @@ void Scheduling::ComputeUseCount(const Block *bb) {
   }
 #endif
 
-  // Force the _uses count to never go to zero for unscheduable pieces
+  // Force the _uses count to never go to zero for unschedulable pieces
   // of the block
   for (uint k = 0; k < _bb_start; k++) {
     set_uses(bb->get_node(k), 1);
