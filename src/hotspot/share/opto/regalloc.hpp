@@ -83,19 +83,19 @@ public:
   virtual void add_reference( const Node *node, const Node *old_node) = 0;
 
   // Set the register associated with a new Node
-  void set1_no_grow(uint idx, OptoReg::Name reg) {
+  void set1_no_grow(uint idx, OptoReg::Name reg) const {
     _node_regs->at(idx).set1(reg);
   }
-  void set2_no_grow(uint idx, OptoReg::Name reg) {
+  void set2_no_grow(uint idx, OptoReg::Name reg) const {
     _node_regs->at(idx).set2(reg);
   }
-  void set_pair_no_grow(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
+  void set_pair_no_grow(uint idx, OptoReg::Name hi, OptoReg::Name lo) const {
     _node_regs->at_put(idx, OptoRegPair(hi, lo));
   }
-  void set_bad(uint idx) {
+  void set_bad(uint idx) const {
     _node_regs->at_put_grow(idx, OptoRegPair());
   }
-  void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
+  void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) const {
     _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
   }
 

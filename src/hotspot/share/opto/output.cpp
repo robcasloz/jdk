@@ -137,7 +137,7 @@ private:
     return _uses->at_grow(n->_idx, 0);
   }
 
-  void set_uses(const Node* n, short u) {
+  void set_uses(const Node* n, short u) const {
     _uses->at_put_grow(n->_idx, u, 0);
   }
 
@@ -145,7 +145,7 @@ private:
     return _current_latency->at_grow(n->_idx, 0);
   }
 
-  void set_current_latency(const Node* n, unsigned short l) {
+  void set_current_latency(const Node* n, unsigned short l) const {
     _current_latency->at_put_grow(n->_idx, l, 0);
   }
 
