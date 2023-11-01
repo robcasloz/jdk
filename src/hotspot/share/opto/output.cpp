@@ -134,30 +134,18 @@ private:
   void dump_available() const;
 
   short uses(const Node* n) const {
-    if (UseNewCode && n->_idx >= (uint)_uses->length() && n->_idx >= (uint)_uses->capacity()) {
-      tty->print_cr("_uses: length=%d, capacity=%d, idx=%d -> grow", _uses->length(), _uses->capacity(), n->_idx);
-    }
     return _uses->at_grow(n->_idx, 0);
   }
 
   void set_uses(const Node* n, short u) {
-    if (UseNewCode && n->_idx >= (uint)_uses->length() && n->_idx >= (uint)_uses->capacity()) {
-      tty->print_cr("_uses: length=%d, capacity=%d, idx=%d -> grow", _uses->length(), _uses->capacity(), n->_idx);
-    }
     _uses->at_put_grow(n->_idx, u, 0);
   }
 
   unsigned short current_latency(const Node* n) const {
-    if (UseNewCode && n->_idx >= (uint)_current_latency->length() && n->_idx >= (uint)_current_latency->capacity()) {
-      tty->print_cr("_current_latency: length=%d, capacity=%d, idx=%d -> grow", _current_latency->length(), _current_latency->capacity(), n->_idx);
-    }
     return _current_latency->at_grow(n->_idx, 0);
   }
 
   void set_current_latency(const Node* n, unsigned short l) {
-    if (UseNewCode && n->_idx >= (uint)_current_latency->length() && n->_idx >= (uint)_current_latency->capacity()) {
-      tty->print_cr("_current_latency: length=%d, capacity=%d, idx=%d -> grow", _current_latency->length(), _current_latency->capacity(), n->_idx);
-    }
     _current_latency->at_put_grow(n->_idx, l, 0);
   }
 

@@ -93,15 +93,9 @@ public:
     _node_regs->at_put(idx, OptoRegPair(hi, lo));
   }
   void set_bad(uint idx) {
-    if (UseNewCode && idx >= (uint)_node_regs->length() && idx >= (uint)_node_regs->capacity()) {
-      tty->print_cr("_node_regs: length=%d, capacity=%d, idx=%d -> grow", _node_regs->length(), _node_regs->capacity(), idx);
-    }
     _node_regs->at_put_grow(idx, OptoRegPair());
   }
   void set_pair(uint idx, OptoReg::Name hi, OptoReg::Name lo) {
-    if (UseNewCode && idx >= (uint)_node_regs->length() && idx >= (uint)_node_regs->capacity()) {
-      tty->print_cr("_node_regs: length=%d, capacity=%d, idx=%d -> grow", _node_regs->length(), _node_regs->capacity(), idx);
-    }
     _node_regs->at_put_grow(idx, OptoRegPair(hi, lo));
   }
 
