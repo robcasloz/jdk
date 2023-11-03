@@ -158,6 +158,7 @@ public:
   virtual void clone_at_expansion(PhaseMacroExpand* phase,
                                   ArrayCopyNode* ac) const;
 
+  virtual bool peel_loop(IdealLoopTree* loop, uint estimate) const;
   virtual void late_barrier_analysis() const;
   virtual int estimate_stub_size() const;
   virtual int estimate_mach_node_size(MachNode* mach) const;

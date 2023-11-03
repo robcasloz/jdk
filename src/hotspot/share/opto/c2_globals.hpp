@@ -788,6 +788,9 @@
                                                                             \
   product(bool, UseBarrierNullCheckElimination, true,                       \
           "Trace safepoint attached barrier optimization")                  \
+                                                                            \
+  product(bool, UsePeelAndElide, true,                                      \
+          "Peel loops to facilitate barrier elision")                       \
 
 // end of C2_FLAGS
 

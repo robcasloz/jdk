@@ -279,6 +279,7 @@ public:
   virtual bool optimize_loops(PhaseIdealLoop* phase, LoopOptsMode mode, VectorSet& visited, Node_Stack& nstack, Node_List& worklist) const { return false; }
   virtual bool strip_mined_loops_expanded(LoopOptsMode mode) const { return false; }
   virtual bool is_gc_specific_loop_opts_pass(LoopOptsMode mode) const { return false; }
+  virtual bool peel_loop(IdealLoopTree* loop, uint estimate) const {return false; }
 
   enum CompilePhase {
     BeforeOptimize,

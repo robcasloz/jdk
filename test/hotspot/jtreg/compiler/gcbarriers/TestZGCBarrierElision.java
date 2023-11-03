@@ -475,12 +475,23 @@ class TestZGCEffectiveBarrierElision {
         Common.outerArrayVarHandle.setVolatile(a, 0, o);
     }
 
+    @Test
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_SAB, "1" }, phase = CompilePhase.FINAL_CODE)
+    static void testStoreInNonCountedLoop(Outer o, Inner i) {
+        while (!Common.done()) {
+            o.field1 = i;
+        }
+    }
+
     @Run(test = {"testStoreThenCallThenStore",
                  "testStoreThenStoreInNonCountedLoop",
-                 "testAllocateArrayThenCallThenStoreAtKnownIndex"})
+                 "testAllocateArrayThenCallThenStoreAtKnownIndex",
+                 "testStoreInNonCountedLoop"})
     void runSafepointAttachedBarrierTests() {
         testStoreThenCallThenStore(Common.outer, Common.inner);
         testStoreThenStoreInNonCountedLoop(Common.outer, Common.inner);
         testAllocateArrayThenCallThenStoreAtKnownIndex(Common.outer);
+        testStoreInNonCountedLoop(Common.outer, Common.inner);
     }
 }

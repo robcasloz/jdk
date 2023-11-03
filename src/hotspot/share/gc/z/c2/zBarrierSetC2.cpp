@@ -321,6 +321,36 @@ void* ZBarrierSetC2::create_barrier_state(Arena* comp_arena) const {
   return new (comp_arena) ZBarrierSetC2State(comp_arena);
 }
 
+bool ZBarrierSetC2::peel_loop(IdealLoopTree* loop, uint estimate) const {
+  Node* head = loop->head();
+  assert (head->is_Loop(), "the loop header should be a loop node");
+  if (!UsePeelAndElide) {
+    return false;
+  }
+  if (head->is_CountedLoop()) {
+    // Do not interfere with counted loop optimizations, most likely these will
+    // do transformations like strip mining, unrolling etc. which will achieve
+    // the same effect as peeling for barrier elision purposes.
+    return false;
+  }
+  // TODO: take into account estimate size, do only for smaller loops.
+  for (uint i = 0; i < loop->_body.size(); i++) {
+    Node* n = loop->_body.at(i);
+    int opcode = n->Opcode();
+    if (opcode == Op_LoadP ||
+        opcode == Op_StoreP ||
+        opcode == Op_CompareAndExchangeP ||
+        opcode == Op_CompareAndSwapP ||
+        opcode == Op_GetAndSetP) {
+      // This loop contains barrier memory accesses, peel an iteration to make
+      // it possible to elide barriers in the body. We could call this
+      // "peel-and-elide".
+      return true;
+    }
+  }
+  return false;
+}
+
 void ZBarrierSetC2::late_barrier_analysis() const {
   compute_liveness_at_stubs();
   analyze_dominating_barriers();

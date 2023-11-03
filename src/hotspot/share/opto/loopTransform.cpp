@@ -24,6 +24,8 @@
 
 #include "precompiled.hpp"
 #include "compiler/compileLog.hpp"
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "memory/allocation.inline.hpp"
 #include "opto/addnode.hpp"
 #include "opto/callnode.hpp"
@@ -476,6 +478,13 @@ uint IdealLoopTree::estimate_peeling(PhaseIdealLoop *phase) {
     if (cl->is_unroll_only() || cl->trip_count() == 1) {
       return 0;
     }
+  }
+
+  BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+  if (!_head->as_Loop()->is_force_peeled() && bs->peel_loop(this, estimate)) {
+    // Peel if the GC finds it profitable.
+    _head->as_Loop()->mark_is_force_peeled();
+    return estimate;
   }
 
   Node* test = tail();
@@ -3745,7 +3754,12 @@ bool IdealLoopTree::iteration_split(PhaseIdealLoop* phase, Node_List &old_new) {
 
   // Unrolling, RCE and peeling efforts, iff innermost loop.
   if (_allow_optimizations && is_innermost()) {
-    if (!_has_call) {
+    // FIXME: this is a temporary hack to ensure we peel any kind of loop if the
+    //        GC asks for it, but follow otherwise the original policy as
+    //        closely as possible. Maybe refactor so that loops with calls are
+    //        considered for peeling in IdealLoopTree::estimate_peeling().
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    if (!_has_call || (_head->is_Loop() && bs->peel_loop(this, 0))) {
       if (!iteration_split_impl(phase, old_new)) {
         return false;
       }
