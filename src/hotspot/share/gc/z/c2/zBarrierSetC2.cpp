@@ -1288,5 +1288,14 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) co
   if (mach->has_barrier_flag(ZBarrierElided)) {
     st->print("elided ");
   }
+  if (mach->has_barrier_flag(ZBarrierDomElided)) {
+    st->print("dom ");
+  }
+  if (mach->has_barrier_flag(ZBarrierSABElided)) {
+    st->print("sab ");
+  }
+  if (mach->has_barrier_flag(ZBarrierNullCheckRemoval)) {
+    st->print("ncremoval ");
+  }
 }
 #endif // !PRODUCT

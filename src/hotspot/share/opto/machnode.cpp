@@ -548,7 +548,7 @@ void MachTypeNode::dump_spec(outputStream *st) const {
   } else {
     st->print(" null");
   }
-  if (barrier_data() != 0) {
+  if (has_any_barrier_flag()) {
     st->print(" barrier(");
     BarrierSet::barrier_set()->barrier_set_c2()->dump_barrier_data(this, st);
     st->print(")");
