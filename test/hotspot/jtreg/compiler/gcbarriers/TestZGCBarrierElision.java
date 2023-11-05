@@ -77,7 +77,7 @@ class Common {
         MethodHandles.arrayElementVarHandle(Outer[].class);
 
     static final String REMAINING = "strong";
-    static final String ELIDED = "elided";
+    static final String ELIDED_BY_DOMINATION = "strong elided dom";
 
     static void blackhole(Object o) {}
     static void nonInlinedMethod() {}
@@ -251,7 +251,7 @@ class TestZGCCorrectBarrierElision {
 class TestZGCEffectiveBarrierElision {
 
     @Test
-    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAllocateThenLoad() {
         Outer o1 = new Outer();
         Common.blackhole(o1);
@@ -261,7 +261,7 @@ class TestZGCEffectiveBarrierElision {
     }
 
     @Test
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAllocateThenStore(Inner i) {
         Outer o1 = new Outer();
         Common.blackhole(o1);
@@ -270,7 +270,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testLoadThenLoad(Outer o) {
         Common.blackhole(o.field1);
         Common.blackhole(o.field1);
@@ -278,7 +278,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testStoreThenStore(Outer o, Inner i) {
         o.field1 = i;
         o.field1 = i;
@@ -286,7 +286,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" },  phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" },  phase = CompilePhase.FINAL_CODE)
     static void testStoreThenLoad(Outer o, Inner i) {
         o.field1 = i;
         Common.blackhole(o.field1);
@@ -306,7 +306,7 @@ class TestZGCEffectiveBarrierElision {
     }
 
     @Test
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAllocateArrayThenStoreAtKnownIndex(Outer o) {
         Outer[] a = new Outer[42];
         Common.blackhole(a);
@@ -314,7 +314,7 @@ class TestZGCEffectiveBarrierElision {
     }
 
     @Test
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAllocateArrayThenStoreAtUnknownIndex(Outer o, int index) {
         Outer[] a = new Outer[42];
         Common.blackhole(a);
@@ -323,7 +323,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testArrayLoadThenLoad(Outer[] a) {
         Common.blackhole(Common.outerArrayVarHandle.getVolatile(a, 0));
         Common.blackhole(Common.outerArrayVarHandle.getVolatile(a, 0));
@@ -331,7 +331,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testArrayStoreThenStore(Outer[] a, Outer o) {
         Common.outerArrayVarHandle.setVolatile(a, 0, o);
         Common.outerArrayVarHandle.setVolatile(a, 0, o);
@@ -339,7 +339,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testArrayStoreThenLoad(Outer[] a, Outer o) {
         Common.outerArrayVarHandle.setVolatile(a, 0, o);
         Common.blackhole(Common.outerArrayVarHandle.getVolatile(a, 0));
@@ -360,7 +360,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testStoreThenConditionalStore(Outer o, Inner i, int value) {
         o.field1 = i;
         if (value % 2 == 0) {
@@ -370,7 +370,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testStoreThenStoreInLoop(Outer o, Inner i) {
         o.field1 = i;
         for (int j = 0; j < 100; j++) {
@@ -387,7 +387,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testStoreThenAtomic(Outer o, Inner i) {
         o.field1 = i;
         Common.field1VarHandle.getAndSet​(o, i);
@@ -395,7 +395,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_LOAD_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAtomicThenLoad(Outer o, Inner i) {
         Common.field1VarHandle.getAndSet​(o, i);
         Common.blackhole(o.field1);
@@ -403,7 +403,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAtomicThenStore(Outer o, Inner i) {
         Common.field1VarHandle.getAndSet​(o, i);
         o.field1 = i;
@@ -411,7 +411,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testAtomicThenAtomic(Outer o, Inner i) {
         Common.field1VarHandle.getAndSet​(o, i);
         Common.field1VarHandle.getAndSet​(o, i);
@@ -419,7 +419,7 @@ class TestZGCEffectiveBarrierElision {
 
     @Test
     @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
-    @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.ELIDED, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_GET_AND_SET_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_DOMINATION, "1" }, phase = CompilePhase.FINAL_CODE)
     static void testArrayAtomicThenAtomic(Outer[] a, Outer o) {
         Common.outerArrayVarHandle.getAndSet(a, 0, o);
         Common.outerArrayVarHandle.getAndSet(a, 0, o);
