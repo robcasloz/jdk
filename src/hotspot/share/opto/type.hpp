@@ -479,6 +479,21 @@ public:
   virtual bool maybe_null() const { return true; }
   virtual bool is_known_instance() const { return false; }
 
+  // Whether the given offset is undefined.
+  static bool is_undefined(intptr_t offset) {
+    return offset == Type::OffsetTop;
+  }
+
+  // Whether the given offset is unknown.
+  static bool is_unknown(intptr_t offset) {
+    return offset == Type::OffsetBot;
+  }
+
+  // Whether the given offset is concrete (defined and compile-time known).
+  static bool is_concrete(intptr_t offset) {
+    return !is_undefined(offset) && !is_unknown(offset);
+  }
+
 private:
   // support arrays
   static const Type*        _zero_type[T_CONFLICT+1];

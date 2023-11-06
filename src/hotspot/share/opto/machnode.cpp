@@ -28,6 +28,7 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "memory/universe.hpp"
 #include "oops/compressedOops.hpp"
+#include "opto/addnode.hpp"
 #include "opto/machnode.hpp"
 #include "opto/output.hpp"
 #include "opto/regalloc.hpp"
@@ -326,13 +327,32 @@ const Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_ty
   return base;
 }
 
-const Node* MachNode::get_base_and_offset(intptr_t& offset) {
-  const TypePtr* adr_type = NULL;
+// Compute base + offset components of the memory address accessed by mach.
+// Return a node representing the base address, or null if the base cannot be
+// found or the offset is undefined or a concrete negative value. If a non-null
+// base is returned, the offset is a concrete, nonnegative value or unknown.
+const Node* MachNode::get_base_and_offset(intptr_t& offset) const {
+  const TypePtr* adr_type = nullptr;
   offset = 0;
   const Node* base = get_base_and_disp(offset, adr_type);
 
-  if (base == NULL || base == NodeSentinel || offset < 0) {
-    return NULL;
+  if (base == nullptr || base == NodeSentinel) {
+    return nullptr;
+  }
+
+  if (offset == 0 && base->is_Mach() && base->as_Mach()->ideal_Opcode() == Op_AddP) {
+    // The memory address is computed by 'base' and fed to 'mach' via an
+    // indirect memory operand (indicated by offset == 0). The ultimate base and
+    // offset can be fetched directly from the inputs and Ideal type of 'base'.
+    offset = base->bottom_type()->isa_oopptr()->offset();
+    // Even if 'base' is not an Ideal AddP node anymore, Matcher::ReduceInst()
+    // guarantees that the base address is still available at the same slot.
+    base = base->in(AddPNode::Base);
+    assert(base != nullptr, "");
+  }
+
+  if (Type::is_undefined(offset) || (Type::is_concrete(offset) && offset < 0)) {
+    return nullptr;
   }
 
   return base;

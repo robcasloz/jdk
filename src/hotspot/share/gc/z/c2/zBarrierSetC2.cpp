@@ -603,52 +603,6 @@ static const Node* look_through_node(const Node* node, bool look_through_spill =
   return node;
 }
 
-// Whether the given offset is undefined.
-static bool is_undefined(intptr_t offset) {
-  return offset == Type::OffsetTop;
-}
-
-// Whether the given offset is unknown.
-static bool is_unknown(intptr_t offset) {
-  return offset == Type::OffsetBot;
-}
-
-// Whether the given offset is concrete (defined and compile-time known).
-static bool is_concrete(intptr_t offset) {
-  return !is_undefined(offset) && !is_unknown(offset);
-}
-
-// Compute base + offset components of the memory address accessed by mach.
-// Return a node representing the base address, or null if the base cannot be
-// found or the offset is undefined or a concrete negative value. If a non-null
-// base is returned, the offset is a concrete, nonnegative value or unknown.
-static const Node* get_base_and_offset(const MachNode* mach, intptr_t& offset) {
-  const TypePtr* adr_type = nullptr;
-  offset = 0;
-  const Node* base = mach->get_base_and_disp(offset, adr_type);
-
-  if (base == nullptr || base == NodeSentinel) {
-    return nullptr;
-  }
-
-  if (offset == 0 && base->is_Mach() && base->as_Mach()->ideal_Opcode() == Op_AddP) {
-    // The memory address is computed by 'base' and fed to 'mach' via an
-    // indirect memory operand (indicated by offset == 0). The ultimate base and
-    // offset can be fetched directly from the inputs and Ideal type of 'base'.
-    offset = base->bottom_type()->isa_oopptr()->offset();
-    // Even if 'base' is not an Ideal AddP node anymore, Matcher::ReduceInst()
-    // guarantees that the base address is still available at the same slot.
-    base = base->in(AddPNode::Base);
-    assert(base != nullptr, "");
-  }
-
-  if (is_undefined(offset) || (is_concrete(offset) && offset < 0)) {
-    return nullptr;
-  }
-
-  return look_through_node(base);
-}
-
 // Whether a phi node corresponds to an array allocation.
 // This test is incomplete: in some edge cases, it might return false even
 // though the node does correspond to an array allocation.
@@ -703,8 +657,8 @@ static bool is_allocation(const Node* node) {
   }
   const TypePtr* const adr_type = nullptr;
   intptr_t offset;
-  const Node* const base = look_through_node(get_base_and_offset(fast_mach, offset));
-  if (base == nullptr || !base->is_Mach() || !is_concrete(offset)) {
+  const Node* const base = look_through_node(fast_mach->get_base_and_offset(offset));
+  if (base == nullptr || !base->is_Mach() || !Type::is_concrete(offset)) {
     return false;
   }
   const MachNode* const base_mach = base->as_Mach();
@@ -903,19 +857,21 @@ void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_L
         if (dom != access_mem) {
           continue;
         }
-        if (is_unknown(access_offset) && !is_array_allocation(dom)) {
+        if (Type::is_unknown(access_offset) && !is_array_allocation(dom)) {
           // The accessed address has an unknown offset, but the allocated
           // object cannot be determined to be an array. Avoid eliding in this
           // case, to be on the safe side.
           continue;
         }
-        assert((is_concrete(access_offset) && access_offset >= 0) || (is_unknown(access_offset) && is_array_allocation(dom)),
+        assert((Type::is_concrete(access_offset) && access_offset >= 0) || (Type::is_unknown(access_offset) && is_array_allocation(dom)),
                "candidate allocation-dominated access offsets must be either concrete and nonnegative, or unknown (for array allocations only)");
       } else {
         // Access node
         dom_mem = look_through_node(dom->as_Mach()->get_base_and_offset(mem_offset));
 
-        if (dom_mem == nullptr) {
+        if (dom_mem == nullptr ||
+            !Type::is_concrete(access_offset) ||
+            !Type::is_concrete(mem_offset)) {
           // No information available
           continue;
         }
@@ -924,7 +880,7 @@ void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_L
           // Not the same addresses, not a candidate
           continue;
         }
-        assert(is_concrete(access_offset) && access_offset >= 0,
+        assert(Type::is_concrete(access_offset) && access_offset >= 0,
                "candidate non-allocation-dominated access offsets must be concrete and nonnegative");
       }
 

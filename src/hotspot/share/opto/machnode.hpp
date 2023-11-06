@@ -346,8 +346,8 @@ public:
   // Passing TYPE_PTR_SENTINAL as adr_type asks for computation of the adr_type if possible
   const Node* get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const;
 
-  // A convenience wrapper of get_base_and_disp
-  const Node* get_base_and_offset(intptr_t& offset);
+  // A convenience wrapper of get_base_and_disp.
+  const Node* get_base_and_offset(intptr_t& offset) const;
 
   // Helper for get_base_and_disp: find the base and index input nodes.
   // Returns the MachOper as determined by memory_operand(), for use, if
