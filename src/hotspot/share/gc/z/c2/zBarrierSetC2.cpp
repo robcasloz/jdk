@@ -697,6 +697,7 @@ void ZBarrierSetC2::process_access(MachNode* const access, Node* dom_access, Gro
 
   bool is_derived      = (access->in(2)->bottom_type()->is_ptr()->_offset != 0);
   bool offset_is_short = (access_offset >> 16) == 0;
+  bool offset_is_known = !Type::is_unknown(access_offset);
   bool trace = C->directive()->TraceBarrierEliminationOption;
 
   if (access_list.length() == 0) {
@@ -713,7 +714,7 @@ void ZBarrierSetC2::process_access(MachNode* const access, Node* dom_access, Gro
     return;
   } else if (C->directive()->UseSafepointAttachedBarriersOption) {
     precond(access_list.length() > 0);
-    if (offset_is_short && !is_derived) {
+    if (offset_is_known && offset_is_short && !is_derived) {
       mark_mach_barrier_sab_elided(access);
       while (access_list.length() > 0) {
         SafepointAccessRecord* sar = access_list.pop();
@@ -955,11 +956,6 @@ void ZBarrierSetC2::analyze_dominating_barriers() const {
       Node* const node = block->get_node(j);
       if (node->is_Phi()) { // Change to CheckCastPP with InitalizeNode as ctrl
         if (is_allocation(node)) {
-          if (is_array_allocation(node)) {
-            // We must know the offset/index if an oop* array dominates an access
-            continue;
-          }
-
           load_dominators.push(node);
           store_dominators.push(node);
           // An allocation can't be considered to "dominate" an atomic operation.
