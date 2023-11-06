@@ -76,11 +76,16 @@ class Common {
     static final VarHandle outerArrayVarHandle =
         MethodHandles.arrayElementVarHandle(Outer[].class);
 
-    static final String REMAINING = "strong";
+    static final String REMAINING            = "strong";
     static final String ELIDED_BY_DOMINATION = "strong elided dom";
+    static final String ELIDED_BY_SAB        = "strong elided sab";
 
     static void blackhole(Object o) {}
     static void nonInlinedMethod() {}
+    static boolean done() {
+        int randomNum = ThreadLocalRandom.current().nextInt(0, 10 + 1);
+        return randomNum == 5;
+    }
 }
 
 public class TestZGCBarrierElision {
@@ -171,19 +176,9 @@ class TestZGCCorrectBarrierElision {
         o.field1 = i;
     }
 
-    @Test
-    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "2" }, phase = CompilePhase.FINAL_CODE)
-    static void testStoreThenCallThenStore(Outer o, Inner i) {
-        o.field1 = i;
-        Common.nonInlinedMethod();
-        o.field1 = i;
-    }
-
-    @Run(test = {"testConditionalStoreThenStore",
-                 "testStoreThenCallThenStore"})
+    @Run(test = {"testConditionalStoreThenStore"})
     void runControlFlowTests() {
         testConditionalStoreThenStore(Common.outer, Common.inner, ThreadLocalRandom.current().nextInt(0, 100));
-        testStoreThenCallThenStore(Common.outer, Common.inner);
     }
 
     @Test
@@ -245,6 +240,20 @@ class TestZGCCorrectBarrierElision {
         testAllocateArrayThenAtomicAtKnownIndex(Common.outer);
         testAllocateArrayThenAtomicAtUnknownIndex(Common.outer, 10);
         testArrayAtomicThenAtomicAtUnknownIndices(Common.outerArray, Common.outer, 10, 20);
+    }
+
+    @Test
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
+    static void testAllocateArrayThenCallThenStoreAtUnknownIndex(Outer o, int index) {
+        Outer[] a = new Outer[42];
+        Common.blackhole(a);
+        Common.nonInlinedMethod();
+        Common.outerArrayVarHandle.setVolatile(a, index, o);
+    }
+
+    @Run(test = {"testAllocateArrayThenCallThenStoreAtUnknownIndex"})
+    void runSafepointAttachedBarrierTests() {
+        testAllocateArrayThenCallThenStoreAtUnknownIndex(Common.outer, 10);
     }
 }
 
@@ -436,5 +445,42 @@ class TestZGCEffectiveBarrierElision {
         testAtomicThenStore(Common.outer, Common.inner);
         testAtomicThenAtomic(Common.outer, Common.inner);
         testArrayAtomicThenAtomic(Common.outerArray, Common.outer);
+    }
+
+    @Test
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_SAB, "1" }, phase = CompilePhase.FINAL_CODE)
+    static void testStoreThenCallThenStore(Outer o, Inner i) {
+        o.field1 = i;
+        Common.nonInlinedMethod();
+        o.field1 = i;
+    }
+
+    @Test
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.REMAINING, "1" }, phase = CompilePhase.FINAL_CODE)
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_SAB, "1" }, phase = CompilePhase.FINAL_CODE)
+    static void testStoreThenStoreInNonCountedLoop(Outer o, Inner i) {
+        o.field1 = i;
+        while (!Common.done()) {
+            o.field1 = i;
+        }
+    }
+
+    @Test
+    @IR(counts = { IRNode.Z_STORE_P_WITH_BARRIER_FLAG, Common.ELIDED_BY_SAB, "1" }, phase = CompilePhase.FINAL_CODE)
+    static void testAllocateArrayThenCallThenStoreAtKnownIndex(Outer o) {
+        Outer[] a = new Outer[42];
+        Common.blackhole(a);
+        Common.nonInlinedMethod();
+        Common.outerArrayVarHandle.setVolatile(a, 0, o);
+    }
+
+    @Run(test = {"testStoreThenCallThenStore",
+                 "testStoreThenStoreInNonCountedLoop",
+                 "testAllocateArrayThenCallThenStoreAtKnownIndex"})
+    void runSafepointAttachedBarrierTests() {
+        testStoreThenCallThenStore(Common.outer, Common.inner);
+        testStoreThenStoreInNonCountedLoop(Common.outer, Common.inner);
+        testAllocateArrayThenCallThenStoreAtKnownIndex(Common.outer);
     }
 }
