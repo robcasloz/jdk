@@ -113,6 +113,19 @@
 // Set by os layer.
 size_t      JavaThread::_stack_size_at_create = 0;
 
+unsigned long long JavaThread::_total_load_barrier;
+unsigned long long JavaThread::_total_load_elided;
+unsigned long long JavaThread::_total_load_noloop;
+unsigned long long JavaThread::_total_load_outer;
+unsigned long long JavaThread::_total_load_innermost;
+unsigned long long JavaThread::_total_load_unknown;
+unsigned long long JavaThread::_total_store_barrier;
+unsigned long long JavaThread::_total_store_elided;
+unsigned long long JavaThread::_total_store_noloop;
+unsigned long long JavaThread::_total_store_outer;
+unsigned long long JavaThread::_total_store_innermost;
+unsigned long long JavaThread::_total_store_unknown;
+
 #ifdef DTRACE_ENABLED
 
 // Only bother with this argument setup if dtrace is available
@@ -426,6 +439,18 @@ JavaThread::JavaThread() :
   _suspend_flags(0),
 
   _thread_state(_thread_new),
+  _load_barrier_counter(0),
+  _load_elided_counter(0),
+  _load_noloop_counter(0),
+  _load_outer_counter(0),
+  _load_innermost_counter(0),
+  _load_unknown_counter(0),
+  _store_barrier_counter(0),
+  _store_elided_counter(0),
+  _store_noloop_counter(0),
+  _store_outer_counter(0),
+  _store_innermost_counter(0),
+  _store_unknown_counter(0),
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
   _no_safepoint_count(0),
@@ -617,6 +642,19 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) : JavaThread
 }
 
 JavaThread::~JavaThread() {
+
+  _total_load_barrier    += _load_barrier_counter;
+  _total_load_elided     += _load_elided_counter;
+  _total_load_noloop     += _load_noloop_counter;
+  _total_load_outer      += _load_outer_counter;
+  _total_load_innermost  += _load_innermost_counter;
+  _total_load_unknown    += _load_unknown_counter;
+  _total_store_barrier   += _store_barrier_counter;
+  _total_store_elided    += _store_elided_counter;
+  _total_store_noloop    += _store_noloop_counter;
+  _total_store_outer     += _store_outer_counter;
+  _total_store_innermost += _store_innermost_counter;
+  _total_store_unknown   += _store_unknown_counter;
 
   // Enqueue OopHandles for release by the service thread.
   add_oop_handles_for_release();

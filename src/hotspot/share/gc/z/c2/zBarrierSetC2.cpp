@@ -42,6 +42,7 @@
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
 #include "opto/type.hpp"
+#include "runtime/threads.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
 
@@ -856,6 +857,21 @@ Node* next_def(const Node* node) {
   return NULL;
 }
 
+void mark_barriers_in_block(const Block* block, uint16_t flag) {
+  for (uint j = 0; j < block->number_of_nodes(); j++)  {
+    Node* n = block->get_node(j);
+    if (!n->is_Mach()) {
+      continue;
+    }
+    MachNode* mach = block->get_node(j)->as_Mach();
+    int opc = mach->ideal_Opcode();
+    if (opc != Op_LoadP && opc != Op_StoreP) {
+      continue;
+    }
+    mach->add_barrier_data(flag);
+  }
+}
+
 void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_List& access_dominators) const {
   Compile* const C = Compile::current();
   PhaseCFG* const cfg = C->cfg();
@@ -1037,6 +1053,50 @@ void ZBarrierSetC2::analyze_dominating_barriers() const {
   analyze_dominating_barriers_impl(loads, load_dominators);
   analyze_dominating_barriers_impl(stores, store_dominators);
   analyze_dominating_barriers_impl(atomics, atomic_dominators);
+
+  if (C->directive()->ProfileBarrierEliminationOption) {
+    PhaseCFG* const cfg = C->cfg();
+    for (uint i = 0; i < cfg->number_of_blocks(); ++i) {
+      const Block* block = cfg->get_block(i);
+      CFGLoop* loop = block->_loop;
+      if (loop == nullptr) {
+        // This block has been created after scheduling, so it should not
+        // contain memory accesses, just control-flow nodes.
+        mark_barriers_in_block(block, ZBarrierUnknown);
+      } else if (loop->depth() == 0) {
+        // Root loop (no real loop).
+        mark_barriers_in_block(block, ZBarrierNoLoop);
+      } else if (loop->child() != nullptr) {
+        // Depth > 0 and children: outer loop.
+        mark_barriers_in_block(block, ZBarrierOuter);
+      } else {
+        // Depth > 0 and no children: innermost loop.
+        mark_barriers_in_block(block, ZBarrierInnermost);
+      }
+    }
+
+#ifdef ASSERT
+    for (uint i = 0; i < cfg->number_of_blocks(); ++i) {
+      const Block* block = cfg->get_block(i);
+      for (uint j = 0; j < block->number_of_nodes(); j++)  {
+        Node* n = block->get_node(j);
+        if (!n->is_Mach()) {
+          continue;
+        }
+        MachNode* mach = block->get_node(j)->as_Mach();
+        int opc = mach->ideal_Opcode();
+        if (opc != Op_LoadP && opc != Op_StoreP) {
+          continue;
+        }
+        assert((mach->has_barrier_flag(ZBarrierNoLoop) +
+                mach->has_barrier_flag(ZBarrierOuter) +
+                mach->has_barrier_flag(ZBarrierInnermost) +
+                mach->has_barrier_flag(ZBarrierUnknown)) == 1,
+               "every barrier should have a loop scope assigned");
+      }
+    }
+#endif
+  }
 }
 
 // == Reduced spilling optimization ==
@@ -1159,6 +1219,51 @@ struct elision_counter_struct {
 static elision_counter_struct _elision_counter[3] = {};
 static int _elided_zf = 0;
 
+class CollectBarrierStatsClosure : public ThreadClosure {
+ public:
+  unsigned long long _total_load_barrier;
+  unsigned long long _total_load_elided;
+  unsigned long long _total_load_noloop;
+  unsigned long long _total_load_outer;
+  unsigned long long _total_load_innermost;
+  unsigned long long _total_load_unknown;
+  unsigned long long _total_store_barrier;
+  unsigned long long _total_store_elided;
+  unsigned long long _total_store_noloop;
+  unsigned long long _total_store_outer;
+  unsigned long long _total_store_innermost;
+  unsigned long long _total_store_unknown;
+  CollectBarrierStatsClosure() :
+    _total_load_barrier(0),
+    _total_load_elided(0),
+    _total_load_noloop(0),
+    _total_load_outer(0),
+    _total_load_innermost(0),
+    _total_load_unknown(0),
+    _total_store_barrier(0),
+    _total_store_elided(0),
+    _total_store_noloop(0),
+    _total_store_outer(0),
+    _total_store_innermost(0),
+    _total_store_unknown(0) {}
+
+  void do_thread(Thread* thread) {
+    const JavaThread* javaThread = JavaThread::cast(thread);
+    _total_load_barrier    += javaThread->_total_load_barrier;
+    _total_load_elided     += javaThread->_total_load_elided;
+    _total_load_noloop     += javaThread->_total_load_noloop;
+    _total_load_outer      += javaThread->_total_load_outer;
+    _total_load_innermost  += javaThread->_total_load_innermost;
+    _total_load_unknown    += javaThread->_total_load_unknown;
+    _total_store_barrier   += javaThread->_total_store_barrier;
+    _total_store_elided    += javaThread->_total_store_elided;
+    _total_store_noloop    += javaThread->_total_store_noloop;
+    _total_store_outer     += javaThread->_total_store_outer;
+    _total_store_innermost += javaThread->_total_store_innermost;
+    _total_store_unknown   += javaThread->_total_store_unknown;
+  }
+};
+
 void ZBarrierSetC2::print_stats() const {
   for (int i = 0; i <= ATOMIC_COUNTER; i++) {
     tty->print_cr("%s -----------------------------------", presentation_names[i]);
@@ -1177,6 +1282,39 @@ void ZBarrierSetC2::print_stats() const {
   }
   tty->print_cr("Null checks -----------------------------------");
   tty->print_cr("Elided after load barrier: %i (%2.1f%%)", _elided_zf, ((float)_elided_zf / (float)_elision_counter[LOAD_COUNTER].barrier_strong * 100));
+
+  CollectBarrierStatsClosure cl;
+  Threads_lock->lock();
+  Threads::java_threads_do(&cl);
+  Threads_lock->unlock();
+
+  tty->print_cr("load-barrier-profile-stats,%lld,%lld,%lld,%lld,%lld,%lld",
+                cl._total_load_barrier, cl._total_load_elided,
+                cl._total_load_noloop, cl._total_load_outer, cl._total_load_innermost, cl._total_load_unknown);
+  unsigned long long total_loads = cl._total_load_barrier + cl._total_load_elided;
+  assert(total_loads == cl._total_load_noloop + cl._total_load_outer + cl._total_load_innermost + cl._total_load_unknown, "");
+  tty->print_cr("total load:  %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)]",
+                total_loads,
+                cl._total_load_barrier,   total_loads > 0.0 ? (((double)cl._total_load_barrier / total_loads) * 100.0)    : 0.0,
+                cl._total_load_elided,    total_loads > 0.0 ? (((double)cl._total_load_elided / total_loads) * 100.0)    : 0.0,
+                cl._total_load_noloop,    total_loads > 0.0 ? (((double)cl._total_load_noloop / total_loads) * 100.0)     : 0.0,
+                cl._total_load_outer,     total_loads > 0.0 ? (((double)cl._total_load_outer / total_loads) * 100.0)     : 0.0,
+                cl._total_load_innermost, total_loads > 0.0 ? (((double)cl._total_load_innermost / total_loads) * 100.0) : 0.0,
+                cl._total_load_unknown,   total_loads > 0.0 ? (((double)cl._total_load_unknown / total_loads) * 100.0)   : 0.0);
+
+  tty->print_cr("store-barrier-profile-stats,%lld,%lld,%lld,%lld,%lld,%lld",
+                cl._total_store_barrier, cl._total_store_elided,
+                cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown);
+  unsigned long long total_stores = cl._total_store_barrier + cl._total_store_elided;
+  assert(total_stores == cl._total_store_noloop + cl._total_store_outer + cl._total_store_innermost + cl._total_store_unknown, "");
+  tty->print_cr("total store: %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)]",
+                total_stores,
+                cl._total_store_barrier,   total_stores > 0.0 ? (((double)cl._total_store_barrier / total_stores) * 100.0)    : 0.0,
+                cl._total_store_elided,    total_stores > 0.0 ? (((double)cl._total_store_elided / total_stores) * 100.0)    : 0.0,
+                cl._total_store_noloop,    total_stores > 0.0 ? (((double)cl._total_store_noloop / total_stores) * 100.0)     : 0.0,
+                cl._total_store_outer,     total_stores > 0.0 ? (((double)cl._total_store_outer / total_stores) * 100.0)     : 0.0,
+                cl._total_store_innermost, total_stores > 0.0 ? (((double)cl._total_store_innermost / total_stores) * 100.0) : 0.0,
+                cl._total_store_unknown,   total_stores > 0.0 ? (((double)cl._total_store_unknown / total_stores) * 100.0)   : 0.0);
 }
 
 void ZBarrierSetC2::gather_stats() const {
@@ -1279,7 +1417,20 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) co
   if (mach->has_barrier_flag(ZBarrierNullCheckRemoval)) {
     st->print("ncremoval ");
   }
+  if (mach->has_barrier_flag(ZBarrierNoLoop)) {
+    st->print("noloop ");
+  }
+  if (mach->has_barrier_flag(ZBarrierOuter)) {
+    st->print("outer ");
+  }
+  if (mach->has_barrier_flag(ZBarrierInnermost)) {
+    st->print("innermost ");
+  }
+  if (mach->has_barrier_flag(ZBarrierUnknown)) {
+    st->print("unknown ");
+  }
 }
+
 void ZBarrierSetC2::dump_access_info(const Node* node, outputStream* st) const {
   if (node->is_MachSafePoint() && !node->is_MachCallLeaf()) {
     st->print("access(safepoint");

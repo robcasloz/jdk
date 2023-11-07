@@ -87,6 +87,7 @@ NOT_PRODUCT(cflags(PrintIdeal,          bool, PrintIdeal, PrintIdeal)) \
     cflags(UseDomBarrierElimination,       bool, UseDomBarrierElimination, UseDomBarrierElimination) \
     cflags(UseSafepointAttachedBarriers,   bool, UseSafepointAttachedBarriers, UseSafepointAttachedBarriers) \
     cflags(TraceBarrierElimination,        bool, TraceBarrierElimination, TraceBarrierElimination) \
+    cflags(ProfileBarrierElimination,      bool, ProfileBarrierElimination, ProfileBarrierElimination) \
 NOT_PRODUCT(cflags(IGVPrintLevel,       intx, PrintIdealGraphLevel, IGVPrintLevel)) \
     cflags(VectorizeDebug,          uintx, 0, VectorizeDebug) \
     cflags(IncrementalInlineForceCleanup, bool, IncrementalInlineForceCleanup, IncrementalInlineForceCleanup) \

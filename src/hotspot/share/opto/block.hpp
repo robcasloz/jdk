@@ -741,6 +741,7 @@ class CFGLoop : public CFGElement {
   virtual bool is_loop()  { return true; }
   int id() { return _id; }
   int depth() { return _depth; }
+  CFGLoop* child() { return _child; }
 
 #ifndef PRODUCT
   void dump( ) const;

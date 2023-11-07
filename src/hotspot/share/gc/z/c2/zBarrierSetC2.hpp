@@ -43,6 +43,11 @@ const uint8_t ZBarrierElided      = 32;
 const uint8_t ZBarrierDomElided   = 64;
 const uint8_t ZBarrierSABElided   = 128;
 const uint16_t ZBarrierNullCheckRemoval = 256;
+// Other type bits - inclusive with all of the above
+const uint16_t ZBarrierNoLoop     = 512;
+const uint16_t ZBarrierOuter      = 1024;
+const uint16_t ZBarrierInnermost  = 2048;
+const uint16_t ZBarrierUnknown    = 4096;
 
 class Block;
 class MachNode;

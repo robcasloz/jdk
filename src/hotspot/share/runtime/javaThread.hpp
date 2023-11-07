@@ -242,6 +242,32 @@ class JavaThread: public Thread {
   // Safepoint support
  public:                                                        // Expose _thread_state for SafeFetchInt()
   volatile JavaThreadState _thread_state;
+  unsigned long long _load_barrier_counter;
+  unsigned long long _load_elided_counter;
+  unsigned long long _load_noloop_counter;
+  unsigned long long _load_outer_counter;
+  unsigned long long _load_innermost_counter;
+  unsigned long long _load_unknown_counter;
+  unsigned long long _store_barrier_counter;
+  unsigned long long _store_elided_counter;
+  unsigned long long _store_noloop_counter;
+  unsigned long long _store_outer_counter;
+  unsigned long long _store_innermost_counter;
+  unsigned long long _store_unknown_counter;
+
+  static unsigned long long _total_load_barrier;
+  static unsigned long long _total_load_elided;
+  static unsigned long long _total_load_noloop;
+  static unsigned long long _total_load_outer;
+  static unsigned long long _total_load_innermost;
+  static unsigned long long _total_load_unknown;
+  static unsigned long long _total_store_barrier;
+  static unsigned long long _total_store_elided;
+  static unsigned long long _total_store_noloop;
+  static unsigned long long _total_store_outer;
+  static unsigned long long _total_store_innermost;
+  static unsigned long long _total_store_unknown;
+
  private:
   SafepointMechanism::ThreadData _poll_data;
   ThreadSafepointState*          _safepoint_state;              // Holds information about a thread during a safepoint
@@ -764,6 +790,19 @@ private:
   static ByteSize polling_page_offset()          { return byte_offset_of(JavaThread, _poll_data) + byte_offset_of(SafepointMechanism::ThreadData, _polling_page);}
   static ByteSize saved_exception_pc_offset()    { return byte_offset_of(JavaThread, _saved_exception_pc); }
   static ByteSize osthread_offset()              { return byte_offset_of(JavaThread, _osthread); }
+  static ByteSize load_barrier_counter_offset()  { return byte_offset_of(JavaThread, _load_barrier_counter);}
+  static ByteSize load_elided_counter_offset()   { return byte_offset_of(JavaThread, _load_elided_counter);}
+  static ByteSize load_noloop_counter_offset()   { return byte_offset_of(JavaThread, _load_noloop_counter);}
+  static ByteSize load_outer_counter_offset()    { return byte_offset_of(JavaThread, _load_outer_counter);}
+  static ByteSize load_innermost_counter_offset()  { return byte_offset_of(JavaThread, _load_innermost_counter);}
+  static ByteSize load_unknown_counter_offset()  { return byte_offset_of(JavaThread, _load_unknown_counter);}
+  static ByteSize store_barrier_counter_offset() { return byte_offset_of(JavaThread, _store_barrier_counter);}
+  static ByteSize store_elided_counter_offset()  { return byte_offset_of(JavaThread, _store_elided_counter);}
+  static ByteSize store_noloop_counter_offset()  { return byte_offset_of(JavaThread, _store_noloop_counter);}
+  static ByteSize store_outer_counter_offset()   { return byte_offset_of(JavaThread, _store_outer_counter);}
+  static ByteSize store_innermost_counter_offset() { return byte_offset_of(JavaThread, _store_innermost_counter);}
+  static ByteSize store_unknown_counter_offset() { return byte_offset_of(JavaThread, _store_unknown_counter);}
+
 #if INCLUDE_JVMCI
   static ByteSize pending_deoptimization_offset() { return byte_offset_of(JavaThread, _pending_deoptimization); }
   static ByteSize pending_monitorenter_offset()  { return byte_offset_of(JavaThread, _pending_monitorenter); }

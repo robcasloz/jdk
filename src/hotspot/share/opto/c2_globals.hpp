@@ -791,6 +791,9 @@
                                                                             \
   product(bool, UsePeelAndElide, true,                                      \
           "Peel loops to facilitate barrier elision")                       \
+                                                                            \
+  product(bool, ProfileBarrierElimination, false,                           \
+          "Profile barrier elision")                                        \
 
 // end of C2_FLAGS
 
