@@ -89,9 +89,13 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Hide exception blocks"/>
         </file>
-        <file name="Color by ZGC barrier state.js" url="filters/zColorBarriers.filter">
+        <file name="Hide safepoints.js" url="filters/hideSafepoints.filter">
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Show ZGC barrier analysis nodes only"/>
+        </file>
+        <file name="Color by ZGC barrier state.js" url="filters/zColorBarriers.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Hide safepoints"/>
         </file>
     </folder>
 </filesystem>
