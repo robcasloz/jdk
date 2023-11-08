@@ -1,0 +1,3 @@
+// Remove all safepoint nodes that participate in barrier analysis.
+
+remove(matches("access_info", ".+safepoint.+"));
