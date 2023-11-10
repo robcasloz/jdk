@@ -1994,6 +1994,9 @@ const int ObjectAlignmentInBytes = 8;
           "more eagerly at the cost of higher overhead. A value of 0 "      \
           "(default) disables native heap trimming.")                       \
           range(0, UINT_MAX)                                                \
+                                                                            \
+  product(bool, ProfileNonOptimizedBarriers, false,                         \
+          "Profile barrier that are not optimized by C2")                   \
 
 // end of RUNTIME_FLAGS
 

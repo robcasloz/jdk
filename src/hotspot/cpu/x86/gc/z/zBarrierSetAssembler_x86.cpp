@@ -231,6 +231,12 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
 
   BLOCK_COMMENT("ZBarrierSetAssembler::load_at {");
 
+  if (ProfileNonOptimizedBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::load_barrier_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::load_unknown_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::load_nopaecandidate_counter_offset()));
+  }
+
   // Allocate scratch register
   Register scratch = tmp1;
   if (tmp1 == noreg) {
@@ -517,6 +523,13 @@ void ZBarrierSetAssembler::store_at(MacroAssembler* masm,
   bool dest_uninitialized = (decorators & IS_DEST_UNINITIALIZED) != 0;
 
   if (is_reference_type(type)) {
+
+    if (ProfileNonOptimizedBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_barrier_counter_offset()));
+      __ incrementq(Address(r15_thread, JavaThread::store_unknown_counter_offset()));
+      __ incrementq(Address(r15_thread, JavaThread::store_nopaecandidate_counter_offset()));
+    }
+
     assert_different_registers(src, tmp1, dst.base(), dst.index());
 
     if (dest_uninitialized) {
@@ -990,6 +1003,13 @@ void ZBarrierSetAssembler::generate_c1_load_barrier(LIR_Assembler* ce,
                                                     LIR_Opr ref,
                                                     ZLoadBarrierStubC1* stub,
                                                     bool on_non_strong) const {
+
+  if (ProfileNonOptimizedBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::load_barrier_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::load_unknown_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::load_nopaecandidate_counter_offset()));
+  }
+
   if (on_non_strong) {
     // Test against MarkBad mask
     __ Assembler::testl(ref->as_register(), barrier_Relocation::unpatched);
@@ -1066,6 +1086,12 @@ void ZBarrierSetAssembler::generate_c1_store_barrier(LIR_Assembler* ce,
                                                      ZStoreBarrierStubC1* stub) const {
   Register rnew_zaddress = new_zaddress->as_register();
   Register rnew_zpointer = new_zpointer->as_register();
+
+  if (ProfileNonOptimizedBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::store_barrier_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::store_unknown_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::store_nopaecandidate_counter_offset()));
+  }
 
   Register rbase = addr->base()->as_pointer_register();
   store_barrier_fast(ce->masm(),
