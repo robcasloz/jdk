@@ -48,6 +48,7 @@ const uint16_t ZBarrierNoLoop     = 512;
 const uint16_t ZBarrierOuter      = 1024;
 const uint16_t ZBarrierInnermost  = 2048;
 const uint16_t ZBarrierUnknown    = 4096;
+const uint16_t ZBarrierPAECandidate = 8192;
 
 class Block;
 class MachNode;

@@ -79,6 +79,11 @@ static void z_load_barrier(MacroAssembler& _masm, const MachNode* node, Address 
     } else {
       __ incrementq(Address(r15_thread, JavaThread::load_unknown_counter_offset()));
     }
+    if (node->has_barrier_flag(ZBarrierPAECandidate)) {
+      __ incrementq(Address(r15_thread, JavaThread::load_paecandidate_counter_offset()));
+    } else {
+      __ incrementq(Address(r15_thread, JavaThread::load_nopaecandidate_counter_offset()));
+    }
   }
 
   if (on_non_strong) {
@@ -125,6 +130,11 @@ static void z_store_barrier(MacroAssembler& _masm, const MachNode* node, Address
       __ incrementq(Address(r15_thread, JavaThread::store_innermost_counter_offset()));
     } else {
       __ incrementq(Address(r15_thread, JavaThread::store_unknown_counter_offset()));
+    }
+    if (node->has_barrier_flag(ZBarrierPAECandidate)) {
+      __ incrementq(Address(r15_thread, JavaThread::store_paecandidate_counter_offset()));
+    } else {
+      __ incrementq(Address(r15_thread, JavaThread::store_nopaecandidate_counter_offset()));
     }
   }
 

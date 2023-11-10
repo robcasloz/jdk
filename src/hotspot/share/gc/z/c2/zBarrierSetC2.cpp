@@ -869,6 +869,13 @@ void mark_barriers_in_block(const Block* block, uint16_t flag) {
       continue;
     }
     mach->add_barrier_data(flag);
+    if (flag == ZBarrierInnermost) {
+      intptr_t offset;
+      mach->get_base_and_offset(offset);
+      if (Type::is_concrete(offset) && offset >= 0) {
+        mach->add_barrier_data(ZBarrierPAECandidate);
+      }
+    }
   }
 }
 
@@ -1227,12 +1234,16 @@ class CollectBarrierStatsClosure : public ThreadClosure {
   unsigned long long _total_load_outer;
   unsigned long long _total_load_innermost;
   unsigned long long _total_load_unknown;
+  unsigned long long _total_load_paecandidate;
+  unsigned long long _total_load_nopaecandidate;
   unsigned long long _total_store_barrier;
   unsigned long long _total_store_elided;
   unsigned long long _total_store_noloop;
   unsigned long long _total_store_outer;
   unsigned long long _total_store_innermost;
   unsigned long long _total_store_unknown;
+  unsigned long long _total_store_paecandidate;
+  unsigned long long _total_store_nopaecandidate;
   CollectBarrierStatsClosure() :
     _total_load_barrier(0),
     _total_load_elided(0),
@@ -1240,12 +1251,16 @@ class CollectBarrierStatsClosure : public ThreadClosure {
     _total_load_outer(0),
     _total_load_innermost(0),
     _total_load_unknown(0),
+    _total_load_paecandidate(0),
+    _total_load_nopaecandidate(0),
     _total_store_barrier(0),
     _total_store_elided(0),
     _total_store_noloop(0),
     _total_store_outer(0),
     _total_store_innermost(0),
-    _total_store_unknown(0) {}
+    _total_store_unknown(0),
+    _total_store_paecandidate(0),
+    _total_store_nopaecandidate(0) {}
 
   void do_thread(Thread* thread) {
     const JavaThread* javaThread = JavaThread::cast(thread);
@@ -1255,12 +1270,16 @@ class CollectBarrierStatsClosure : public ThreadClosure {
     _total_load_outer      += javaThread->_total_load_outer;
     _total_load_innermost  += javaThread->_total_load_innermost;
     _total_load_unknown    += javaThread->_total_load_unknown;
+    _total_load_paecandidate += javaThread->_total_load_paecandidate;
+    _total_load_nopaecandidate += javaThread->_total_load_nopaecandidate;
     _total_store_barrier   += javaThread->_total_store_barrier;
     _total_store_elided    += javaThread->_total_store_elided;
     _total_store_noloop    += javaThread->_total_store_noloop;
     _total_store_outer     += javaThread->_total_store_outer;
     _total_store_innermost += javaThread->_total_store_innermost;
     _total_store_unknown   += javaThread->_total_store_unknown;
+    _total_store_paecandidate += javaThread->_total_store_paecandidate;
+    _total_store_nopaecandidate += javaThread->_total_store_nopaecandidate;
   }
 };
 
@@ -1291,35 +1310,45 @@ void ZBarrierSetC2::print_stats() const {
   double t = os::elapsedTime();
   int eltime = (int)t;  // elapsed time in seconds
   int eltimeFraction = (int) ((t - eltime) * 1000000);
-  tty->print_cr("load-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld",
+
+  tty->print_cr("load-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
                 eltime, eltimeFraction,
                 cl._total_load_barrier, cl._total_load_elided,
-                cl._total_load_noloop, cl._total_load_outer, cl._total_load_innermost, cl._total_load_unknown);
+                cl._total_load_noloop, cl._total_load_outer, cl._total_load_innermost, cl._total_load_unknown,
+                cl._total_load_paecandidate, cl._total_load_nopaecandidate);
   unsigned long long total_loads = cl._total_load_barrier + cl._total_load_elided;
   assert(total_loads == cl._total_load_noloop + cl._total_load_outer + cl._total_load_innermost + cl._total_load_unknown, "");
-  tty->print_cr("total load:  %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)]",
+  assert(total_loads == cl._total_load_paecandidate + cl._total_load_nopaecandidate, "");
+  tty->print_cr("total load:  %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)] [paecandidate: %lld (%2.1f%%), nopaecandidate: %lld (%2.1f%%)]",
                 total_loads,
                 cl._total_load_barrier,   total_loads > 0.0 ? (((double)cl._total_load_barrier / total_loads) * 100.0)    : 0.0,
                 cl._total_load_elided,    total_loads > 0.0 ? (((double)cl._total_load_elided / total_loads) * 100.0)    : 0.0,
                 cl._total_load_noloop,    total_loads > 0.0 ? (((double)cl._total_load_noloop / total_loads) * 100.0)     : 0.0,
                 cl._total_load_outer,     total_loads > 0.0 ? (((double)cl._total_load_outer / total_loads) * 100.0)     : 0.0,
                 cl._total_load_innermost, total_loads > 0.0 ? (((double)cl._total_load_innermost / total_loads) * 100.0) : 0.0,
-                cl._total_load_unknown,   total_loads > 0.0 ? (((double)cl._total_load_unknown / total_loads) * 100.0)   : 0.0);
+                cl._total_load_unknown,   total_loads > 0.0 ? (((double)cl._total_load_unknown / total_loads) * 100.0)   : 0.0,
+                cl._total_load_paecandidate, total_loads > 0.0 ? (((double)cl._total_load_paecandidate / total_loads) * 100.0) : 0.0,
+                cl._total_load_nopaecandidate, total_loads > 0.0 ? (((double)cl._total_load_nopaecandidate / total_loads) * 100.0)   : 0.0);
 
-  tty->print_cr("store-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld",
+  tty->print_cr("store-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
                 eltime, eltimeFraction,
                 cl._total_store_barrier, cl._total_store_elided,
-                cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown);
+                cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown,
+                cl._total_store_paecandidate, cl._total_store_nopaecandidate);
   unsigned long long total_stores = cl._total_store_barrier + cl._total_store_elided;
   assert(total_stores == cl._total_store_noloop + cl._total_store_outer + cl._total_store_innermost + cl._total_store_unknown, "");
-  tty->print_cr("total store: %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)]",
+  assert(total_stores == cl._total_store_paecandidate + cl._total_store_nopaecandidate, "");
+  tty->print_cr("total store: %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)] [paecandidate: %lld (%2.1f%%), nopaecandidate: %lld (%2.1f%%)]",
                 total_stores,
                 cl._total_store_barrier,   total_stores > 0.0 ? (((double)cl._total_store_barrier / total_stores) * 100.0)    : 0.0,
                 cl._total_store_elided,    total_stores > 0.0 ? (((double)cl._total_store_elided / total_stores) * 100.0)    : 0.0,
                 cl._total_store_noloop,    total_stores > 0.0 ? (((double)cl._total_store_noloop / total_stores) * 100.0)     : 0.0,
                 cl._total_store_outer,     total_stores > 0.0 ? (((double)cl._total_store_outer / total_stores) * 100.0)     : 0.0,
                 cl._total_store_innermost, total_stores > 0.0 ? (((double)cl._total_store_innermost / total_stores) * 100.0) : 0.0,
-                cl._total_store_unknown,   total_stores > 0.0 ? (((double)cl._total_store_unknown / total_stores) * 100.0)   : 0.0);
+                cl._total_store_unknown,   total_stores > 0.0 ? (((double)cl._total_store_unknown / total_stores) * 100.0)   : 0.0,
+                cl._total_store_paecandidate, total_stores > 0.0 ? (((double)cl._total_store_paecandidate / total_stores) * 100.0) : 0.0,
+                cl._total_store_nopaecandidate, total_stores > 0.0 ? (((double)cl._total_store_nopaecandidate / total_stores) * 100.0)   : 0.0);
+
 }
 
 void ZBarrierSetC2::gather_stats() const {
@@ -1433,6 +1462,9 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) co
   }
   if (mach->has_barrier_flag(ZBarrierUnknown)) {
     st->print("unknown ");
+  }
+  if (mach->has_barrier_flag(ZBarrierPAECandidate)) {
+    st->print("paecandidate ");
   }
 }
 

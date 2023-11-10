@@ -119,12 +119,16 @@ unsigned long long JavaThread::_total_load_noloop;
 unsigned long long JavaThread::_total_load_outer;
 unsigned long long JavaThread::_total_load_innermost;
 unsigned long long JavaThread::_total_load_unknown;
+unsigned long long JavaThread::_total_load_paecandidate;
+unsigned long long JavaThread::_total_load_nopaecandidate;
 unsigned long long JavaThread::_total_store_barrier;
 unsigned long long JavaThread::_total_store_elided;
 unsigned long long JavaThread::_total_store_noloop;
 unsigned long long JavaThread::_total_store_outer;
 unsigned long long JavaThread::_total_store_innermost;
 unsigned long long JavaThread::_total_store_unknown;
+unsigned long long JavaThread::_total_store_paecandidate;
+unsigned long long JavaThread::_total_store_nopaecandidate;
 
 #ifdef DTRACE_ENABLED
 
@@ -445,12 +449,16 @@ JavaThread::JavaThread() :
   _load_outer_counter(0),
   _load_innermost_counter(0),
   _load_unknown_counter(0),
+  _load_paecandidate_counter(0),
+  _load_nopaecandidate_counter(0),
   _store_barrier_counter(0),
   _store_elided_counter(0),
   _store_noloop_counter(0),
   _store_outer_counter(0),
   _store_innermost_counter(0),
   _store_unknown_counter(0),
+  _store_paecandidate_counter(0),
+  _store_nopaecandidate_counter(0),
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
   _no_safepoint_count(0),
@@ -649,12 +657,16 @@ JavaThread::~JavaThread() {
   _total_load_outer      += _load_outer_counter;
   _total_load_innermost  += _load_innermost_counter;
   _total_load_unknown    += _load_unknown_counter;
+  _total_load_paecandidate += _load_paecandidate_counter;
+  _total_load_nopaecandidate += _load_nopaecandidate_counter;
   _total_store_barrier   += _store_barrier_counter;
   _total_store_elided    += _store_elided_counter;
   _total_store_noloop    += _store_noloop_counter;
   _total_store_outer     += _store_outer_counter;
   _total_store_innermost += _store_innermost_counter;
   _total_store_unknown   += _store_unknown_counter;
+  _total_store_paecandidate += _store_paecandidate_counter;
+  _total_store_nopaecandidate += _store_nopaecandidate_counter;
 
   // Enqueue OopHandles for release by the service thread.
   add_oop_handles_for_release();
