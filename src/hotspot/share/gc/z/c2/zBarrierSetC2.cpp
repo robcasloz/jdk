@@ -1288,7 +1288,11 @@ void ZBarrierSetC2::print_stats() const {
   Threads::java_threads_do(&cl);
   Threads_lock->unlock();
 
-  tty->print_cr("load-barrier-profile-stats,%lld,%lld,%lld,%lld,%lld,%lld",
+  double t = os::elapsedTime();
+  int eltime = (int)t;  // elapsed time in seconds
+  int eltimeFraction = (int) ((t - eltime) * 1000000);
+  tty->print_cr("load-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld",
+                eltime, eltimeFraction,
                 cl._total_load_barrier, cl._total_load_elided,
                 cl._total_load_noloop, cl._total_load_outer, cl._total_load_innermost, cl._total_load_unknown);
   unsigned long long total_loads = cl._total_load_barrier + cl._total_load_elided;
@@ -1302,7 +1306,8 @@ void ZBarrierSetC2::print_stats() const {
                 cl._total_load_innermost, total_loads > 0.0 ? (((double)cl._total_load_innermost / total_loads) * 100.0) : 0.0,
                 cl._total_load_unknown,   total_loads > 0.0 ? (((double)cl._total_load_unknown / total_loads) * 100.0)   : 0.0);
 
-  tty->print_cr("store-barrier-profile-stats,%lld,%lld,%lld,%lld,%lld,%lld",
+  tty->print_cr("store-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld",
+                eltime, eltimeFraction,
                 cl._total_store_barrier, cl._total_store_elided,
                 cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown);
   unsigned long long total_stores = cl._total_store_barrier + cl._total_store_elided;
