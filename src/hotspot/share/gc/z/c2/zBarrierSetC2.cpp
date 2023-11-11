@@ -1311,11 +1311,15 @@ void ZBarrierSetC2::print_stats() const {
   int eltime = (int)t;  // elapsed time in seconds
   int eltimeFraction = (int) ((t - eltime) * 1000000);
 
-  tty->print_cr("load-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
+  tty->print_cr("barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
                 eltime, eltimeFraction,
                 cl._total_load_barrier, cl._total_load_elided,
                 cl._total_load_noloop, cl._total_load_outer, cl._total_load_innermost, cl._total_load_unknown,
-                cl._total_load_paecandidate, cl._total_load_nopaecandidate);
+                cl._total_load_paecandidate, cl._total_load_nopaecandidate,
+                cl._total_store_barrier, cl._total_store_elided,
+                cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown,
+                cl._total_store_paecandidate, cl._total_store_nopaecandidate);
+
   unsigned long long total_loads = cl._total_load_barrier + cl._total_load_elided;
   assert(total_loads == cl._total_load_noloop + cl._total_load_outer + cl._total_load_innermost + cl._total_load_unknown, "");
   assert(total_loads == cl._total_load_paecandidate + cl._total_load_nopaecandidate, "");
@@ -1330,11 +1334,6 @@ void ZBarrierSetC2::print_stats() const {
                 cl._total_load_paecandidate, total_loads > 0.0 ? (((double)cl._total_load_paecandidate / total_loads) * 100.0) : 0.0,
                 cl._total_load_nopaecandidate, total_loads > 0.0 ? (((double)cl._total_load_nopaecandidate / total_loads) * 100.0)   : 0.0);
 
-  tty->print_cr("store-barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
-                eltime, eltimeFraction,
-                cl._total_store_barrier, cl._total_store_elided,
-                cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown,
-                cl._total_store_paecandidate, cl._total_store_nopaecandidate);
   unsigned long long total_stores = cl._total_store_barrier + cl._total_store_elided;
   assert(total_stores == cl._total_store_noloop + cl._total_store_outer + cl._total_store_innermost + cl._total_store_unknown, "");
   assert(total_stores == cl._total_store_paecandidate + cl._total_store_nopaecandidate, "");
