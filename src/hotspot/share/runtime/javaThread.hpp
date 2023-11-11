@@ -248,16 +248,16 @@ class JavaThread: public Thread {
   unsigned long long _load_outer_counter;
   unsigned long long _load_innermost_counter;
   unsigned long long _load_unknown_counter;
-  unsigned long long _load_paecandidate_counter;
-  unsigned long long _load_nopaecandidate_counter;
+  unsigned long long _load_hoistingcandidate_counter;
+  unsigned long long _load_nohoistingcandidate_counter;
   unsigned long long _store_barrier_counter;
   unsigned long long _store_elided_counter;
   unsigned long long _store_noloop_counter;
   unsigned long long _store_outer_counter;
   unsigned long long _store_innermost_counter;
   unsigned long long _store_unknown_counter;
-  unsigned long long _store_paecandidate_counter;
-  unsigned long long _store_nopaecandidate_counter;
+  unsigned long long _store_hoistingcandidate_counter;
+  unsigned long long _store_nohoistingcandidate_counter;
 
   static unsigned long long _total_load_barrier;
   static unsigned long long _total_load_elided;
@@ -265,16 +265,16 @@ class JavaThread: public Thread {
   static unsigned long long _total_load_outer;
   static unsigned long long _total_load_innermost;
   static unsigned long long _total_load_unknown;
-  static unsigned long long _total_load_paecandidate;
-  static unsigned long long _total_load_nopaecandidate;
+  static unsigned long long _total_load_hoistingcandidate;
+  static unsigned long long _total_load_nohoistingcandidate;
   static unsigned long long _total_store_barrier;
   static unsigned long long _total_store_elided;
   static unsigned long long _total_store_noloop;
   static unsigned long long _total_store_outer;
   static unsigned long long _total_store_innermost;
   static unsigned long long _total_store_unknown;
-  static unsigned long long _total_store_paecandidate;
-  static unsigned long long _total_store_nopaecandidate;
+  static unsigned long long _total_store_hoistingcandidate;
+  static unsigned long long _total_store_nohoistingcandidate;
 
  private:
   SafepointMechanism::ThreadData _poll_data;
@@ -804,16 +804,16 @@ private:
   static ByteSize load_outer_counter_offset()    { return byte_offset_of(JavaThread, _load_outer_counter);}
   static ByteSize load_innermost_counter_offset()  { return byte_offset_of(JavaThread, _load_innermost_counter);}
   static ByteSize load_unknown_counter_offset()  { return byte_offset_of(JavaThread, _load_unknown_counter);}
-  static ByteSize load_paecandidate_counter_offset() { return byte_offset_of(JavaThread, _load_paecandidate_counter);}
-  static ByteSize load_nopaecandidate_counter_offset() { return byte_offset_of(JavaThread, _load_nopaecandidate_counter);}
+  static ByteSize load_hoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _load_hoistingcandidate_counter);}
+  static ByteSize load_nohoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _load_nohoistingcandidate_counter);}
   static ByteSize store_barrier_counter_offset() { return byte_offset_of(JavaThread, _store_barrier_counter);}
   static ByteSize store_elided_counter_offset()  { return byte_offset_of(JavaThread, _store_elided_counter);}
   static ByteSize store_noloop_counter_offset()  { return byte_offset_of(JavaThread, _store_noloop_counter);}
   static ByteSize store_outer_counter_offset()   { return byte_offset_of(JavaThread, _store_outer_counter);}
   static ByteSize store_innermost_counter_offset() { return byte_offset_of(JavaThread, _store_innermost_counter);}
   static ByteSize store_unknown_counter_offset() { return byte_offset_of(JavaThread, _store_unknown_counter);}
-  static ByteSize store_paecandidate_counter_offset() { return byte_offset_of(JavaThread, _store_paecandidate_counter);}
-  static ByteSize store_nopaecandidate_counter_offset() { return byte_offset_of(JavaThread, _store_nopaecandidate_counter);}
+  static ByteSize store_hoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _store_hoistingcandidate_counter);}
+  static ByteSize store_nohoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _store_nohoistingcandidate_counter);}
 
 #if INCLUDE_JVMCI
   static ByteSize pending_deoptimization_offset() { return byte_offset_of(JavaThread, _pending_deoptimization); }
