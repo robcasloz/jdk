@@ -165,6 +165,7 @@ public:
                                   ArrayCopyNode* ac) const;
 
   virtual bool peel_loop(IdealLoopTree* loop, uint estimate) const;
+  virtual void early_barrier_analysis() const;
   virtual void late_barrier_analysis() const;
   virtual int estimate_stub_size() const;
   virtual int estimate_mach_node_size(MachNode* mach) const;

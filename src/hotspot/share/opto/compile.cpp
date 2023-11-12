@@ -2959,6 +2959,9 @@ void Compile::Code_Gen() {
     cfg.verify();
   }
 
+  BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+  bs->early_barrier_analysis();
+
   PhaseChaitin regalloc(unique(), cfg, matcher, false);
   _regalloc = &regalloc;
   {

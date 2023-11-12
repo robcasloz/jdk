@@ -188,7 +188,7 @@ public:
 
   Block* dom_lca(Block* that);  // Compute LCA in dominator tree.
 
-  bool dominates(Block* that) {
+  bool dominates(const Block* that) const {
     int dom_diff = this->_dom_depth - that->_dom_depth;
     if (dom_diff > 0)  return false;
     for (; dom_diff < 0; dom_diff++)  that = that->_idom;
@@ -724,7 +724,7 @@ class CFGLoop : public CFGElement {
   void push_pred(Block* blk, int i, Block_List& worklist, PhaseCFG* cfg);
   void add_member(CFGElement *s) { _members.push(s); }
   void add_nested_loop(CFGLoop* cl);
-  Block* head() {
+  Block* head() const {
     assert(_members.at(0)->is_block(), "head must be a block");
     Block* hd = _members.at(0)->as_Block();
     assert(hd->_loop == this, "just checking");

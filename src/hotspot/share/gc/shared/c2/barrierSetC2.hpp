@@ -300,6 +300,7 @@ public:
   virtual bool matcher_find_shared_post_visit(Matcher* matcher, Node* n, uint opcode) const { return false; };
   virtual bool matcher_is_store_load_barrier(Node* x, uint xop) const { return false; }
 
+  virtual void early_barrier_analysis() const { }
   virtual void late_barrier_analysis() const { }
   virtual int estimate_stub_size() const { return 0; }
   virtual int estimate_mach_node_size(MachNode* mach) const { return 0; }

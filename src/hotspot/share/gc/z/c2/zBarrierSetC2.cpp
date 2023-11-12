@@ -869,13 +869,6 @@ void mark_barriers_in_block(const Block* block, uint16_t flag) {
       continue;
     }
     mach->add_barrier_data(flag);
-    if (flag == ZBarrierOuter || flag == ZBarrierInnermost) {
-      intptr_t offset;
-      mach->get_base_and_offset(offset);
-      if (Type::is_concrete(offset) && offset >= 0) {
-        mach->add_barrier_data(ZBarrierHoistingCandidate);
-      }
-    }
   }
 }
 
@@ -1194,6 +1187,85 @@ void ZBarrierSetC2::eliminate_gc_barrier_data(Node* node) const {
     // Only set barrier bits on ops that can be elided
     if ((node->Opcode() == Op_StoreP) || (node->Opcode() == Op_LoadP)) {
       mem->add_barrier_data(ZBarrierElided);
+    }
+  }
+}
+
+static bool dominates(const Block* block, const CFGLoop* loop) {
+  return block->dominates(loop->head());
+}
+
+void ZBarrierSetC2::early_barrier_analysis() const {
+  ResourceMark rm;
+  Compile* const C = Compile::current();
+  PhaseCFG* const cfg = C->cfg();
+  bool trace = C->directive()->TraceBarrierEliminationOption;
+
+  for (uint i = 0; i < cfg->number_of_blocks(); ++i) {
+    const Block* block = cfg->get_block(i);
+    for (uint j = 0; j < block->number_of_nodes(); j++)  {
+      Node* n = block->get_node(j);
+      if (!n->is_Mach()) {
+        continue;
+      }
+      MachNode* mach = block->get_node(j)->as_Mach();
+      if (mach->ideal_Opcode() != Op_LoadP) {
+        continue;
+      }
+      if (!mach->has_barrier_flag(ZBarrierStrong) ||
+          mach->has_barrier_flag(ZBarrierNoKeepalive)) {
+        continue;
+      }
+      intptr_t offset;
+      const Node* mem = look_through_node(mach->get_base_and_offset(offset));
+      if (mem == nullptr) {
+        continue;
+      }
+      if (!Type::is_concrete(offset) || offset < 0) {
+        continue;
+      }
+      const Block* mem_block = cfg->get_block_for_node(mem);
+      CFGLoop* current = block->_loop;
+      CFGLoop* outmost = nullptr;
+      while (dominates(mem_block, current)) {
+        outmost = current;
+        current = current->parent();
+      }
+      if (outmost == nullptr) {
+        continue;
+      }
+      double pre_header_freq = 0.0;
+      const Block* outmost_head = outmost->head();
+      for (uint p = 1; p < outmost_head->num_preds(); p++) {
+        const Block* pred = cfg->get_block_for_node(outmost_head->pred(p));
+        const CFGLoop* pred_loop = pred->_loop;
+        if (pred_loop == nullptr || pred_loop == outmost) {
+          continue;
+        }
+        pre_header_freq += pred->_freq;
+      }
+#ifndef PRODUCT
+      if (trace) {
+        tty->print("candidate: ");
+        mach->dump();
+        tty->print_cr("  address computation: %d+%ld", mem->_idx, offset);
+        tty->print_cr("  address computation block (B%d) dominates loop header (B%d)", mem_block->_pre_order, outmost->head()->_pre_order);
+        tty->print_cr("  access block freq: %f, pre-header freq: %f", block->_freq, pre_header_freq);
+      }
+#endif // !PRODUCT
+      if (pre_header_freq >= block->_freq) {
+        // If the current barrier block is less frequent than the loop entry
+        // (because the barrier is in an cold path within the loop), let go.
+#ifndef PRODUCT
+        if (trace) {
+          tty->print_cr("  -> discarded (access block freq: %f, pre-header freq: %f)", block->_freq, pre_header_freq);
+        }
+#endif // !PRODUCT
+        continue;
+      }
+      if (C->directive()->ProfileBarrierEliminationOption) {
+        mach->add_barrier_data(ZBarrierHoistingCandidate);
+      }
     }
   }
 }
