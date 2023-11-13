@@ -121,6 +121,8 @@ unsigned long long JavaThread::_total_load_innermost;
 unsigned long long JavaThread::_total_load_unknown;
 unsigned long long JavaThread::_total_load_hoistingcandidate;
 unsigned long long JavaThread::_total_load_nohoistingcandidate;
+unsigned long long JavaThread::_total_load_candidateincallloop;
+unsigned long long JavaThread::_total_load_nocandidateincallloop;
 unsigned long long JavaThread::_total_store_barrier;
 unsigned long long JavaThread::_total_store_elided;
 unsigned long long JavaThread::_total_store_noloop;
@@ -129,6 +131,8 @@ unsigned long long JavaThread::_total_store_innermost;
 unsigned long long JavaThread::_total_store_unknown;
 unsigned long long JavaThread::_total_store_hoistingcandidate;
 unsigned long long JavaThread::_total_store_nohoistingcandidate;
+unsigned long long JavaThread::_total_store_candidateincallloop;
+unsigned long long JavaThread::_total_store_nocandidateincallloop;
 
 #ifdef DTRACE_ENABLED
 
@@ -451,6 +455,8 @@ JavaThread::JavaThread() :
   _load_unknown_counter(0),
   _load_hoistingcandidate_counter(0),
   _load_nohoistingcandidate_counter(0),
+  _load_candidateincallloop_counter(0),
+  _load_nocandidateincallloop_counter(0),
   _store_barrier_counter(0),
   _store_elided_counter(0),
   _store_noloop_counter(0),
@@ -459,6 +465,8 @@ JavaThread::JavaThread() :
   _store_unknown_counter(0),
   _store_hoistingcandidate_counter(0),
   _store_nohoistingcandidate_counter(0),
+  _store_candidateincallloop_counter(0),
+  _store_nocandidateincallloop_counter(0),
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
   _no_safepoint_count(0),
@@ -659,6 +667,8 @@ JavaThread::~JavaThread() {
   _total_load_unknown    += _load_unknown_counter;
   _total_load_hoistingcandidate += _load_hoistingcandidate_counter;
   _total_load_nohoistingcandidate += _load_nohoistingcandidate_counter;
+  _total_load_candidateincallloop += _load_candidateincallloop_counter;
+  _total_load_nocandidateincallloop += _load_nocandidateincallloop_counter;
   _total_store_barrier   += _store_barrier_counter;
   _total_store_elided    += _store_elided_counter;
   _total_store_noloop    += _store_noloop_counter;
@@ -667,6 +677,8 @@ JavaThread::~JavaThread() {
   _total_store_unknown   += _store_unknown_counter;
   _total_store_hoistingcandidate += _store_hoistingcandidate_counter;
   _total_store_nohoistingcandidate += _store_nohoistingcandidate_counter;
+  _total_store_candidateincallloop += _store_candidateincallloop_counter;
+  _total_store_nocandidateincallloop += _store_nocandidateincallloop_counter;
 
   // Enqueue OopHandles for release by the service thread.
   add_oop_handles_for_release();

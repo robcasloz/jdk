@@ -250,6 +250,8 @@ class JavaThread: public Thread {
   unsigned long long _load_unknown_counter;
   unsigned long long _load_hoistingcandidate_counter;
   unsigned long long _load_nohoistingcandidate_counter;
+  unsigned long long _load_candidateincallloop_counter;
+  unsigned long long _load_nocandidateincallloop_counter;
   unsigned long long _store_barrier_counter;
   unsigned long long _store_elided_counter;
   unsigned long long _store_noloop_counter;
@@ -258,6 +260,8 @@ class JavaThread: public Thread {
   unsigned long long _store_unknown_counter;
   unsigned long long _store_hoistingcandidate_counter;
   unsigned long long _store_nohoistingcandidate_counter;
+  unsigned long long _store_candidateincallloop_counter;
+  unsigned long long _store_nocandidateincallloop_counter;
 
   static unsigned long long _total_load_barrier;
   static unsigned long long _total_load_elided;
@@ -267,6 +271,8 @@ class JavaThread: public Thread {
   static unsigned long long _total_load_unknown;
   static unsigned long long _total_load_hoistingcandidate;
   static unsigned long long _total_load_nohoistingcandidate;
+  static unsigned long long _total_load_candidateincallloop;
+  static unsigned long long _total_load_nocandidateincallloop;
   static unsigned long long _total_store_barrier;
   static unsigned long long _total_store_elided;
   static unsigned long long _total_store_noloop;
@@ -275,6 +281,8 @@ class JavaThread: public Thread {
   static unsigned long long _total_store_unknown;
   static unsigned long long _total_store_hoistingcandidate;
   static unsigned long long _total_store_nohoistingcandidate;
+  static unsigned long long _total_store_candidateincallloop;
+  static unsigned long long _total_store_nocandidateincallloop;
 
  private:
   SafepointMechanism::ThreadData _poll_data;
@@ -806,6 +814,8 @@ private:
   static ByteSize load_unknown_counter_offset()  { return byte_offset_of(JavaThread, _load_unknown_counter);}
   static ByteSize load_hoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _load_hoistingcandidate_counter);}
   static ByteSize load_nohoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _load_nohoistingcandidate_counter);}
+  static ByteSize load_candidateincallloop_counter_offset() { return byte_offset_of(JavaThread, _load_candidateincallloop_counter);}
+  static ByteSize load_nocandidateincallloop_counter_offset() { return byte_offset_of(JavaThread, _load_nocandidateincallloop_counter);}
   static ByteSize store_barrier_counter_offset() { return byte_offset_of(JavaThread, _store_barrier_counter);}
   static ByteSize store_elided_counter_offset()  { return byte_offset_of(JavaThread, _store_elided_counter);}
   static ByteSize store_noloop_counter_offset()  { return byte_offset_of(JavaThread, _store_noloop_counter);}
@@ -814,6 +824,8 @@ private:
   static ByteSize store_unknown_counter_offset() { return byte_offset_of(JavaThread, _store_unknown_counter);}
   static ByteSize store_hoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _store_hoistingcandidate_counter);}
   static ByteSize store_nohoistingcandidate_counter_offset() { return byte_offset_of(JavaThread, _store_nohoistingcandidate_counter);}
+  static ByteSize store_candidateincallloop_counter_offset() { return byte_offset_of(JavaThread, _store_candidateincallloop_counter);}
+  static ByteSize store_nocandidateincallloop_counter_offset() { return byte_offset_of(JavaThread, _store_nocandidateincallloop_counter);}
 
 #if INCLUDE_JVMCI
   static ByteSize pending_deoptimization_offset() { return byte_offset_of(JavaThread, _pending_deoptimization); }

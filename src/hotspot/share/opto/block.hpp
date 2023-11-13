@@ -742,6 +742,25 @@ class CFGLoop : public CFGElement {
   int id() { return _id; }
   int depth() { return _depth; }
   CFGLoop* child() { return _child; }
+  template <typename BlockPredicate>
+  bool has_any(BlockPredicate p) {
+    bool has_any = false;
+    for (int i = 0; i < _members.length(); i++) {
+      CFGElement* s = _members.at(i);
+      if (s->is_block()) {
+        Block* b = s->as_Block();
+        if (p(b)) {
+          return true;
+        }
+      } else {
+        CFGLoop* lp = s->as_CFGLoop();
+        if (lp->has_any(p)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
 #ifndef PRODUCT
   void dump( ) const;

@@ -235,6 +235,7 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
     __ incrementq(Address(r15_thread, JavaThread::load_barrier_counter_offset()));
     __ incrementq(Address(r15_thread, JavaThread::load_unknown_counter_offset()));
     __ incrementq(Address(r15_thread, JavaThread::load_nohoistingcandidate_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::load_nocandidateincallloop_counter_offset()));
   }
 
   // Allocate scratch register
@@ -528,6 +529,7 @@ void ZBarrierSetAssembler::store_at(MacroAssembler* masm,
       __ incrementq(Address(r15_thread, JavaThread::store_barrier_counter_offset()));
       __ incrementq(Address(r15_thread, JavaThread::store_unknown_counter_offset()));
       __ incrementq(Address(r15_thread, JavaThread::store_nohoistingcandidate_counter_offset()));
+      __ incrementq(Address(r15_thread, JavaThread::store_nocandidateincallloop_counter_offset()));
     }
 
     assert_different_registers(src, tmp1, dst.base(), dst.index());
@@ -1008,6 +1010,7 @@ void ZBarrierSetAssembler::generate_c1_load_barrier(LIR_Assembler* ce,
     __ incrementq(Address(r15_thread, JavaThread::load_barrier_counter_offset()));
     __ incrementq(Address(r15_thread, JavaThread::load_unknown_counter_offset()));
     __ incrementq(Address(r15_thread, JavaThread::load_nohoistingcandidate_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::load_nocandidateincallloop_counter_offset()));
   }
 
   if (on_non_strong) {
@@ -1091,6 +1094,7 @@ void ZBarrierSetAssembler::generate_c1_store_barrier(LIR_Assembler* ce,
     __ incrementq(Address(r15_thread, JavaThread::store_barrier_counter_offset()));
     __ incrementq(Address(r15_thread, JavaThread::store_unknown_counter_offset()));
     __ incrementq(Address(r15_thread, JavaThread::store_nohoistingcandidate_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::store_nocandidateincallloop_counter_offset()));
   }
 
   Register rbase = addr->base()->as_pointer_register();

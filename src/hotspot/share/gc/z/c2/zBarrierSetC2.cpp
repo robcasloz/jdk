@@ -1259,6 +1259,18 @@ void ZBarrierSetC2::early_barrier_analysis() const {
       }
       if (C->directive()->ProfileBarrierEliminationOption) {
         mach->add_barrier_data(ZBarrierHoistingCandidate);
+        auto has_call = [](Block* b) {
+          for (uint j = 0; j < b->number_of_nodes(); ++j) {
+            Node* const node = b->get_node(j);
+            if (node->is_MachCall()) {
+              return true;
+            }
+          }
+          return false;
+        };
+        if (block->_loop->has_any(has_call)) {
+          mach->add_barrier_data(ZBarrierCandidateInCallLoop);
+        }
       }
     }
   }
@@ -1302,6 +1314,8 @@ class CollectBarrierStatsClosure : public ThreadClosure {
   unsigned long long _total_load_unknown;
   unsigned long long _total_load_hoistingcandidate;
   unsigned long long _total_load_nohoistingcandidate;
+  unsigned long long _total_load_candidateincallloop;
+  unsigned long long _total_load_nocandidateincallloop;
   unsigned long long _total_store_barrier;
   unsigned long long _total_store_elided;
   unsigned long long _total_store_noloop;
@@ -1310,6 +1324,8 @@ class CollectBarrierStatsClosure : public ThreadClosure {
   unsigned long long _total_store_unknown;
   unsigned long long _total_store_hoistingcandidate;
   unsigned long long _total_store_nohoistingcandidate;
+  unsigned long long _total_store_candidateincallloop;
+  unsigned long long _total_store_nocandidateincallloop;
   CollectBarrierStatsClosure() :
     _total_load_barrier(0),
     _total_load_elided(0),
@@ -1319,6 +1335,8 @@ class CollectBarrierStatsClosure : public ThreadClosure {
     _total_load_unknown(0),
     _total_load_hoistingcandidate(0),
     _total_load_nohoistingcandidate(0),
+    _total_load_candidateincallloop(0),
+    _total_load_nocandidateincallloop(0),
     _total_store_barrier(0),
     _total_store_elided(0),
     _total_store_noloop(0),
@@ -1326,7 +1344,9 @@ class CollectBarrierStatsClosure : public ThreadClosure {
     _total_store_innermost(0),
     _total_store_unknown(0),
     _total_store_hoistingcandidate(0),
-    _total_store_nohoistingcandidate(0) {}
+    _total_store_nohoistingcandidate(0),
+    _total_store_candidateincallloop(0),
+    _total_store_nocandidateincallloop(0) {}
 
   void do_thread(Thread* thread) {
     const JavaThread* javaThread = JavaThread::cast(thread);
@@ -1338,6 +1358,8 @@ class CollectBarrierStatsClosure : public ThreadClosure {
     _total_load_unknown    += javaThread->_total_load_unknown;
     _total_load_hoistingcandidate += javaThread->_total_load_hoistingcandidate;
     _total_load_nohoistingcandidate += javaThread->_total_load_nohoistingcandidate;
+    _total_load_candidateincallloop += javaThread->_total_load_candidateincallloop;
+    _total_load_nocandidateincallloop += javaThread->_total_load_nocandidateincallloop;
     _total_store_barrier   += javaThread->_total_store_barrier;
     _total_store_elided    += javaThread->_total_store_elided;
     _total_store_noloop    += javaThread->_total_store_noloop;
@@ -1346,6 +1368,8 @@ class CollectBarrierStatsClosure : public ThreadClosure {
     _total_store_unknown   += javaThread->_total_store_unknown;
     _total_store_hoistingcandidate += javaThread->_total_store_hoistingcandidate;
     _total_store_nohoistingcandidate += javaThread->_total_store_nohoistingcandidate;
+    _total_store_candidateincallloop += javaThread->_total_store_candidateincallloop;
+    _total_store_nocandidateincallloop += javaThread->_total_store_nocandidateincallloop;
   }
 };
 
@@ -1377,19 +1401,22 @@ void ZBarrierSetC2::print_stats() const {
   int eltime = (int)t;  // elapsed time in seconds
   int eltimeFraction = (int) ((t - eltime) * 1000000);
 
-  tty->print_cr("barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
+  tty->print_cr("barrier-profile-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
                 eltime, eltimeFraction,
                 cl._total_load_barrier, cl._total_load_elided,
                 cl._total_load_noloop, cl._total_load_outer, cl._total_load_innermost, cl._total_load_unknown,
                 cl._total_load_hoistingcandidate, cl._total_load_nohoistingcandidate,
+                cl._total_load_candidateincallloop, cl._total_load_nocandidateincallloop,
                 cl._total_store_barrier, cl._total_store_elided,
                 cl._total_store_noloop, cl._total_store_outer, cl._total_store_innermost, cl._total_store_unknown,
-                cl._total_store_hoistingcandidate, cl._total_store_nohoistingcandidate);
+                cl._total_store_hoistingcandidate, cl._total_store_nohoistingcandidate,
+                cl._total_store_candidateincallloop, cl._total_store_nocandidateincallloop);
 
   unsigned long long total_loads = cl._total_load_barrier + cl._total_load_elided;
   assert(total_loads == cl._total_load_noloop + cl._total_load_outer + cl._total_load_innermost + cl._total_load_unknown, "");
   assert(total_loads == cl._total_load_hoistingcandidate + cl._total_load_nohoistingcandidate, "");
-  tty->print_cr("total load:  %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)] [hoistingcandidate: %lld (%2.1f%%), nohoistingcandidate: %lld (%2.1f%%)]",
+  assert(total_loads == cl._total_load_candidateincallloop + cl._total_load_nocandidateincallloop, "");
+  tty->print_cr("total load:  %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)] [hoistingcandidate: %lld (%2.1f%%), nohoistingcandidate: %lld (%2.1f%%)] [candidateincallloop: %lld (%2.1f%%), nocandidateincallloop: %lld (%2.1f%%)]",
                 total_loads,
                 cl._total_load_barrier,   total_loads > 0.0 ? (((double)cl._total_load_barrier / total_loads) * 100.0)    : 0.0,
                 cl._total_load_elided,    total_loads > 0.0 ? (((double)cl._total_load_elided / total_loads) * 100.0)    : 0.0,
@@ -1398,12 +1425,15 @@ void ZBarrierSetC2::print_stats() const {
                 cl._total_load_innermost, total_loads > 0.0 ? (((double)cl._total_load_innermost / total_loads) * 100.0) : 0.0,
                 cl._total_load_unknown,   total_loads > 0.0 ? (((double)cl._total_load_unknown / total_loads) * 100.0)   : 0.0,
                 cl._total_load_hoistingcandidate, total_loads > 0.0 ? (((double)cl._total_load_hoistingcandidate / total_loads) * 100.0) : 0.0,
-                cl._total_load_nohoistingcandidate, total_loads > 0.0 ? (((double)cl._total_load_nohoistingcandidate / total_loads) * 100.0)   : 0.0);
+                cl._total_load_nohoistingcandidate, total_loads > 0.0 ? (((double)cl._total_load_nohoistingcandidate / total_loads) * 100.0)   : 0.0,
+                cl._total_load_candidateincallloop, total_loads > 0.0 ? (((double)cl._total_load_candidateincallloop / total_loads) * 100.0) : 0.0,
+                cl._total_load_nocandidateincallloop, total_loads > 0.0 ? (((double)cl._total_load_nocandidateincallloop / total_loads) * 100.0)   : 0.0);
 
   unsigned long long total_stores = cl._total_store_barrier + cl._total_store_elided;
   assert(total_stores == cl._total_store_noloop + cl._total_store_outer + cl._total_store_innermost + cl._total_store_unknown, "");
   assert(total_stores == cl._total_store_hoistingcandidate + cl._total_store_nohoistingcandidate, "");
-  tty->print_cr("total store: %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)] [hoistingcandidate: %lld (%2.1f%%), nohoistingcandidate: %lld (%2.1f%%)]",
+  assert(total_stores == cl._total_store_candidateincallloop + cl._total_store_nocandidateincallloop, "");
+  tty->print_cr("total store: %lld [barrier: %lld (%2.1f%%), elided: %lld (%2.1f%%)] [noloop: %lld (%2.1f%%), outer: %lld (%2.1f%%), innermost: %lld (%2.1f%%), unknown: %lld (%2.1f%%)] [hoistingcandidate: %lld (%2.1f%%), nohoistingcandidate: %lld (%2.1f%%)] [candidateincallloop: %lld (%2.1f%%), nocandidateincallloop: %lld (%2.1f%%)]",
                 total_stores,
                 cl._total_store_barrier,   total_stores > 0.0 ? (((double)cl._total_store_barrier / total_stores) * 100.0)    : 0.0,
                 cl._total_store_elided,    total_stores > 0.0 ? (((double)cl._total_store_elided / total_stores) * 100.0)    : 0.0,
@@ -1412,7 +1442,9 @@ void ZBarrierSetC2::print_stats() const {
                 cl._total_store_innermost, total_stores > 0.0 ? (((double)cl._total_store_innermost / total_stores) * 100.0) : 0.0,
                 cl._total_store_unknown,   total_stores > 0.0 ? (((double)cl._total_store_unknown / total_stores) * 100.0)   : 0.0,
                 cl._total_store_hoistingcandidate, total_stores > 0.0 ? (((double)cl._total_store_hoistingcandidate / total_stores) * 100.0) : 0.0,
-                cl._total_store_nohoistingcandidate, total_stores > 0.0 ? (((double)cl._total_store_nohoistingcandidate / total_stores) * 100.0)   : 0.0);
+                cl._total_store_nohoistingcandidate, total_stores > 0.0 ? (((double)cl._total_store_nohoistingcandidate / total_stores) * 100.0)   : 0.0,
+                cl._total_store_candidateincallloop, total_stores > 0.0 ? (((double)cl._total_store_candidateincallloop / total_stores) * 100.0) : 0.0,
+                cl._total_store_nocandidateincallloop, total_stores > 0.0 ? (((double)cl._total_store_nocandidateincallloop / total_stores) * 100.0)   : 0.0);
 
 }
 
@@ -1530,6 +1562,9 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) co
   }
   if (mach->has_barrier_flag(ZBarrierHoistingCandidate)) {
     st->print("hoisting-candidate ");
+  }
+  if (mach->has_barrier_flag(ZBarrierCandidateInCallLoop)) {
+    st->print("candidate-in-call-loop ");
   }
 }
 
