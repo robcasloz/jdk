@@ -1225,40 +1225,34 @@ void ZBarrierSetC2::early_barrier_analysis() const {
         continue;
       }
       const Block* mem_block = cfg->get_block_for_node(mem);
-      CFGLoop* current = block->_loop;
-      CFGLoop* outmost = nullptr;
-      while (dominates(mem_block, current)) {
-        outmost = current;
-        current = current->parent();
+      CFGLoop* current_loop = block->_loop;
+      CFGLoop* outmost_loop = nullptr;
+      while (dominates(mem_block, current_loop)) {
+        outmost_loop = current_loop;
+        current_loop = current_loop->parent();
       }
-      if (outmost == nullptr) {
+      if (outmost_loop == nullptr) {
         continue;
       }
-      double pre_header_freq = 0.0;
-      const Block* outmost_head = outmost->head();
-      for (uint p = 1; p < outmost_head->num_preds(); p++) {
-        const Block* pred = cfg->get_block_for_node(outmost_head->pred(p));
-        const CFGLoop* pred_loop = pred->_loop;
-        if (pred_loop == nullptr || pred_loop == outmost) {
-          continue;
-        }
-        pre_header_freq += pred->_freq;
-      }
+      const Block* header = outmost_loop->head();
+      assert(header->head()->is_Loop() && header->num_preds() == 3, "Loop header has two predecessors");
+      const Block* pre_header = cfg->get_block_for_node(header->pred(LoopNode::EntryControl));
+      assert(pre_header->_loop != nullptr && pre_header->_loop != outmost_loop, "Pre-header's loop is parent of outmost loop");
 #ifndef PRODUCT
       if (trace) {
         tty->print("candidate: ");
         mach->dump();
         tty->print_cr("  address computation: %d+%ld", mem->_idx, offset);
-        tty->print_cr("  address computation block (B%d) dominates loop header (B%d)", mem_block->_pre_order, outmost->head()->_pre_order);
-        tty->print_cr("  access block freq: %f, pre-header freq: %f", block->_freq, pre_header_freq);
+        tty->print_cr("  address computation block (B%d) dominates loop header (B%d)", mem_block->_pre_order, outmost_loop->head()->_pre_order);
+        tty->print_cr("  access block freq: %f, pre-header freq: %f", block->_freq, pre_header->_freq);
       }
 #endif // !PRODUCT
-      if (pre_header_freq >= block->_freq) {
+      if (pre_header->_freq >= block->_freq) {
         // If the current barrier block is less frequent than the loop entry
         // (because the barrier is in an cold path within the loop), let go.
 #ifndef PRODUCT
         if (trace) {
-          tty->print_cr("  -> discarded (access block freq: %f, pre-header freq: %f)", block->_freq, pre_header_freq);
+          tty->print_cr("  -> discarded (access block freq: %f, pre-header freq: %f)", block->_freq, pre_header->_freq);
         }
 #endif // !PRODUCT
         continue;
