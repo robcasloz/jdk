@@ -471,3 +471,17 @@ void G1BarrierSetAssembler::generate_c1_post_barrier_runtime_stub(StubAssembler*
 #undef __
 
 #endif // COMPILER1
+
+#ifdef COMPILER2
+
+void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
+                                                         G1PreBarrierStubC2* stub) const {
+  Unimplemented();
+}
+
+void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
+                                                          G1PostBarrierStubC2* stub) const {
+  Unimplemented();
+}
+
+#endif // COMPILER2
