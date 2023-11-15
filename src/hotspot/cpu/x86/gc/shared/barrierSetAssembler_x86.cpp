@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/classLoaderData.hpp"
+#include "code/vmreg.inline.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/barrierSetNMethod.hpp"
@@ -534,7 +535,6 @@ int SaveLiveRegisters::xmm_compare_register_size(XMMRegisterData* left, XMMRegis
   if (left->_size == right->_size) {
     return 0;
   }
-
   return (left->_size < right->_size) ? -1 : 1;
 }
 

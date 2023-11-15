@@ -87,6 +87,35 @@
                                        range,                               \
                                        constraint)
 #endif
+
+// Temporary flags to support the migration from early to late barrier expansion
+// (see JEP 475) for all platforms. These flags are not intended to be
+// integrated in the main JDK repository.
+
+#ifdef G1_LATE_BARRIER_MIGRATION_SUPPORT
+#error "G1_LATE_BARRIER_MIGRATION_SUPPORT already defined"
+#endif
+#define G1_LATE_BARRIER_MIGRATION_SUPPORT 1
+
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+#define G1_LATE_BARRIER_MIGRATION_SUPPORT_FLAGS(product)                    \
+                                                                            \
+  product(bool, G1UseLateBarrierExpansion, true,                            \
+          "Expand G1 barriers late during C2 compilation")                  \
+                                                                            \
+  product(double, G1BarrierSizeFactor, 1.0,                                 \
+          "Factor for estimated barrier size: increasing it makes C2 loop " \
+          "unrolling more conservative, and vice versa")                    \
+                                                                            \
+  product(bool, G1ProfileBarriers, false,                                   \
+          "Profile and print C2 barrier statistics")                        \
+                                                                            \
+  product(bool, G1ProfileBarrierTests, false,                               \
+          "Profile and print C2 barrier test statistics")
+#else
+#define G1_LATE_BARRIER_MIGRATION_SUPPORT_FLAGS(product)
+#endif
+
 //
 // Defines all globals flags used by the garbage-first compiler.
 //
@@ -340,7 +369,9 @@
                     product,                                                \
                     product_pd,                                             \
                     range,                                                  \
-                    constraint)
+                    constraint)                                             \
+                                                                            \
+  G1_LATE_BARRIER_MIGRATION_SUPPORT_FLAGS(product)
 
 // end of GC_G1_FLAGS
 

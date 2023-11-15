@@ -30,6 +30,7 @@
  *          jdk.compiler/com.sun.tools.javac.main
  *          jdk.compiler/jdk.internal.shellsupport.doc
  * @build toolbox.ToolBox toolbox.JarTask toolbox.JavacTask
+ * @requires vm.opt.final.UseCompressedOops == true
  * @run testng/timeout=900/othervm -Xmx1024m JavadocHelperTest
  */
 

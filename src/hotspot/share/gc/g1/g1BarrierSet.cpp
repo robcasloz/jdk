@@ -53,7 +53,13 @@ class G1BarrierSetC2;
 G1BarrierSet::G1BarrierSet(G1CardTable* card_table) :
   CardTableBarrierSet(make_barrier_set_assembler<G1BarrierSetAssembler>(),
                       make_barrier_set_c1<G1BarrierSetC1>(),
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+                      G1UseLateBarrierExpansion && G1BarrierSetAssembler::supports_c2_late_barrier_expansion() ?
+                      make_barrier_set_c2<G1BarrierSetC2>() :
+                      make_barrier_set_c2<G1BarrierSetC2Early>(),
+#else
                       make_barrier_set_c2<G1BarrierSetC2>(),
+#endif
                       card_table,
                       BarrierSet::FakeRtti(BarrierSet::G1BarrierSet)),
   _satb_mark_queue_buffer_allocator("SATB Buffer Allocator", G1SATBBufferSize),
