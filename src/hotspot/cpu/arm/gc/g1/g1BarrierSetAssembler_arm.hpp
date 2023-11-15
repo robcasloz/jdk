@@ -62,13 +62,17 @@ public:
   virtual void load_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                        Register dst, Address src, Register tmp1, Register tmp2, Register tmp3);
 
-#ifdef COMPILER1
 public:
+#ifdef COMPILER1
   void gen_pre_barrier_stub(LIR_Assembler* ce, G1PreBarrierStub* stub);
   void gen_post_barrier_stub(LIR_Assembler* ce, G1PostBarrierStub* stub);
 
   void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm);
   void generate_c1_post_barrier_runtime_stub(StubAssembler* sasm);
+#endif
+
+#ifdef COMPILER2
+  static bool supports_c2_late_barrier_expansion() { return false; }
 #endif
 };
 

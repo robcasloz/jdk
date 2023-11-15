@@ -26,6 +26,7 @@
 #define CPU_X86_GC_SHARED_BARRIERSETASSEMBLER_X86_HPP
 
 #include "asm/macroAssembler.hpp"
+#include "code/vmreg.hpp"
 #include "memory/allocation.hpp"
 #include "oops/access.hpp"
 #ifdef COMPILER2
@@ -35,6 +36,10 @@ class BarrierStubC2;
 class Node;
 #endif // COMPILER2
 class InterpreterMacroAssembler;
+
+#ifdef COMPILER2
+class Node;
+#endif // COMPILER2
 
 class BarrierSetAssembler: public CHeapObj<mtGC> {
 private:

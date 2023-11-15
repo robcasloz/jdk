@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/classLoaderData.hpp"
+#include "code/vmreg.inline.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/barrierSetNMethod.hpp"
@@ -534,7 +535,6 @@ int SaveLiveRegisters::xmm_compare_register_size(XMMRegisterData* left, XMMRegis
   if (left->_size == right->_size) {
     return 0;
   }
-
   return (left->_size < right->_size) ? -1 : 1;
 }
 
@@ -613,19 +613,12 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   caller_saved.Insert(OptoReg::as_OptoReg(r10->as_VMReg()));
   caller_saved.Insert(OptoReg::as_OptoReg(r11->as_VMReg()));
 
-  if (stub->result() != noreg) {
-    caller_saved.Remove(OptoReg::as_OptoReg(stub->result()->as_VMReg()));
-  }
-
-  // Create mask of live registers
-  RegMask live = stub->live();
-
   int gp_spill_size = 0;
   int opmask_spill_size = 0;
   int xmm_spill_size = 0;
 
   // Record registers that needs to be saved/restored
-  RegMaskIterator rmi(live);
+  RegMaskIterator rmi(stub->preserve_set());
   while (rmi.has_next()) {
     const OptoReg::Name opto_reg = rmi.next();
     const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);

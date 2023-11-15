@@ -404,6 +404,18 @@ uint RegMask::Size() const {
 }
 
 #ifndef PRODUCT
+
+void RegMask::dump_all(outputStream* st) const {
+  RegMaskIterator rmi(*this);
+  st->print("[");
+  while (rmi.has_next()) {
+    const OptoReg::Name opto_reg = rmi.next();
+    OptoReg::dump(opto_reg, st);
+    st->print(", ");
+  }
+  st->print("]");
+}
+
 void RegMask::dump(outputStream *st) const {
   st->print("[");
 

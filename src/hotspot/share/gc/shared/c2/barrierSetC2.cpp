@@ -87,14 +87,16 @@ static BarrierSetC2State* barrier_set_state() {
   return reinterpret_cast<BarrierSetC2State*>(Compile::current()->barrier_set_state());
 }
 
-BarrierStubC2::BarrierStubC2(const MachNode* node)
-  : _node(node),
-    _entry(),
-    _continuation() {}
-
 RegMask& BarrierStubC2::live() const {
   return *barrier_set_state()->live(_node);
 }
+
+BarrierStubC2::BarrierStubC2(const MachNode* node)
+  : _node(node),
+    _entry(),
+    _continuation(),
+    _preserve(),
+    _no_preserve() {}
 
 Label* BarrierStubC2::entry() {
   // The _entry will never be bound when in_scratch_emit_size() is true.
@@ -106,6 +108,44 @@ Label* BarrierStubC2::entry() {
 
 Label* BarrierStubC2::continuation() {
   return &_continuation;
+}
+
+uint8_t BarrierStubC2::barrier_data() const {
+  return _node->barrier_data();
+}
+
+void BarrierStubC2::preserve(Register r) {
+  const VMReg vm_reg = r->as_VMReg();
+  assert(vm_reg->is_Register(), "r must be a general-purpose register");
+  _preserve.Insert(OptoReg::as_OptoReg(vm_reg));
+}
+
+void BarrierStubC2::dont_preserve(Register r) {
+  const VMReg vm_reg = r->as_VMReg();
+  assert(vm_reg->is_Register(), "r must be a general-purpose register");
+  _no_preserve.Insert(OptoReg::as_OptoReg(vm_reg));
+}
+
+RegMask& BarrierStubC2::preserve_set() {
+  _preserve.OR(live());
+  // Subtract not only the OptoRegs in _no_preserve, but also all related
+  // OptoRegs that are sub-registers of the same general-purpose, processor
+  // register (e.g. {R11, R11_H} for r11 in aarch64). We assume that OptoRegs
+  // related to a no-preserve OptoReg have increasing, contiguous indices.
+  RegMaskIterator rmi(_no_preserve);
+  while (rmi.has_next()) {
+    OptoReg::Name reg = rmi.next();
+    Register gp_reg = OptoReg::as_VMReg(reg)->as_Register();
+    while (OptoReg::is_reg(reg)) {
+      const VMReg vm_reg = OptoReg::as_VMReg(reg);
+      if (!(vm_reg->is_Register()) || vm_reg->as_Register() != gp_reg) {
+        break;
+      }
+      _preserve.Remove(reg);
+      reg = OptoReg::add(reg, 1);
+    }
+  }
+  return _preserve;
 }
 
 Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) const {
@@ -828,6 +868,7 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
   PhaseRegAlloc* const regalloc = C->regalloc();
   RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks() * sizeof(RegMask));
   BarrierSetAssembler* const bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  BarrierSetC2State* bs_state = barrier_set_state();
   Block_List worklist;
 
   for (uint i = 0; i < cfg->number_of_blocks(); ++i) {
@@ -835,10 +876,31 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
     worklist.push(cfg->get_block(i));
   }
 
+#ifndef PRODUCT
+  if (TraceStubLiveness) {
+    tty->print("initial worklist: ");
+    worklist.print();
+  }
+#endif
+
   while (worklist.size() > 0) {
+#ifndef PRODUCT
+    if (TraceStubLiveness) {
+      tty->print("worklist: ");
+      worklist.print();
+    }
+#endif
     const Block* const block = worklist.pop();
     RegMask& old_live = live[block->_pre_order];
     RegMask new_live;
+#ifndef PRODUCT
+    if (TraceStubLiveness) {
+      tty->print_cr("  visiting B%d..", block->_pre_order);
+      tty->print("  old_live: ");
+      old_live.dump_all(tty);
+      tty->cr();
+    }
+#endif
 
     // Initialize to union of successors
     for (uint i = 0; i < block->_num_succs; i++) {
@@ -846,9 +908,33 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
       new_live.OR(live[succ_id]);
     }
 
+#ifndef PRODUCT
+    if (TraceStubLiveness) {
+      tty->print_cr("  propagating successors...");
+      tty->print("  ");
+      new_live.dump_all(tty);
+      tty->cr();
+    }
+#endif
+
     // Walk block backwards, computing liveness
     for (int i = block->number_of_nodes() - 1; i >= 0; --i) {
       const Node* const node = block->get_node(i);
+
+      // If this node tracks out-liveness, update it
+      if (!bs_state->needs_livein_data()) {
+        RegMask* const regs = bs_state->live(node);
+        if (regs != nullptr) {
+          regs->OR(new_live);
+#ifndef PRODUCT
+          if (TraceStubLiveness) {
+            tty->print("    updated live-out set to ");
+            regs->dump_all(tty);
+            tty->cr();
+          }
+#endif
+        }
+      }
 
       // Remove def bits
       const OptoReg::Name first = bs->refine_register(node, regalloc->get_reg_first(node));
@@ -873,15 +959,40 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
         }
       }
 
-       // If this node tracks liveness, update it
-      RegMask* const regs = barrier_set_state()->live(node);
-      if (regs != NULL) {
-        regs->OR(new_live);
+#ifndef PRODUCT
+      if (TraceStubLiveness) {
+        tty->print_cr("  propagating %d %s...", node->_idx, node->Name());
+        tty->print("  ");
+        new_live.dump_all(tty);
+        tty->cr();
+      }
+#endif
+
+      // If this node tracks in-liveness, update it
+      if (bs_state->needs_livein_data()) {
+        RegMask* const regs = bs_state->live(node);
+        if (regs != nullptr) {
+          regs->OR(new_live);
+#ifndef PRODUCT
+          if (TraceStubLiveness) {
+            tty->print("    updated live-in set to ");
+            regs->dump_all(tty);
+            tty->cr();
+          }
+#endif
+        }
       }
     }
 
     // Now at block top, see if we have any changes
     new_live.SUBTRACT(old_live);
+#ifndef PRODUCT
+    if (TraceStubLiveness) {
+      tty->print("  new_live: ");
+      new_live.dump_all(tty);
+      tty->cr();
+    }
+#endif
     if (new_live.is_NotEmpty()) {
       // Liveness has refined, update and propagate to prior blocks
       old_live.OR(new_live);

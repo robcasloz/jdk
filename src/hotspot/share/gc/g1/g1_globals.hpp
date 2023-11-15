@@ -340,7 +340,32 @@
                     product,                                                \
                     product_pd,                                             \
                     range,                                                  \
-                    constraint)
+                    constraint)                                             \
+                                                                            \
+  product(bool, G1UseLateBarrierExpansion, true,                            \
+          "Expand G1 barriers late during C2 compilation "                  \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
+  product(double, G1BarrierSizeFactor, 1.0,                                 \
+          "Factor for estimated barrier size: increasing it makes C2 loop " \
+          "unrolling more conservative, and vice versa "                    \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
+  product(bool, G1ProfileBarriers, false,                                   \
+          "Profile and print C2 barrier statistics "                        \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
+  product(bool, G1ProfileBarrierTests, false,                               \
+          "Profile and print C2 barrier test statistics "                   \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
+  product(bool, G1AlwaysPrecise, false,                                     \
+          "Force precise card-marking in early barrier expansion model "    \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
+  product(bool, G1OptimizeBarrierLayout, true,                              \
+          "Optimize basic block placement of post-barrier "                 \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")
 
 // end of GC_G1_FLAGS
 
