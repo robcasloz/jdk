@@ -27,7 +27,6 @@
 
 #include "memory/allocation.hpp"
 #include "oops/accessDecorators.hpp"
-#include "opto/loopnode.hpp"
 #include "opto/machnode.hpp"
 #include "opto/matcher.hpp"
 #include "opto/memnode.hpp"
@@ -205,6 +204,50 @@ public:
   virtual bool is_opt_access() const { return true; }
 };
 
+class BarrierSetC2State : public ArenaObj {
+protected:
+  Node_Array                      _live;
+  int                             _trampoline_stubs_count;
+  int                             _stubs_start_offset;
+
+public:
+  BarrierSetC2State(Arena* arena)
+    : _live(arena),
+      _trampoline_stubs_count(0),
+      _stubs_start_offset(0) {}
+
+  RegMask* live(const Node* node) {
+    if (!node->is_Mach() || !needs_liveness_data(node->as_Mach())) {
+      // Don't need liveness for non-MachNodes or if the GC doesn't request it
+      return nullptr;
+    }
+    RegMask* live = (RegMask*)_live[node->_idx];
+    if (live == nullptr) {
+      live = new (Compile::current()->comp_arena()->AmallocWords(sizeof(RegMask))) RegMask();
+      _live.map(node->_idx, (Node*)live);
+    }
+    return live;
+  }
+
+  void inc_trampoline_stubs_count() {
+    assert(_trampoline_stubs_count != INT_MAX, "Overflow");
+    ++_trampoline_stubs_count;
+  }
+
+  int trampoline_stubs_count() {
+    return _trampoline_stubs_count;
+  }
+
+  void set_stubs_start_offset(int offset) {
+    _stubs_start_offset = offset;
+  }
+
+  int stubs_start_offset() {
+    return _stubs_start_offset;
+  }
+
+  virtual bool needs_liveness_data(const MachNode* mach) { return false; };
+};
 
 // This is the top-level class for the backend of the Access API in C2.
 // The top-level class is responsible for performing raw accesses. The
@@ -302,6 +345,7 @@ public:
   virtual bool matcher_is_store_load_barrier(Node* x, uint xop) const { return false; }
 
   virtual void late_barrier_analysis() const { }
+  virtual void compute_liveness_at_stubs() const;
   virtual int estimate_stub_size() const { return 0; }
   virtual void emit_stubs(CodeBuffer& cb) const { }
 

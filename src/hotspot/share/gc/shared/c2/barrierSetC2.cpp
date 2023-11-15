@@ -24,15 +24,19 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/tlab_globals.hpp"
+#include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "opto/arraycopynode.hpp"
+#include "opto/block.hpp"
 #include "opto/convertnode.hpp"
 #include "opto/graphKit.hpp"
 #include "opto/idealKit.hpp"
 #include "opto/macro.hpp"
 #include "opto/narrowptrnode.hpp"
+#include "opto/regalloc.hpp"
 #include "opto/runtime.hpp"
 #include "utilities/macros.hpp"
+#include CPU_HEADER(gc/shared/barrierSetAssembler)
 
 // By default this is a no-op.
 void BarrierSetC2::resolve_address(C2Access& access) const { }
@@ -788,3 +792,77 @@ void BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac
 }
 
 #undef XTOP
+
+void BarrierSetC2::compute_liveness_at_stubs() const {
+  ResourceMark rm;
+  Compile* const C = Compile::current();
+  Arena* const A = Thread::current()->resource_area();
+  PhaseCFG* const cfg = C->cfg();
+  PhaseRegAlloc* const regalloc = C->regalloc();
+  RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks() * sizeof(RegMask));
+  BarrierSetAssembler* const bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  Block_List worklist;
+
+  for (uint i = 0; i < cfg->number_of_blocks(); ++i) {
+    new ((void*)(live + i)) RegMask();
+    worklist.push(cfg->get_block(i));
+  }
+
+  while (worklist.size() > 0) {
+    const Block* const block = worklist.pop();
+    RegMask& old_live = live[block->_pre_order];
+    RegMask new_live;
+
+    // Initialize to union of successors
+    for (uint i = 0; i < block->_num_succs; i++) {
+      const uint succ_id = block->_succs[i]->_pre_order;
+      new_live.OR(live[succ_id]);
+    }
+
+    // Walk block backwards, computing liveness
+    for (int i = block->number_of_nodes() - 1; i >= 0; --i) {
+      const Node* const node = block->get_node(i);
+
+      // Remove def bits
+      const OptoReg::Name first = bs->refine_register(node, regalloc->get_reg_first(node));
+      const OptoReg::Name second = bs->refine_register(node, regalloc->get_reg_second(node));
+      if (first != OptoReg::Bad) {
+        new_live.Remove(first);
+      }
+      if (second != OptoReg::Bad) {
+        new_live.Remove(second);
+      }
+
+      // Add use bits
+      for (uint j = 1; j < node->req(); ++j) {
+        const Node* const use = node->in(j);
+        const OptoReg::Name first = bs->refine_register(use, regalloc->get_reg_first(use));
+        const OptoReg::Name second = bs->refine_register(use, regalloc->get_reg_second(use));
+        if (first != OptoReg::Bad) {
+          new_live.Insert(first);
+        }
+        if (second != OptoReg::Bad) {
+          new_live.Insert(second);
+        }
+      }
+
+      // If this node tracks liveness, update it
+      BarrierSetC2State* barrier_set_state = reinterpret_cast<BarrierSetC2State*>(Compile::current()->barrier_set_state());
+      RegMask* const regs = barrier_set_state->live(node);
+      if (regs != NULL) {
+        regs->OR(new_live);
+      }
+    }
+
+    // Now at block top, see if we have any changes
+    new_live.SUBTRACT(old_live);
+    if (new_live.is_NotEmpty()) {
+      // Liveness has refined, update and propagate to prior blocks
+      old_live.OR(new_live);
+      for (uint i = 1; i < block->num_preds(); ++i) {
+        Block* const pred = cfg->get_block_for_node(block->pred(i));
+        worklist.push(pred);
+      }
+    }
+  }
+}
