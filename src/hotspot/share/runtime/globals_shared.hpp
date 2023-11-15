@@ -31,6 +31,13 @@
 
 #include <float.h> // for DBL_MAX
 
+// G1_LATE_BARRIER_MIGRATION_SUPPORT enables temporary support for migrating
+// from early to late barrier expansion (see JEP 475) for all platforms.
+#ifdef G1_LATE_BARRIER_MIGRATION_SUPPORT
+#error "G1_LATE_BARRIER_MIGRATION_SUPPORT already defined"
+#endif
+#define G1_LATE_BARRIER_MIGRATION_SUPPORT 1
+
 // The larger HeapWordSize for 64bit requires larger heaps
 // for the same application running in 64bit.  See bug 4967770.
 // The minimum alignment to a heap word size is done.  Other

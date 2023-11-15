@@ -113,6 +113,26 @@
 // Set by os layer.
 size_t      JavaThread::_stack_size_at_create = 0;
 
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+unsigned long long JavaThread::_total_store;
+unsigned long long JavaThread::_total_store_volatile;
+unsigned long long JavaThread::_total_store_encode;
+unsigned long long JavaThread::_total_store_nopost;
+unsigned long long JavaThread::_total_store_notnull;
+unsigned long long JavaThread::_total_atomic;
+unsigned long long JavaThread::_total_load;
+unsigned long long JavaThread::_total_pre_entry;
+unsigned long long JavaThread::_total_pre_marking;
+unsigned long long JavaThread::_total_pre_notnull;
+unsigned long long JavaThread::_total_pre_runtime;
+unsigned long long JavaThread::_total_post_entry;
+unsigned long long JavaThread::_total_post_inter;
+unsigned long long JavaThread::_total_post_notnull;
+unsigned long long JavaThread::_total_post_young;
+unsigned long long JavaThread::_total_post_clean;
+unsigned long long JavaThread::_total_post_runtime;
+#endif
+
 #ifdef DTRACE_ENABLED
 
 // Only bother with this argument setup if dtrace is available
@@ -435,6 +455,25 @@ JavaThread::JavaThread() :
   _suspend_flags(0),
 
   _thread_state(_thread_new),
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+  _store_counter(0),
+  _store_volatile_counter(0),
+  _store_encode_counter(0),
+  _store_nopost_counter(0),
+  _store_notnull_counter(0),
+  _atomic_counter(0),
+  _load_counter(0),
+  _pre_entry_counter(0),
+  _pre_marking_counter(0),
+  _pre_notnull_counter(0),
+  _pre_runtime_counter(0),
+  _post_entry_counter(0),
+  _post_inter_counter(0),
+  _post_notnull_counter(0),
+  _post_young_counter(0),
+  _post_clean_counter(0),
+  _post_runtime_counter(0),
+#endif
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
   _no_safepoint_count(0),
@@ -658,6 +697,26 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) : JavaThread
 }
 
 JavaThread::~JavaThread() {
+
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+  _total_store += _store_counter;
+  _total_store_volatile += _store_volatile_counter;
+  _total_store_encode += _store_encode_counter;
+  _total_store_nopost += _store_nopost_counter;
+  _total_store_notnull += _store_notnull_counter;
+  _total_atomic += _atomic_counter;
+  _total_load += _load_counter;
+  _total_pre_entry += _pre_entry_counter;
+  _total_pre_marking += _pre_marking_counter;
+  _total_pre_notnull += _pre_notnull_counter;
+  _total_pre_runtime += _pre_runtime_counter;
+  _total_post_entry += _post_entry_counter;
+  _total_post_inter += _post_inter_counter;
+  _total_post_notnull += _post_notnull_counter;
+  _total_post_young += _post_young_counter;
+  _total_post_clean += _post_clean_counter;
+  _total_post_runtime += _post_runtime_counter;
+#endif
 
   // Enqueue OopHandles for release by the service thread.
   add_oop_handles_for_release();
