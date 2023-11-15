@@ -74,8 +74,6 @@ public:
 
 class G1BarrierSetC2: public CardTableBarrierSetC2 {
 protected:
-  void compute_liveness_at_stubs() const;
-
   virtual void pre_barrier(GraphKit* kit,
                            bool do_load,
                            Node* ctl,
