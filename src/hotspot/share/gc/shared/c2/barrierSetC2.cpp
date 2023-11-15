@@ -109,6 +109,10 @@ Label* BarrierStubC2::continuation() {
   return &_continuation;
 }
 
+uint8_t BarrierStubC2::barrier_data() const {
+  return _node->barrier_data();
+}
+
 void BarrierStubC2::preserve(Register r) {
   const VMReg vm_reg = r->as_VMReg();
   assert(vm_reg->is_Register(), "r must be a general-purpose register");
@@ -812,6 +816,55 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobi
   fast_oop_ctrl = needgc_false;
   fast_oop_rawmem = store_tlab_top;
   return old_tlab_top;
+}
+
+static const TypeFunc* clone_type() {
+  // Create input type (domain)
+  int argcnt = NOT_LP64(3) LP64_ONLY(4);
+  const Type** const domain_fields = TypeTuple::fields(argcnt);
+  int argp = TypeFunc::Parms;
+  domain_fields[argp++] = TypeInstPtr::NOTNULL;  // src
+  domain_fields[argp++] = TypeInstPtr::NOTNULL;  // dst
+  domain_fields[argp++] = TypeX_X;               // size lower
+  LP64_ONLY(domain_fields[argp++] = Type::HALF); // size upper
+  assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+  const TypeTuple* const domain = TypeTuple::make(TypeFunc::Parms + argcnt, domain_fields);
+
+  // Create result type (range)
+  const Type** const range_fields = TypeTuple::fields(0);
+  const TypeTuple* const range = TypeTuple::make(TypeFunc::Parms + 0, range_fields);
+
+  return TypeFunc::make(domain, range);
+}
+
+void BarrierSetC2::clone_instance_in_runtime(PhaseMacroExpand* phase, ArrayCopyNode* ac,
+                                             address clone_addr, const char* clone_name) const {
+  assert(ac->is_clone_inst(), "this function is only defined for cloning class instances");
+  Node* const ctrl       = ac->in(TypeFunc::Control);
+  Node* const mem        = ac->in(TypeFunc::Memory);
+  Node* const src        = ac->in(ArrayCopyNode::Src);
+  Node* const dst        = ac->in(ArrayCopyNode::Dest);
+  Node* const size       = ac->in(ArrayCopyNode::Length);
+
+  assert(size->bottom_type()->is_long(), "Should be long");
+
+  // The native clone we are calling here expects the instance size in words.
+  // Add header/offset size to payload size to get instance size.
+  Node* const base_offset = phase->longcon(arraycopy_payload_base_offset(ac->is_clone_array()) >> LogBytesPerLong);
+  Node* const full_size = phase->transform_later(new AddLNode(size, base_offset));
+
+  Node* const call = phase->make_leaf_call(ctrl,
+                                           mem,
+                                           clone_type(),
+                                           clone_addr,
+                                           clone_name,
+                                           TypeRawPtr::BOTTOM,
+                                           src,
+                                           dst,
+                                           full_size,
+                                           phase->top());
+  phase->transform_later(call);
+  phase->igvn().replace_node(ac, call);
 }
 
 #define XTOP LP64_ONLY(COMMA phase->top())
