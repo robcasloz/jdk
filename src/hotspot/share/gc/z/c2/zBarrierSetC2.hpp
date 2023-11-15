@@ -108,7 +108,6 @@ public:
 
 class ZBarrierSetC2 : public BarrierSetC2 {
 private:
-  void compute_liveness_at_stubs() const;
   void analyze_dominating_barriers_impl(Node_List& accesses, Node_List& access_dominators) const;
   void analyze_dominating_barriers() const;
 
