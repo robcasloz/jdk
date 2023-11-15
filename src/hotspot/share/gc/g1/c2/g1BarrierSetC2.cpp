@@ -1089,40 +1089,24 @@ Node* G1BarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node*
 
 // == Super late barrier expansion support
 
-class G1BarrierSetC2State : public ArenaObj {
+class G1BarrierSetC2State : public BarrierSetC2State {
 private:
   GrowableArray<G1BarrierStubC2*>* _stubs;
-  Node_Array                       _live;
 
 public:
-  G1BarrierSetC2State(Arena* arena) :
-    _stubs(new (arena) GrowableArray<G1BarrierStubC2*>(arena, 8,  0, NULL)),
-    _live(arena) {}
+  G1BarrierSetC2State(Arena* arena)
+    : BarrierSetC2State(arena),
+      _stubs(new (arena) GrowableArray<G1BarrierStubC2*>(arena, 8,  0, NULL)) {}
 
   GrowableArray<G1BarrierStubC2*>* stubs() {
     return _stubs;
   }
 
-  RegMask* live(const Node* node) {
-    if (!node->is_Mach()) {
-      // Don't need liveness for non-MachNodes
-      return NULL;
-    }
-
-    const MachNode* const mach = node->as_Mach();
-    if (mach->barrier_data() == G1C2BarrierElided) {
-      // Don't need liveness data for nodes without barriers
-      return NULL;
-    }
-
-    RegMask* live = (RegMask*)_live[node->_idx];
-    if (live == NULL) {
-      live = new (Compile::current()->comp_arena()->AmallocWords(sizeof(RegMask))) RegMask();
-      _live.map(node->_idx, (Node*)live);
-    }
-
-    return live;
+  bool needs_liveness_data(const MachNode* mach) {
+    // Don't need liveness data for nodes without barriers
+    return mach->barrier_data() != G1C2BarrierElided;
   }
+
 };
 
 static G1BarrierSetC2State* barrier_set_state() {
@@ -1263,80 +1247,4 @@ void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
 int G1BarrierSetC2::estimate_stub_size() const {
   // TODO: Do something clever
   return 0;
-}
-
-// == Reduced spilling optimization ==
-// TODO: factor out from here and ZBarrierSetC2::compute_liveness_at_stubs()
-
-void G1BarrierSetC2::compute_liveness_at_stubs() const {
-  ResourceMark rm;
-  Compile* const C = Compile::current();
-  Arena* const A = Thread::current()->resource_area();
-  PhaseCFG* const cfg = C->cfg();
-  PhaseRegAlloc* const regalloc = C->regalloc();
-  RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks() * sizeof(RegMask));
-  BarrierSetAssembler* const bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  Block_List worklist;
-
-  for (uint i = 0; i < cfg->number_of_blocks(); ++i) {
-    new ((void*)(live + i)) RegMask();
-    worklist.push(cfg->get_block(i));
-  }
-
-  while (worklist.size() > 0) {
-    const Block* const block = worklist.pop();
-    RegMask& old_live = live[block->_pre_order];
-    RegMask new_live;
-
-    // Initialize to union of successors
-    for (uint i = 0; i < block->_num_succs; i++) {
-      const uint succ_id = block->_succs[i]->_pre_order;
-      new_live.OR(live[succ_id]);
-    }
-
-    // Walk block backwards, computing liveness
-    for (int i = block->number_of_nodes() - 1; i >= 0; --i) {
-      const Node* const node = block->get_node(i);
-
-      // Remove def bits
-      const OptoReg::Name first = bs->refine_register(node, regalloc->get_reg_first(node));
-      const OptoReg::Name second = bs->refine_register(node, regalloc->get_reg_second(node));
-      if (first != OptoReg::Bad) {
-        new_live.Remove(first);
-      }
-      if (second != OptoReg::Bad) {
-        new_live.Remove(second);
-      }
-
-      // Add use bits
-      for (uint j = 1; j < node->req(); ++j) {
-        const Node* const use = node->in(j);
-        const OptoReg::Name first = bs->refine_register(use, regalloc->get_reg_first(use));
-        const OptoReg::Name second = bs->refine_register(use, regalloc->get_reg_second(use));
-        if (first != OptoReg::Bad) {
-          new_live.Insert(first);
-        }
-        if (second != OptoReg::Bad) {
-          new_live.Insert(second);
-        }
-      }
-
-      // If this node tracks liveness, update it
-      RegMask* const regs = barrier_set_state()->live(node);
-      if (regs != NULL) {
-        regs->OR(new_live);
-      }
-    }
-
-    // Now at block top, see if we have any changes
-    new_live.SUBTRACT(old_live);
-    if (new_live.is_NotEmpty()) {
-      // Liveness has refined, update and propagate to prior blocks
-      old_live.OR(new_live);
-      for (uint i = 1; i < block->num_preds(); ++i) {
-        Block* const pred = cfg->get_block_for_node(block->pred(i));
-        worklist.push(pred);
-      }
-    }
-  }
 }
