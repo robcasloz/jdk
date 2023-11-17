@@ -41,7 +41,7 @@ class MachNode;
 
 class MacroAssembler;
 
-class ZBarrierStubC2 : public ArenaObj {
+class ZBarrierStubC2 : public BarrierStubC2 {
 protected:
   const MachNode* _node;
   Label           _entry;

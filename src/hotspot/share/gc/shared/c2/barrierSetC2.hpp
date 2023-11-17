@@ -204,6 +204,12 @@ public:
   virtual bool is_opt_access() const { return true; }
 };
 
+class BarrierStubC2 : public ArenaObj {
+public:
+  virtual RegMask& live() const = 0;
+  virtual Register result() const = 0;
+};
+
 class BarrierSetC2State : public ArenaObj {
 protected:
   Node_Array                      _live;
