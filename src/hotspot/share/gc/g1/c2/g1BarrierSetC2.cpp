@@ -1130,26 +1130,34 @@ G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, Register tm
     _tmp3(tmp3),
     _slow_path(slow_path) {}
 
-Register G1BarrierStubC2::tmp1() {
+Register G1BarrierStubC2::arg() const {
+  return _arg;
+}
+
+Register G1BarrierStubC2::tmp1() const {
   return _tmp1;
 }
 
-Register G1BarrierStubC2::tmp2() {
+Register G1BarrierStubC2::tmp2() const {
   return _tmp2;
 }
 
-Register G1BarrierStubC2::tmp3() {
+Register G1BarrierStubC2::tmp3() const {
   return _tmp3;
-}
-
-Register G1BarrierStubC2::arg() {
-  return _arg;
 }
 
 RegMask& G1BarrierStubC2::live() const {
   RegMask* mask = barrier_set_state()->live(_node);
   assert(mask != NULL, "must be mach-node with barrier");
-  return *mask;
+  RegMask& live = *mask;
+  live.Insert(OptoReg::as_OptoReg(tmp1()->as_VMReg()));
+  if (tmp2() != noreg) {
+    live.Insert(OptoReg::as_OptoReg(tmp2()->as_VMReg()));
+  }
+  if (tmp3() != noreg) {
+    live.Insert(OptoReg::as_OptoReg(tmp3()->as_VMReg()));
+  }
+  return live;
 }
 
 Label* G1BarrierStubC2::entry() {
@@ -1162,6 +1170,10 @@ Label* G1BarrierStubC2::entry() {
 
 Label* G1BarrierStubC2::continuation() {
   return &_continuation;
+}
+
+Register G1BarrierStubC2::result() const {
+  return noreg;
 }
 
 address G1BarrierStubC2::slow_path() {
