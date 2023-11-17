@@ -39,7 +39,7 @@ const int G1C2BarrierPost        = 2;
 const int G1C2BarrierPostPrecise = 4;
 const int G1C2BarrierElided      = 8;
 
-class G1BarrierStubC2 : public ArenaObj {
+class G1BarrierStubC2 : public BarrierStubC2 {
   const MachNode* _node;
 
   Register _arg;
@@ -58,15 +58,16 @@ public:
 
   RegMask& live() const;
 
-  Register arg();
+  Register arg() const;
 
-  Register tmp1();
-  Register tmp2();
-  Register tmp3();
+  Register tmp1() const;
+  Register tmp2() const;
+  Register tmp3() const;
 
   Label* entry();
   Label* continuation();
 
+  Register result() const;
   address slow_path();
 
   static G1BarrierStubC2* create(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path);
