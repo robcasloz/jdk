@@ -1104,6 +1104,7 @@ public:
 
   bool needs_liveness_data(const MachNode* mach) {
     // Don't need liveness data for nodes without barriers
+    // TODO: exclude all nodes that do not require a barrier.
     return mach->barrier_data() != G1C2BarrierElided;
   }
 
@@ -1150,13 +1151,12 @@ RegMask& G1BarrierStubC2::live() const {
   RegMask* mask = barrier_set_state()->live(_node);
   assert(mask != NULL, "must be mach-node with barrier");
   RegMask& live = *mask;
-  live.Insert(OptoReg::as_OptoReg(tmp1()->as_VMReg()));
-  if (tmp2() != noreg) {
-    live.Insert(OptoReg::as_OptoReg(tmp2()->as_VMReg()));
-  }
-  if (tmp3() != noreg) {
-    live.Insert(OptoReg::as_OptoReg(tmp3()->as_VMReg()));
-  }
+  assert(tmp1() == noreg || live.Member(OptoReg::as_OptoReg(tmp1()->as_VMReg())),
+         "reg(tmp1) should be in live-in set");
+  assert(tmp2() == noreg || live.Member(OptoReg::as_OptoReg(tmp2()->as_VMReg())),
+         "reg(tmp2) should be in live-in set");
+  assert(tmp3() == noreg || live.Member(OptoReg::as_OptoReg(tmp3()->as_VMReg())),
+         "reg(tmp3) should be in live-in set");
   return live;
 }
 
