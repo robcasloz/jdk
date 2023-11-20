@@ -40,8 +40,6 @@ const int G1C2BarrierPostPrecise = 4;
 const int G1C2BarrierElided      = 8;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
-  const MachNode* _node;
-
   Register _arg;
 
   Register _tmp1;
@@ -55,8 +53,6 @@ class G1BarrierStubC2 : public BarrierStubC2 {
 
 public:
   G1BarrierStubC2(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path);
-
-  RegMask& live() const;
 
   Register arg() const;
 
