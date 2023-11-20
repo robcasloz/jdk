@@ -33,7 +33,7 @@ source %{
 #include "gc/g1/g1BarrierSetRuntime.hpp"
 
 static void g1_pre_write_barrier(MacroAssembler& _masm,
-                                 const MachNode* node, 
+                                 const MachNode* node,
                                  Register obj,
                                  Register pre_val,
                                  Register tmp,
@@ -62,7 +62,7 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
 }
 
 static void g1_post_write_barrier(MacroAssembler& _masm,
-                                  const MachNode* node, 
+                                  const MachNode* node,
                                   Register store_addr,
                                   Register new_val,
                                   Register tmp1,
@@ -165,7 +165,7 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   ins_pipe(ialu_mem_reg);
 %}
 
-instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr) 
+instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set oldval (CompareAndExchangeP mem (Binary oldval newval)));
@@ -205,7 +205,7 @@ instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRe
   ins_pipe(pipe_cmpxchg);
 %}
 
-instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegN oldval, rFlagsReg cr) 
+instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegN oldval, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set oldval (CompareAndExchangeN mem (Binary oldval newval)));
@@ -245,7 +245,7 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
   ins_pipe(pipe_cmpxchg);
 %}
 
-instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr) 
+instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set res (CompareAndSwapP mem (Binary oldval newval)));
@@ -289,7 +289,7 @@ instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rR
   ins_pipe(pipe_cmpxchg);
 %}
 
-instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegN oldval, rFlagsReg cr) 
+instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegN oldval, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set res (CompareAndSwapN mem (Binary oldval newval)));
@@ -334,7 +334,7 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
   ins_pipe(pipe_cmpxchg);
 %}
 
-instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr) 
+instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set newval (GetAndSetP mem newval));
@@ -370,7 +370,7 @@ instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
   ins_pipe(pipe_cmpxchg);
 %}
 
-instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr) 
+instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set newval (GetAndSetN mem newval));
