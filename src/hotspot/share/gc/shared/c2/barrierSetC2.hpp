@@ -204,12 +204,6 @@ public:
   virtual bool is_opt_access() const { return true; }
 };
 
-class BarrierStubC2 : public ArenaObj {
-public:
-  virtual RegMask& live() const = 0;
-  virtual Register result() const = 0;
-};
-
 class BarrierSetC2State : public ArenaObj {
 protected:
   Node_Array                      _live;
@@ -253,6 +247,21 @@ public:
   }
 
   virtual bool needs_liveness_data(const MachNode* mach) { return false; };
+};
+
+class BarrierStubC2 : public ArenaObj {
+protected:
+  const MachNode* _node;
+
+public:
+  BarrierStubC2(const MachNode* node) : _node(node) {}
+
+  RegMask& live() {
+    void* state = Compile::current()->barrier_set_state();
+    return *reinterpret_cast<BarrierSetC2State*>(state)->live(_node);
+  }
+
+  virtual Register result() const = 0;
 };
 
 // This is the top-level class for the backend of the Access API in C2.
