@@ -43,7 +43,6 @@ class MacroAssembler;
 
 class ZBarrierStubC2 : public BarrierStubC2 {
 protected:
-  const MachNode* _node;
   Label           _entry;
   Label           _continuation;
 
@@ -55,7 +54,6 @@ static int stubs_start_offset();
   ZBarrierStubC2(const MachNode* node);
 
 public:
-  RegMask& live() const;
   Label* entry();
   Label* continuation();
 
