@@ -789,6 +789,9 @@
                                                                             \
   develop(bool, StressPrunedExceptionHandlers, false,                       \
           "Always prune exception handlers")                                \
+                                                                            \
+  notproduct(bool, TraceStubLiveness, false,                                \
+          "Trace liveness computation for GC stubs")                        \
 
 // end of C2_FLAGS
 
