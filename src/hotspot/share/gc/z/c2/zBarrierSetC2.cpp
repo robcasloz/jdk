@@ -165,16 +165,12 @@ int ZBarrierStubC2::stubs_start_offset() {
 }
 
 ZBarrierStubC2::ZBarrierStubC2(const MachNode* node)
-  : _node(node),
+  : BarrierStubC2(node),
     _entry(),
     _continuation() {}
 
 Register ZBarrierStubC2::result() const {
   return noreg;
-}
-
-RegMask& ZBarrierStubC2::live() const {
-  return *barrier_set_state()->live(_node);
 }
 
 Label* ZBarrierStubC2::entry() {

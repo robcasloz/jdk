@@ -1124,7 +1124,7 @@ G1BarrierStubC2* G1BarrierStubC2::create(const MachNode* node, Register arg, Reg
 }
 
 G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path)
-  : _node(node),
+  : BarrierStubC2(node),
     _arg(arg),
     _tmp1(tmp1),
     _tmp2(tmp2),
@@ -1145,19 +1145,6 @@ Register G1BarrierStubC2::tmp2() const {
 
 Register G1BarrierStubC2::tmp3() const {
   return _tmp3;
-}
-
-RegMask& G1BarrierStubC2::live() const {
-  RegMask* mask = barrier_set_state()->live(_node);
-  assert(mask != NULL, "must be mach-node with barrier");
-  RegMask& live = *mask;
-  assert(tmp1() == noreg || live.Member(OptoReg::as_OptoReg(tmp1()->as_VMReg())),
-         "reg(tmp1) should be in live-in set");
-  assert(tmp2() == noreg || live.Member(OptoReg::as_OptoReg(tmp2()->as_VMReg())),
-         "reg(tmp2) should be in live-in set");
-  assert(tmp3() == noreg || live.Member(OptoReg::as_OptoReg(tmp3()->as_VMReg())),
-         "reg(tmp3) should be in live-in set");
-  return live;
 }
 
 Label* G1BarrierStubC2::entry() {
