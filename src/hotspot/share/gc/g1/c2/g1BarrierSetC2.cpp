@@ -603,23 +603,18 @@ void G1BarrierSetC2::insert_pre_barrier(GraphKit* kit, Node* base_oop, Node* off
 
 Node* G1BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) const {
   DecoratorSet decorators = access.decorators();
-
   bool on_weak = (decorators & ON_WEAK_OOP_REF) != 0;
   bool on_phantom = (decorators & ON_PHANTOM_OOP_REF) != 0;
   bool no_keepalive = (decorators & AS_NO_KEEPALIVE) != 0;
-
   // If we are reading the value of the referent field of a Reference
   // object then, if G1 is enabled, we need to record the referent in
   // an SATB log buffer using the pre-barrier mechanism.
   // Also we need to add memory barrier to prevent commoning reads
   // from this field across safepoint since GC can change its value.
   bool need_read_barrier = ((on_weak || on_phantom) && !no_keepalive);
-
-  if (!access.is_oop() || !need_read_barrier) {
-    return CardTableBarrierSetC2::load_at_resolved(access, val_type);
+  if (access.is_oop() && need_read_barrier) {
+    access.set_barrier_data(G1C2BarrierPre);
   }
-
-  access.set_barrier_data(G1C2BarrierPre);
   return CardTableBarrierSetC2::load_at_resolved(access, val_type);
 }
 
@@ -1030,22 +1025,13 @@ bool G1BarrierSetC2::escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseG
 
 Node* G1BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) const {
   DecoratorSet decorators = access.decorators();
-
-  const TypePtr* adr_type = access.addr().type();
-  Node* adr = access.addr().node();
-
-  bool is_array = (decorators & IS_ARRAY) != 0;
   bool anonymous = (decorators & ON_UNKNOWN_OOP_REF) != 0;
   bool in_heap = (decorators & IN_HEAP) != 0;
-  bool use_precise = is_array || anonymous;
   bool tightly_coupled_alloc = (decorators & C2_TIGHTLY_COUPLED_ALLOC) != 0;
-
-  if (!access.is_oop() || tightly_coupled_alloc || (!in_heap && !anonymous)) {
-    return BarrierSetC2::store_at_resolved(access, val);
+  bool need_store_barrier = !tightly_coupled_alloc && (in_heap || anonymous);
+  if (access.is_oop() && need_store_barrier) {
+    access.set_barrier_data(get_store_barrier(access, val));
   }
-
-  access.set_barrier_data(get_store_barrier(access, val));
-
   return BarrierSetC2::store_at_resolved(access, val);
 }
 
