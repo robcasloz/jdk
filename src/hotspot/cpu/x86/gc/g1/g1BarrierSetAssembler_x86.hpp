@@ -39,6 +39,21 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
   virtual void gen_write_ref_array_pre_barrier(MacroAssembler* masm, DecoratorSet decorators, Register addr, Register count);
   virtual void gen_write_ref_array_post_barrier(MacroAssembler* masm, DecoratorSet decorators, Register addr, Register count, Register tmp);
 
+  void g1_write_barrier_pre_early(MacroAssembler* masm,
+                                  Register obj,
+                                  Register pre_val,
+                                  Register thread,
+                                  Register tmp,
+                                  bool tosca_live,
+                                  bool expand_call);
+
+  void g1_write_barrier_post_early(MacroAssembler* masm,
+                                   Register store_addr,
+                                   Register new_val,
+                                   Register thread,
+                                   Register tmp,
+                                   Register tmp2);
+
  public:
   void g1_write_barrier_pre(MacroAssembler* masm,
                             Register obj,
@@ -73,6 +88,7 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                        Register dst, Address src, Register tmp1, Register tmp_thread);
 
 #ifdef COMPILER2
+  static bool supports_c2_late_barrier_expansion() { return true; }
   void emit_c2_barrier_stub(MacroAssembler* masm, G1BarrierStubC2* stub);
 #endif // COMPILER2
 };
