@@ -42,6 +42,22 @@ protected:
   void gen_write_ref_array_post_barrier(MacroAssembler* masm, DecoratorSet decorators,
                                         Register start, Register count, Register tmp, RegSet saved_regs);
 
+  void g1_write_barrier_pre_early(MacroAssembler* masm,
+                                  Register obj,
+                                  Register pre_val,
+                                  Register thread,
+                                  Register tmp1,
+                                  Register tmp2,
+                                  bool tosca_live,
+                                  bool expand_call);
+
+  void g1_write_barrier_post_early(MacroAssembler* masm,
+                                   Register store_addr,
+                                   Register new_val,
+                                   Register thread,
+                                   Register tmp1,
+                                   Register tmp2);
+
 public:
   void g1_write_barrier_pre(MacroAssembler* masm,
                             Register obj,
@@ -76,6 +92,7 @@ public:
 #endif
 
 #ifdef COMPILER2
+  static bool supports_c2_late_barrier_expansion() { return true; }
   void emit_c2_barrier_stub(MacroAssembler* masm, G1BarrierStubC2* stub);
 #endif
 
