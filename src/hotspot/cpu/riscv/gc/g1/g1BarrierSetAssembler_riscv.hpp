@@ -72,6 +72,10 @@ public:
   void generate_c1_post_barrier_runtime_stub(StubAssembler* sasm);
 #endif
 
+#ifdef COMPILER2
+  static bool supports_c2_late_barrier_expansion() { return false; }
+#endif
+
   void load_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                Register dst, Address src, Register tmp1, Register tmp2);
 };
