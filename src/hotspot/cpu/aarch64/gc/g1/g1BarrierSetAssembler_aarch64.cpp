@@ -450,68 +450,6 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 #if defined(COMPILER2)
 
 #undef __
-#define __ _masm->
-
-class G1SaveLiveRegisters {
-private:
-  MacroAssembler* const _masm;
-  RegSet                _gp_regs;
-  FloatRegSet           _fp_regs;
-  PRegSet               _p_regs;
-
-public:
-  void initialize(G1BarrierStubC2* stub) {
-    // Record registers that needs to be saved/restored
-    RegMaskIterator rmi(stub->live());
-    while (rmi.has_next()) {
-      const OptoReg::Name opto_reg = rmi.next();
-      if (OptoReg::is_reg(opto_reg)) {
-        const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);
-        if (vm_reg->is_Register()) {
-          _gp_regs += RegSet::of(vm_reg->as_Register());
-        } else if (vm_reg->is_FloatRegister()) {
-          _fp_regs += FloatRegSet::of(vm_reg->as_FloatRegister());
-        } else if (vm_reg->is_PRegister()) {
-          _p_regs += PRegSet::of(vm_reg->as_PRegister());
-        } else {
-          fatal("Unknown register type");
-        }
-      }
-    }
-
-    // Remove C-ABI SOE registers, scratch regs that will be updated
-    _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
-  }
-
-  G1SaveLiveRegisters(MacroAssembler* masm, G1BarrierStubC2* stub)
-    : _masm(masm),
-      _gp_regs(),
-      _fp_regs(),
-      _p_regs() {
-
-    // Figure out what registers to save/restore
-    initialize(stub);
-
-    // Save registers
-    __ push(_gp_regs, sp);
-    __ push_fp(_fp_regs, sp);
-    __ push_p(_p_regs, sp);
-  }
-
-  ~G1SaveLiveRegisters() {
-    // Restore registers
-    __ pop_p(_p_regs, sp);
-    __ pop_fp(_fp_regs, sp);
-
-    // External runtime call may clobber ptrue reg
-    __ reinitialize_ptrue();
-
-    __ pop(_gp_regs, sp);
-  }
-
-};
-
-#undef __
 #define __ masm->
 
 void G1BarrierSetAssembler::emit_c2_barrier_stub(MacroAssembler* masm, G1BarrierStubC2* stub) {
@@ -519,7 +457,7 @@ void G1BarrierSetAssembler::emit_c2_barrier_stub(MacroAssembler* masm, G1Barrier
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   __ bind(*stub->entry());
   {
-    G1SaveLiveRegisters save_registers(masm, stub);
+    SaveLiveRegisters save_registers(masm, stub);
     if (c_rarg0 != stub->arg()) {
       __ mov(c_rarg0, stub->arg());
     }

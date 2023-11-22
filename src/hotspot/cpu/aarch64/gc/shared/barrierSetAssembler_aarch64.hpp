@@ -32,6 +32,7 @@
 #include "oops/access.hpp"
 #include "oops/accessDecorators.hpp"
 #ifdef COMPILER2
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "opto/optoreg.hpp"
 #endif // COMPILER2
 
@@ -140,6 +141,22 @@ public:
 
   OptoReg::Name refine_register(const Node* node,
                                 OptoReg::Name opto_reg);
+};
+
+class SaveLiveRegisters {
+
+protected:
+  MacroAssembler* const _masm;
+  RegSet                _gp_regs;
+  FloatRegSet           _fp_regs;
+  PRegSet               _p_regs;
+
+  void initialize(BarrierStubC2* stub);
+
+public:
+  SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub);
+
+  ~SaveLiveRegisters();
 };
 
 #endif // CPU_AARCH64_GC_SHARED_BARRIERSETASSEMBLER_AARCH64_HPP
