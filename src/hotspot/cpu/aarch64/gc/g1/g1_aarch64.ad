@@ -102,7 +102,7 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   ins_cost(125); // XXX
-  format %{ "movq    $mem, $src\t# ptr" %}
+  format %{ "str  $src, $mem\t# ptr" %}
   ins_encode %{
     DecoratorSet decorators = IN_HEAP;
     const Address ref_addr = Address($mem$$Register, 0);
@@ -142,7 +142,7 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   ins_cost(125); // XXX
-  format %{ "movq    $mem, $src\t# ptr" %}
+  format %{ "stlr  $src, $mem\t# ptr" %}
   ins_encode %{
     DecoratorSet decorators = IN_HEAP;
 
@@ -262,7 +262,7 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t" %}
+  format %{ "cmpxchg $res = $mem, $oldval, $newval\t# ptr" %}
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
@@ -310,7 +310,7 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t" %}
+  format %{ "cmpxchg_acq $res = $mem, $oldval, $newval\t# ptr" %}
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
@@ -358,7 +358,7 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t" %}
+  format %{ "cmpxchg $res = $mem, $oldval, $newval\t# narrow oop" %}
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
@@ -408,7 +408,7 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t" %}
+  format %{ "cmpxchg_acq $res = $mem, $oldval, $newval\t# narrow oop" %}
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
@@ -459,7 +459,7 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t"
+  format %{ "cmpxchg $mem, $oldval, $newval\t# (ptr)\n\t"
             "cset    $res, EQ" %}
 
   ins_encode %{
@@ -510,8 +510,8 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t"
-            "cset    $res, EQ" %}
+  format %{ "cmpxchg_acq $mem, $oldval, $newval\t# (ptr)\n\t"
+            "cset        $res, EQ" %}
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
@@ -561,7 +561,7 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t"
+  format %{ "cmpxchg $mem, $oldval, $newval\t# (narrow oop)\n\t"
             "cset    $res, EQ" %}
 
   ins_encode %{
@@ -613,8 +613,8 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "cmpxchg $mem, $oldval, $newval\n\t"
-            "cset    $res, EQ" %}
+  format %{ "cmpxchg_acq $mem, $oldval, $newval\t# (narrow oop)\n\t"
+            "cset        $res, EQ" %}
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
@@ -663,7 +663,7 @@ instruct g1XChgP(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "xchgq    $newval, $mem" %}
+  format %{ "atomic_xchg  $preval, $newval, [$mem]" %}
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
@@ -706,7 +706,7 @@ instruct g1XChgPAcq(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "xchgq    $newval, $mem" %}
+  format %{ "atomic_xchg_acq  $preval, $newval, [$mem]" %}
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
@@ -749,7 +749,7 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "xchgq    $newval, $mem" %}
+  format %{ "atomic_xchgw $preval, $newval, [$mem]" %}
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
@@ -796,7 +796,7 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
 
   ins_cost(2 * VOLATILE_REF_COST);
 
-  format %{ "xchgq    $newval, $mem" %}
+  format %{ "atomic_xchgw_acq $preval, $newval, [$mem]" %}
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
@@ -843,7 +843,7 @@ instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFla
   effect(TEMP dst, TEMP tmp1, TEMP tmp2, KILL cr);
 
   ins_cost(4 * INSN_COST);
-  format %{ "movq    $dst, $mem\t# ptr" %}
+  format %{ "ldr  $dst, $mem\t# ptr" %}
   ins_encode %{
     const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
     __ ldr($dst$$Register, ref_addr);
@@ -870,7 +870,7 @@ instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   effect(TEMP dst, TEMP tmp1, TEMP tmp2, KILL cr);
 
   ins_cost(VOLATILE_REF_COST);
-  format %{ "movq    $dst, $mem\t# ptr" %}
+  format %{ "ldar  $dst, $mem\t# ptr" %}
   ins_encode %{
     const Address ref_addr = Address($mem$$Register);
     __ ldar($dst$$Register, $mem$$Register);
@@ -897,7 +897,7 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
   effect(TEMP dst, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   ins_cost(4 * INSN_COST);
-  format %{ "movq    $dst, $mem\t# ptr" %}
+  format %{ "ldrw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
     const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
     __ ldrw($dst$$Register, ref_addr);
@@ -929,7 +929,7 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   effect(TEMP dst, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   ins_cost(VOLATILE_REF_COST);
-  format %{ "movq    $dst, $mem\t# ptr" %}
+  format %{ "ldarw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
     const Address ref_addr = Address($mem$$Register);
     __ ldarw($dst$$Register, $mem$$Register);
