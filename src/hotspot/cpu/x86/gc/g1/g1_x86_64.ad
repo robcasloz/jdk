@@ -354,11 +354,12 @@ instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                          $tmp2$$Register /* node_tmp2 */,
                          $tmp3$$Register /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
+    __ movq($tmp1$$Register, $newval$$Register);
     __ xchgq($newval$$Register, mem_addr);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
-                          $newval$$Register /* new_val */,
+                          $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
                           $tmp1$$Register /* node_tmp1 */,
