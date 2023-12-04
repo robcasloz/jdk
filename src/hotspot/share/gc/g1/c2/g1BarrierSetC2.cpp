@@ -457,17 +457,17 @@ void G1BarrierSetC2::post_barrier(GraphKit* kit,
     Node* xor_res =  __ URShiftX ( __ XorX( cast,  __ CastPX(__ ctrl(), val)), __ ConI(checked_cast<jint>(HeapRegion::LogOfHRGrainBytes)));
 
     // if (xor_res == 0) same region so skip
-    __ if_then(xor_res, BoolTest::ne, zeroX, likely); {
+    __ if_then(xor_res, BoolTest::ne, zeroX); {
 
       // No barrier if we are storing a null.
-      __ if_then(val, BoolTest::ne, kit->null(), likely); {
+      __ if_then(val, BoolTest::ne, kit->null(), unlikely); {
 
         // Ok must mark the card if not already dirty
 
         // load the original value of the card
         Node* card_val = __ load(__ ctrl(), card_adr, TypeInt::INT, T_BYTE, Compile::AliasIdxRaw);
 
-        __ if_then(card_val, BoolTest::ne, young_card, unlikely); {
+        __ if_then(card_val, BoolTest::ne, young_card); {
           kit->sync_kit(ideal);
           kit->insert_mem_bar(Op_MemBarVolatile, oop_store);
           __ sync_kit(kit);
