@@ -129,11 +129,15 @@ Node* ModRefBarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, N
   // Don't need to load pre_val. The old value is returned by load_store.
   // The pre_barrier can execute after the xchg as long as no safepoint
   // gets inserted between them.
+  if (!UseNewCode) {
   pre_barrier(kit, false /* do_load */,
               kit->control(), nullptr, nullptr, max_juint, nullptr, nullptr,
               result /* pre_val */, T_OBJECT);
+  }
+  if (!UseNewCode2) {
   post_barrier(kit, kit->control(), access.raw_access(), access.base(), access.addr().node(),
                access.alias_idx(), new_val, T_OBJECT, true);
+  }
 
   return result;
 }
