@@ -104,6 +104,7 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "str  $src, $mem\t# ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1StoreP");
     DecoratorSet decorators = IN_HEAP;
     const Address ref_addr = Address($mem$$Register, 0);
 
@@ -144,6 +145,7 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
   ins_cost(125); // XXX
   format %{ "stlr  $src, $mem\t# ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1StorePVolatile");
     DecoratorSet decorators = IN_HEAP;
 
     g1_pre_write_barrier(_masm /* _masm */,
@@ -182,6 +184,7 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "strw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1StoreN");
     DecoratorSet decorators = IN_HEAP;
     const Address ref_addr = Address($mem$$Register, 0);
 
@@ -223,6 +226,7 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
   ins_cost(125); // XXX
   format %{ "stlrw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1StoreNVolatile");
     DecoratorSet decorators = IN_HEAP;
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
@@ -265,6 +269,7 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
   format %{ "cmpxchg $res = $mem, $oldval, $newval\t# ptr" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndExchangeP (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -313,6 +318,7 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
   format %{ "cmpxchg_acq $res = $mem, $oldval, $newval\t# ptr" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndExchangePAcq (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -361,6 +367,7 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
   format %{ "cmpxchg $res = $mem, $oldval, $newval\t# narrow oop" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndExchangeN (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -411,6 +418,7 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
   format %{ "cmpxchg_acq $res = $mem, $oldval, $newval\t# narrow oop" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndExchangeNAcq (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -463,6 +471,7 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
             "cset    $res, EQ" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndSwapP (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -514,6 +523,7 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
             "cset        $res, EQ" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndSwapPAcq (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -565,6 +575,7 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
             "cset    $res, EQ" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndSwapN (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -617,6 +628,7 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
             "cset        $res, EQ" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1CompareAndSwapNAcq (atomic)");
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($oldval$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
@@ -666,6 +678,7 @@ instruct g1XChgP(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   format %{ "atomic_xchg  $preval, $newval, [$mem]" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1XChgP (atomic)");
     assert_different_registers($mem$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
 
@@ -709,6 +722,7 @@ instruct g1XChgPAcq(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
   format %{ "atomic_xchg_acq  $preval, $newval, [$mem]" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1XChgPAcq (atomic)");
     assert_different_registers($mem$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
 
@@ -752,6 +766,7 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   format %{ "atomic_xchgw $preval, $newval, [$mem]" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1XChgN (atomic)");
     assert_different_registers($mem$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
 
@@ -799,6 +814,7 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
   format %{ "atomic_xchgw_acq $preval, $newval, [$mem]" %}
 
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1XChgNAcq (atomic)");
     assert_different_registers($mem$$Register, $newval$$Register);
     DecoratorSet decorators = IN_HEAP;
 
@@ -845,6 +861,7 @@ instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFla
   ins_cost(4 * INSN_COST);
   format %{ "ldr  $dst, $mem\t# ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1LoadP");
     const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
     __ ldr($dst$$Register, ref_addr);
     g1_pre_write_barrier(_masm /* _masm */,
@@ -872,6 +889,7 @@ instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_cost(VOLATILE_REF_COST);
   format %{ "ldar  $dst, $mem\t# ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1LoadPVolatile");
     const Address ref_addr = Address($mem$$Register);
     __ ldar($dst$$Register, $mem$$Register);
     g1_pre_write_barrier(_masm /* _masm */,
@@ -899,6 +917,7 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
   ins_cost(4 * INSN_COST);
   format %{ "ldrw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1LoadN");
     const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
     __ ldrw($dst$$Register, ref_addr);
     __ mov($tmp1$$Register, $dst$$Register);
@@ -931,6 +950,7 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_cost(VOLATILE_REF_COST);
   format %{ "ldarw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
+    if (UseNewCode) tty->print_cr("g1LoadNVolatile");
     const Address ref_addr = Address($mem$$Register);
     __ ldarw($dst$$Register, $mem$$Register);
     __ mov($tmp1$$Register, $dst$$Register);
