@@ -1074,7 +1074,7 @@ bool CompilerOracle::parse_from_file() {
 }
 
 bool CompilerOracle::parse_from_string(const char* str, bool (*parse_line)(char*)) {
-  char token[1024];
+  char token[65536];
   int  pos = 0;
   const char* sp = str;
   int  c = *sp++;
