@@ -280,6 +280,14 @@ void CompileTask::print_impl(outputStream* st, Method* method, int compile_id, i
   if (cr) {
     st->cr();
   }
+  if (UseNewCode && cr) {
+    st->print("CompileOnlyLine: \"");
+    if (method != nullptr) {
+      method->print_short_name(st);
+    }
+    st->print("\" + \",\" +");
+    st->cr();
+  }
 }
 
 void CompileTask::print_inline_indent(int inline_level, outputStream* st) {

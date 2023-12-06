@@ -1736,9 +1736,9 @@ bool Method::load_signature_classes(const methodHandle& m, TRAPS) {
 void Method::print_short_name(outputStream* st) const {
   ResourceMark rm;
 #ifdef PRODUCT
-  st->print(" %s::", method_holder()->external_name());
+  st->print("%s::", method_holder()->external_name());
 #else
-  st->print(" %s::", method_holder()->internal_name());
+  st->print("%s::", method_holder()->internal_name());
 #endif
   name()->print_symbol_on(st);
   if (WizardMode) signature()->print_symbol_on(st);
