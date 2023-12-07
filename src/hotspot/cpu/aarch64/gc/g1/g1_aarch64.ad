@@ -757,10 +757,7 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
 
     __ atomic_xchgw($preval$$Register, $newval$$Register, $mem$$Register);
 
-    __ decode_heap_oop($newval$$Register);
-    __ mov($tmp1$$Register, $preval$$Register);
-    __ decode_heap_oop($tmp1$$Register);
-
+    __ decode_heap_oop($tmp1$$Register, $preval$$Register);
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
                         noreg /* obj */,
@@ -772,12 +769,13 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
                         $tmp2$$Register /* node_tmp3 */,
                         barrier_data() /* barrier_data */);
 
+    __ decode_heap_oop($tmp1$$Register, $newval$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
-                          $newval$$Register /* new_val */,
-                          $tmp1$$Register /* tmp1 */,
-                          $tmp2$$Register /* tmp2 */,
+                          $tmp1$$Register /* new_val */,
+                          $tmp2$$Register /* tmp1 */,
+                          $tmp3$$Register /* tmp2 */,
                           $tmp1$$Register /* node_tmp1 */,
                           $tmp2$$Register /* node_tmp2 */,
                           noreg /* node_tmp3 */,
@@ -804,10 +802,7 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
 
     __ atomic_xchgalw($preval$$Register, $newval$$Register, $mem$$Register);
 
-    __ decode_heap_oop($newval$$Register);
-    __ mov($tmp1$$Register, $preval$$Register);
-    __ decode_heap_oop($tmp1$$Register);
-
+    __ decode_heap_oop($tmp1$$Register, $preval$$Register);
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
                         noreg /* obj */,
@@ -819,12 +814,13 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
                         $tmp2$$Register /* node_tmp3 */,
                         barrier_data() /* barrier_data */);
 
+    __ decode_heap_oop($tmp1$$Register, $newval$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
-                          $newval$$Register /* new_val */,
-                          $tmp1$$Register /* tmp1 */,
-                          $tmp2$$Register /* tmp2 */,
+                          $tmp1$$Register /* new_val */,
+                          $tmp2$$Register /* tmp1 */,
+                          $tmp3$$Register /* tmp2 */,
                           $tmp1$$Register /* node_tmp1 */,
                           $tmp2$$Register /* node_tmp2 */,
                           noreg /* node_tmp3 */,
