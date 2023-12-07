@@ -2077,6 +2077,7 @@ void MacroAssembler::membar(Membar_mask_bits order_constraint) {
 }
 
 bool MacroAssembler::try_merge_ldst(Register rt, const Address &adr, size_t size_in_bytes, bool is_store) {
+  return false;
   if (ldst_can_merge(rt, adr, size_in_bytes, is_store)) {
     merge_ldst(rt, adr, size_in_bytes, is_store);
     code()->clear_last_insn();
