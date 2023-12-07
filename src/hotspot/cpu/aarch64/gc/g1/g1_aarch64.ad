@@ -821,9 +821,9 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
     __ atomic_xchgalw($preval$$Register, $newval$$Register, $mem$$Register);
 
     __ decode_heap_oop($newval$$Register);
+    if (!UseNewCode) {
     __ mov($tmp1$$Register, $preval$$Register);
     __ decode_heap_oop($tmp1$$Register);
-
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
                         noreg /* obj */,
@@ -834,6 +834,7 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
                         $tmp1$$Register /* node_tmp2 */,
                         $tmp2$$Register /* node_tmp3 */,
                         barrier_data() /* barrier_data */);
+    }
 
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,

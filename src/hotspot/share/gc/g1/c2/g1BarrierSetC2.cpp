@@ -1024,6 +1024,9 @@ bool G1BarrierSetC2::escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseG
 }
 
 Node* G1BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) const {
+  if (UseNewCode3) {
+    return ModRefBarrierSetC2::store_at_resolved(access, val);
+  }
   DecoratorSet decorators = access.decorators();
   bool anonymous = (decorators & ON_UNKNOWN_OOP_REF) != 0;
   bool in_heap = (decorators & IN_HEAP) != 0;
