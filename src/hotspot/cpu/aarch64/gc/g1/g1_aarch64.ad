@@ -197,9 +197,8 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                          barrier_data() /* barrier_data */);
 
     __ strw($src$$Register, ref_addr);
-    __ mov($tmp1$$Register, $src$$Register);
-    __ decode_heap_oop($tmp1$$Register);
 
+    __ decode_heap_oop($tmp1$$Register, $src$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -236,9 +235,8 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
                          barrier_data() /* barrier_data */);
 
     __ stlrw($src$$Register, $mem$$Register);
-    __ movw($tmp1$$Register, $src$$Register);
-    __ decode_heap_oop($tmp1$$Register);
 
+    __ decode_heap_oop($tmp1$$Register, $src$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -383,7 +381,6 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
                false /* acquire */, true /* release */, false /* weak */, $res$$Register);
 
     __ decode_heap_oop($tmp2$$Register);
-
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -433,7 +430,6 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
                true /* acquire */, true /* release */, false /* weak */, $res$$Register);
 
     __ decode_heap_oop($tmp2$$Register);
-
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -586,8 +582,8 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
     __ cmpxchg($mem$$Register, $tmp1$$Register, $tmp2$$Register, Assembler::word,
                false /* acquire */, true /* release */, false /* weak */, noreg);
     __ cset($res$$Register, Assembler::EQ);
-    __ decode_heap_oop($tmp2$$Register);
 
+    __ decode_heap_oop($tmp2$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -637,8 +633,8 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
     __ cmpxchg($mem$$Register, $tmp1$$Register, $tmp2$$Register, Assembler::word,
                true /* acquire */, true /* release */, false /* weak */, noreg);
     __ cset($res$$Register, Assembler::EQ);
-    __ decode_heap_oop($tmp2$$Register);
 
+    __ decode_heap_oop($tmp2$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -897,10 +893,9 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
   ins_encode %{
     const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
     __ ldrw($dst$$Register, ref_addr);
-    __ mov($tmp1$$Register, $dst$$Register);
-    __ decode_heap_oop($tmp1$$Register);
 
     if ((barrier_data() & G1C2BarrierPre) != 0) {
+      __ decode_heap_oop($tmp1$$Register, $dst$$Register);
       g1_pre_write_barrier(_masm /* _masm */,
                           this /* node */,
                           noreg /* obj */,
@@ -929,10 +924,9 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_encode %{
     const Address ref_addr = Address($mem$$Register);
     __ ldarw($dst$$Register, $mem$$Register);
-    __ mov($tmp1$$Register, $dst$$Register);
-    __ decode_heap_oop($tmp1$$Register);
 
     if ((barrier_data() & G1C2BarrierPre) != 0) {
+      __ decode_heap_oop($tmp1$$Register, $dst$$Register);
       g1_pre_write_barrier(_masm /* _masm */,
                           this /* node */,
                           noreg /* obj */,
