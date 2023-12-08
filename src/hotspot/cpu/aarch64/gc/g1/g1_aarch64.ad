@@ -148,7 +148,7 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -225,7 +225,7 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
     DecoratorSet decorators = IN_HEAP;
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -269,7 +269,7 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -317,7 +317,7 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -365,7 +365,7 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -414,7 +414,7 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -465,7 +465,7 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -516,7 +516,7 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -567,7 +567,7 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
@@ -619,7 +619,7 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
-                         $mem$$Register/* obj */,
+                         $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
