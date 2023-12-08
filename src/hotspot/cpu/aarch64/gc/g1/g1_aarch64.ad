@@ -113,9 +113,9 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ str($src$$Register, ref_addr);
@@ -126,9 +126,9 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                           $src$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
   ins_pipe(pipe_serial);
@@ -152,9 +152,9 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ stlr($src$$Register, $mem$$Register);
@@ -165,9 +165,9 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
                           $src$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
   ins_pipe(pipe_serial);
@@ -191,9 +191,9 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ strw($src$$Register, ref_addr);
@@ -205,9 +205,9 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
   ins_pipe(pipe_serial);
@@ -229,9 +229,9 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ stlrw($src$$Register, $mem$$Register);
@@ -243,9 +243,9 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
   ins_pipe(pipe_serial);
@@ -273,9 +273,9 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -290,9 +290,9 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
                           $tmp2$$Register /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $res$$Register /* node_tmp3 */,
+                          $res$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -321,9 +321,9 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -338,9 +338,9 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
                           $tmp2$$Register /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $res$$Register /* node_tmp3 */,
+                          $res$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -369,9 +369,9 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -387,9 +387,9 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
                           $tmp2$$Register /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $res$$Register /* node_tmp3 */,
+                          $res$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -418,9 +418,9 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -436,9 +436,9 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
                           $tmp2$$Register /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $res$$Register /* node_tmp3 */,
+                          $res$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -469,9 +469,9 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $res$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -488,8 +488,8 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
                           $res$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -520,9 +520,9 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $res$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -539,8 +539,8 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
                           $res$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -571,9 +571,9 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $res$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
 
     __ mov($tmp1$$Register, $oldval$$Register);
@@ -591,8 +591,8 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
                           $res$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -623,9 +623,9 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp1 */,
                          $tmp3$$Register /* tmp2 */,
-                         $res$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
+                         noreg /* node_tmp1 */,
+                         noreg /* node_tmp2 */,
+                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
     __ mov($tmp1$$Register, $oldval$$Register);
     __ mov($tmp2$$Register, $newval$$Register);
@@ -642,8 +642,8 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
                           $tmp1$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
                           $res$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -684,8 +684,8 @@ instruct g1XChgP(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
                           $newval$$Register /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
+                          $preval$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
                           noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
@@ -727,8 +727,8 @@ instruct g1XChgPAcq(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
                           $newval$$Register /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
+                          $preval$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
                           noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
@@ -771,8 +771,8 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
+                          $preval$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
                           noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
@@ -815,8 +815,8 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
+                          $preval$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
                           noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
@@ -844,7 +844,7 @@ instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFla
                          $tmp1$$Register /* tmp1 */,
                          $tmp2$$Register /* tmp2 */,
                          $dst$$Register /* node_tmp1 */,
-                         $tmp1$$Register /* node_tmp2 */,
+                         noreg /* node_tmp2 */,
                          noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
   %}
@@ -871,7 +871,7 @@ instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
                          $tmp1$$Register /* tmp1 */,
                          $tmp2$$Register /* tmp2 */,
                          $dst$$Register /* node_tmp1 */,
-                         $tmp1$$Register /* node_tmp2 */,
+                         noreg /* node_tmp2 */,
                          noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
   %}
@@ -900,9 +900,9 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
                           $tmp1$$Register /* pre_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $dst$$Register /* node_tmp3 */,
+                          $dst$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
     }
   %}
@@ -931,9 +931,9 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
                           $tmp1$$Register /* pre_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $dst$$Register /* node_tmp3 */,
+                          $dst$$Register /* node_tmp1 */,
+                          noreg /* node_tmp2 */,
+                          noreg /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
     }
   %}
