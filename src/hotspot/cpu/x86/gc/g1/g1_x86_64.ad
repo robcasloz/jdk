@@ -169,7 +169,7 @@ instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRe
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set oldval (CompareAndExchangeP mem (Binary oldval newval)));
-  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL oldval, KILL cr);
+  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   format %{ "lock\n\t"
             "cmpxchgq $newval, $mem" %}
@@ -209,7 +209,7 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set oldval (CompareAndExchangeN mem (Binary oldval newval)));
-  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL oldval, KILL cr);
+  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   format %{ "lock\n\t"
             "cmpxchgq $newval, $mem" %}
