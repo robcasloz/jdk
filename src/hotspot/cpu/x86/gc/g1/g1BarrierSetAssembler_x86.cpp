@@ -563,7 +563,12 @@ void G1BarrierSetAssembler::emit_c2_barrier_stub(MacroAssembler* masm, G1Barrier
       __ mov(c_rarg0, stub->arg());
     }
     __ mov(c_rarg1, r15_thread);
-    __ call(RuntimeAddress(stub->slow_path()), stub->tmp1());
+    // rax is a caller-saved, non-argument-passing register, so it does not
+    // interfere with c_rarg0 or c_rarg1. If it contained any live value before
+    // entering this stub, it is saved at this point, and restored after the
+    // call. If it did not contain any live value, it is free to be used. In
+    // either case, it is safe to use it here as a call scratch register.
+    __ call(RuntimeAddress(stub->slow_path()), rax);
   }
   __ jmp(*stub->continuation());
 }

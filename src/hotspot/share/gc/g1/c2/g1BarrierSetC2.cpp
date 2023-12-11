@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/javaClasses.hpp"
+#include "code/vmreg.inline.hpp"
 #include "gc/g1/c2/g1BarrierSetC2.hpp"
 #include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1BarrierSetRuntime.hpp"
@@ -1094,14 +1095,17 @@ public:
     return mach->barrier_data() != G1C2BarrierElided;
   }
 
+  bool needs_livein_data() {
+    return false;
+  }
 };
 
 static G1BarrierSetC2State* barrier_set_state() {
   return reinterpret_cast<G1BarrierSetC2State*>(Compile::current()->barrier_set_state());
 }
 
-G1BarrierStubC2* G1BarrierStubC2::create(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path) {
-  G1BarrierStubC2* const stub = new (Compile::current()->comp_arena()) G1BarrierStubC2(node, arg, tmp1, tmp2, tmp3, slow_path);
+G1BarrierStubC2* G1BarrierStubC2::create(const MachNode* node, Register arg, address slow_path) {
+  G1BarrierStubC2* const stub = new (Compile::current()->comp_arena()) G1BarrierStubC2(node, arg, slow_path);
   if (!Compile::current()->output()->in_scratch_emit_size()) {
     barrier_set_state()->stubs()->append(stub);
   }
@@ -1109,28 +1113,14 @@ G1BarrierStubC2* G1BarrierStubC2::create(const MachNode* node, Register arg, Reg
   return stub;
 }
 
-G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path)
+G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, address slow_path)
   : BarrierStubC2(node),
     _arg(arg),
-    _tmp1(tmp1),
-    _tmp2(tmp2),
-    _tmp3(tmp3),
+    _live_internal(),
     _slow_path(slow_path) {}
 
 Register G1BarrierStubC2::arg() const {
   return _arg;
-}
-
-Register G1BarrierStubC2::tmp1() const {
-  return _tmp1;
-}
-
-Register G1BarrierStubC2::tmp2() const {
-  return _tmp2;
-}
-
-Register G1BarrierStubC2::tmp3() const {
-  return _tmp3;
 }
 
 Label* G1BarrierStubC2::entry() {
@@ -1145,12 +1135,21 @@ Label* G1BarrierStubC2::continuation() {
   return &_continuation;
 }
 
+RegMask& G1BarrierStubC2::live_after_runtime_call() {
+  _live_internal.OR(live());
+  return _live_internal;
+}
+
 Register G1BarrierStubC2::result() const {
   return noreg;
 }
 
 address G1BarrierStubC2::slow_path() {
   return _slow_path;
+}
+
+void G1BarrierStubC2::preserve(Register r) {
+  _live_internal.Insert(OptoReg::as_OptoReg(r->as_VMReg()));
 }
 
 void* G1BarrierSetC2::create_barrier_state(Arena* comp_arena) const {

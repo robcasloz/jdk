@@ -41,10 +41,7 @@ const int G1C2BarrierElided      = 8;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
   Register _arg;
-
-  Register _tmp1;
-  Register _tmp2;
-  Register _tmp3;
+  RegMask _live_internal;
 
   address _slow_path;
 
@@ -52,21 +49,21 @@ class G1BarrierStubC2 : public BarrierStubC2 {
   Label _continuation;
 
 public:
-  G1BarrierStubC2(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path);
+  G1BarrierStubC2(const MachNode* node, Register arg, address slow_path);
 
   Register arg() const;
-
-  Register tmp1() const;
-  Register tmp2() const;
-  Register tmp3() const;
 
   Label* entry();
   Label* continuation();
 
+  virtual RegMask& live_after_runtime_call();
+
   Register result() const;
   address slow_path();
 
-  static G1BarrierStubC2* create(const MachNode* node, Register arg, Register tmp1, Register tmp2, Register tmp3, address slow_path);
+  void preserve(Register reg);
+
+  static G1BarrierStubC2* create(const MachNode* node, Register arg, address slow_path);
 };
 
 class G1BarrierSetC2: public CardTableBarrierSetC2 {
