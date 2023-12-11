@@ -37,10 +37,10 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
                                  Register obj,
                                  Register pre_val,
                                  Register tmp,
-                                 Register node_tmp1,
-                                 Register node_tmp2,
-                                 Register node_tmp3,
-                                 uint8_t barrier_data) {
+                                 uint8_t barrier_data,
+                                 Register preserve1 = noreg,
+                                 Register preserve2 = noreg,
+                                 Register preserve3 = noreg) {
   if (barrier_data == G1C2BarrierElided) {
     return;
   }
@@ -49,7 +49,16 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, pre_val, node_tmp1, node_tmp2, node_tmp3, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
+  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
+  if (preserve1 != noreg) {
+    stub->preserve(preserve1);
+  }
+  if (preserve2 != noreg) {
+    stub->preserve(preserve2);
+  }
+  if (preserve3 != noreg) {
+    stub->preserve(preserve3);
+  }
   g1_asm->g1_write_barrier_pre(&_masm /* masm */,
                                obj /* obj */,
                                pre_val /* pre_val */,
@@ -67,9 +76,6 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
                                   Register new_val,
                                   Register tmp1,
                                   Register tmp2,
-                                  Register node_tmp1,
-                                  Register node_tmp2,
-                                  Register node_tmp3,
                                   uint8_t barrier_data) {
   if (barrier_data == G1C2BarrierElided) {
     return;
@@ -79,7 +85,7 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, tmp1, node_tmp1, node_tmp2, node_tmp3, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
+  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
   g1_asm->g1_write_barrier_post(&_masm /* masm */,
                                 store_addr /* store_addr */,
                                 new_val /* new_val */,
@@ -109,10 +115,8 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
                          $tmp1$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $tmp1$$Register, $src$$Register /* preserve */);
     __ movq(Address($tmp1$$Register, 0), $src$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
@@ -120,9 +124,6 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
                           $src$$Register /* new_val */,
                           $tmp3$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
   ins_pipe(ialu_mem_reg);
@@ -144,10 +145,8 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
                          $tmp1$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $tmp1$$Register, $src$$Register /* preserve */);
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
     __ movl($tmp2$$Register, $src$$Register);
     __ decode_heap_oop($tmp2$$Register);
@@ -157,15 +156,12 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
                           $tmp2$$Register /* new_val */,
                           $tmp3$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
   ins_pipe(ialu_mem_reg);
 %}
 
-instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr)
+instruct g1CompareAndExchangeP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set oldval (CompareAndExchangeP mem (Binary oldval newval)));
@@ -183,10 +179,8 @@ instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRe
                          $mem$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $mem$$Register, $newval$$Register, $oldval$$Register /* preserve */);
     __ movq($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgq($tmp1$$Register, mem_addr);
@@ -196,9 +190,6 @@ instruct g1CompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp1, rRe
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -222,10 +213,8 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
                          $mem$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $mem$$Register, $newval$$Register, $oldval$$Register /* preserve */);
     __ movl($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgl($tmp1$$Register, mem_addr);
@@ -236,9 +225,6 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -260,15 +246,14 @@ instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rR
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     const Address mem_addr = Address($mem$$Register, 0);
+    // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapP).
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $mem$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $res$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $mem$$Register, $newval$$Register, $oldval$$Register /* preserve */);
     __ movq($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgq($tmp1$$Register, mem_addr);
@@ -280,9 +265,6 @@ instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rR
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $res$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -304,15 +286,14 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     const Address mem_addr = Address($mem$$Register, 0);
+    // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapN).
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $mem$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $res$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $mem$$Register, $newval$$Register, $oldval$$Register /* preserve */);
     __ movl($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgl($tmp1$$Register, mem_addr);
@@ -325,9 +306,6 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $res$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -350,10 +328,8 @@ instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                          $mem$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $mem$$Register, $newval$$Register /* preserve */);
     __ movq($tmp1$$Register, $newval$$Register);
     __ xchgq($newval$$Register, mem_addr);
     g1_post_write_barrier(_masm /* _masm */,
@@ -362,9 +338,6 @@ instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -387,10 +360,8 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                          $mem$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $tmp3$$Register /* node_tmp3 */,
-                         barrier_data() /* barrier_data */);
+                         barrier_data() /* barrier_data */,
+                         $mem$$Register, $newval$$Register /* preserve */);
     __ movl($tmp1$$Register, $newval$$Register);
     __ decode_heap_oop($tmp1$$Register);
     __ xchgl($newval$$Register, mem_addr);
@@ -400,9 +371,6 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                           $tmp1$$Register /* new_val */,
                           $tmp2$$Register /* tmp1 */,
                           $tmp3$$Register /* tmp2 */,
-                          $tmp1$$Register /* node_tmp1 */,
-                          $tmp2$$Register /* node_tmp2 */,
-                          $tmp3$$Register /* node_tmp3 */,
                           barrier_data() /* barrier_data */);
   %}
 
@@ -425,9 +393,6 @@ instruct g1loadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
                          noreg /* obj */,
                          $dst$$Register /* pre_val */,
                          $tmp$$Register /* tmp */,
-                         $dst$$Register /* node_tmp1 */,
-                         $tmp$$Register /* node_tmp2 */,
-                         noreg /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
   %}
   ins_pipe(ialu_reg_mem); // XXX
@@ -451,9 +416,6 @@ instruct g1loadN(rRegN dst, memory mem, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
                          noreg /* obj */,
                          $tmp1$$Register /* pre_val */,
                          $tmp2$$Register /* tmp */,
-                         $tmp1$$Register /* node_tmp1 */,
-                         $tmp2$$Register /* node_tmp2 */,
-                         $dst$$Register /* node_tmp3 */,
                          barrier_data() /* barrier_data */);
   %}
   ins_pipe(ialu_reg_mem); // XXX
