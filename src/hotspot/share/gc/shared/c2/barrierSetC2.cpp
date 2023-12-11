@@ -823,6 +823,15 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
     for (int i = block->number_of_nodes() - 1; i >= 0; --i) {
       const Node* const node = block->get_node(i);
 
+      BarrierSetC2State* barrier_set_state = reinterpret_cast<BarrierSetC2State*>(Compile::current()->barrier_set_state());
+      // If this node tracks out-liveness, update it
+      if (!barrier_set_state->needs_livein_data()) {
+        RegMask* const regs = barrier_set_state->live(node);
+        if (regs != NULL) {
+          regs->OR(new_live);
+        }
+      }
+
       // Remove def bits
       const OptoReg::Name first = bs->refine_register(node, regalloc->get_reg_first(node));
       const OptoReg::Name second = bs->refine_register(node, regalloc->get_reg_second(node));
@@ -846,11 +855,12 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
         }
       }
 
-      // If this node tracks liveness, update it
-      BarrierSetC2State* barrier_set_state = reinterpret_cast<BarrierSetC2State*>(Compile::current()->barrier_set_state());
-      RegMask* const regs = barrier_set_state->live(node);
-      if (regs != NULL) {
-        regs->OR(new_live);
+      // If this node tracks in-liveness, update it
+      if (barrier_set_state->needs_livein_data()) {
+        RegMask* const regs = barrier_set_state->live(node);
+        if (regs != NULL) {
+          regs->OR(new_live);
+        }
       }
     }
 

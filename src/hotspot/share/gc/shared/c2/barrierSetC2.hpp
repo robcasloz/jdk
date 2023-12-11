@@ -247,6 +247,7 @@ public:
   }
 
   virtual bool needs_liveness_data(const MachNode* mach) { return false; };
+  virtual bool needs_livein_data() = 0;
 };
 
 class BarrierStubC2 : public ArenaObj {
@@ -259,6 +260,10 @@ public:
   RegMask& live() {
     void* state = Compile::current()->barrier_set_state();
     return *reinterpret_cast<BarrierSetC2State*>(state)->live(_node);
+  }
+
+  virtual RegMask& live_after_runtime_call() {
+    return live();
   }
 
   virtual Register result() const = 0;

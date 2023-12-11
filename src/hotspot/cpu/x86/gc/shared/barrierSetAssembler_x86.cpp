@@ -615,7 +615,7 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   }
 
   // Create mask of live registers
-  RegMask live = stub->live();
+  RegMask live = stub->live_after_runtime_call();
 
   int gp_spill_size = 0;
   int opmask_spill_size = 0;
