@@ -232,7 +232,8 @@ public class TestIRMatching {
         );
 
         try {
-            runWithArgumentsFail(CompilationOutputOfFails.class);
+            // Disable loop unrolling to make expected node count matching more robust.
+            runWithArgumentsFail(CompilationOutputOfFails.class, "-XX:LoopUnrollLimit=0");
             Asserts.fail("Should have thrown exception");
         } catch (IRViolationException e) {
             try {
