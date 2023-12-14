@@ -172,7 +172,6 @@ instruct g1CompareAndExchangeP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
     const Address mem_addr = Address($mem$$Register, 0);
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
