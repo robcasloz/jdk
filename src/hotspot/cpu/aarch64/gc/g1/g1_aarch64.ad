@@ -250,7 +250,7 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
@@ -294,7 +294,7 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
@@ -338,7 +338,7 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
@@ -383,7 +383,7 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
@@ -430,7 +430,7 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
@@ -477,7 +477,7 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
@@ -524,7 +524,7 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
@@ -572,7 +572,7 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
+    assert_different_registers($newval$$Register, $mem$$Register);
     DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
