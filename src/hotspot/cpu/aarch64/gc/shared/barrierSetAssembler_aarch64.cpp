@@ -444,7 +444,7 @@ OptoReg::Name BarrierSetAssembler::refine_register(const Node* node, OptoReg::Na
 
 void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   // Record registers that need to be saved/restored
-  RegMaskIterator rmi(stub->live_after_runtime_call());
+  RegMaskIterator rmi(stub->liveout());
   while (rmi.has_next()) {
     const OptoReg::Name opto_reg = rmi.next();
     if (OptoReg::is_reg(opto_reg)) {

@@ -41,24 +41,17 @@ const int G1C2BarrierElided      = 8;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
   Register _arg;
-  RegMask _live_internal;
+  RegMask _liveout_internal;
 
   address _slow_path;
-
-  Label _entry;
-  Label _continuation;
 
 public:
   G1BarrierStubC2(const MachNode* node, Register arg, address slow_path);
 
   Register arg() const;
 
-  Label* entry();
-  Label* continuation();
+  virtual RegMask& liveout();
 
-  virtual RegMask& live_after_runtime_call();
-
-  Register result() const;
   address slow_path();
 
   void preserve(Register reg);
