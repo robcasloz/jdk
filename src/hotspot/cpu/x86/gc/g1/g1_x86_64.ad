@@ -108,7 +108,6 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
-    DecoratorSet decorators = IN_HEAP;
     __ lea($tmp1$$Register, $mem$$Address);
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
@@ -138,7 +137,6 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# ptr" %}
   ins_encode %{
-    DecoratorSet decorators = IN_HEAP;
     __ lea($tmp1$$Register, $mem$$Address);
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,

@@ -110,7 +110,6 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "str  $src, $mem\t# ptr" %}
   ins_encode %{
-    DecoratorSet decorators = IN_HEAP;
     const Address ref_addr = Address($mem$$Register, 0);
 
     g1_pre_write_barrier(_masm /* _masm */,
@@ -145,7 +144,6 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
   ins_cost(125); // XXX
   format %{ "stlr  $src, $mem\t# ptr" %}
   ins_encode %{
-    DecoratorSet decorators = IN_HEAP;
 
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
@@ -178,7 +176,6 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "strw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
-    DecoratorSet decorators = IN_HEAP;
     const Address ref_addr = Address($mem$$Register, 0);
 
     g1_pre_write_barrier(_masm /* _masm */,
@@ -213,7 +210,6 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
   ins_cost(125); // XXX
   format %{ "stlrw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
-    DecoratorSet decorators = IN_HEAP;
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $mem$$Register /* obj */,
@@ -251,7 +247,6 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -295,7 +290,6 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -339,7 +333,6 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -384,7 +377,6 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndExchangeX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -431,7 +423,6 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -478,7 +469,6 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -525,7 +515,6 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -573,7 +562,6 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     // FIXME: $res$$Register is spilled unnecessarily in the pre-barrier slow path (because it is a live-out of g1CompareAndSwapX).
     g1_pre_write_barrier(_masm /* _masm */,
@@ -618,7 +606,6 @@ instruct g1XChgP(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
@@ -656,7 +643,6 @@ instruct g1XChgPAcq(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
@@ -694,7 +680,6 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
@@ -733,7 +718,6 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
 
   ins_encode %{
     assert_different_registers($mem$$Register, $newval$$Register);
-    DecoratorSet decorators = IN_HEAP;
 
     g1_pre_write_barrier(_masm /* _masm */,
                         this /* node */,
