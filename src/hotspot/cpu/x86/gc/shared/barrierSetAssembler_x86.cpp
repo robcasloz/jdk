@@ -568,14 +568,6 @@ void SaveLiveRegisters::xmm_register_save(const XMMRegisterData& reg_data) {
   vec_spill_helper(__ code(), false /* is_load */, _spill_offset, opto_reg, ideal_reg, tty);
 }
 
-void SaveLiveRegisters::xmm_register_restore(const XMMRegisterData &reg_data) {
-  const OptoReg::Name opto_reg = OptoReg::as_OptoReg(reg_data._reg->as_VMReg());
-  const uint ideal_reg = xmm_ideal_reg_for_size(reg_data._size);
-  vec_spill_helper(__ code(), true /* is_load */, _spill_offset, opto_reg,
-                   ideal_reg, tty);
-  _spill_offset += reg_data._size;
-}
-
 void SaveLiveRegisters::gp_register_save(Register reg) {
   _spill_offset -= 8;
   __ movq(Address(rsp, _spill_offset), reg);
@@ -584,6 +576,14 @@ void SaveLiveRegisters::gp_register_save(Register reg) {
 void SaveLiveRegisters::opmask_register_save(KRegister reg) {
   _spill_offset -= 8;
   __ kmov(Address(rsp, _spill_offset), reg);
+}
+
+void SaveLiveRegisters::xmm_register_restore(const XMMRegisterData &reg_data) {
+  const OptoReg::Name opto_reg = OptoReg::as_OptoReg(reg_data._reg->as_VMReg());
+  const uint ideal_reg = xmm_ideal_reg_for_size(reg_data._size);
+  vec_spill_helper(__ code(), true /* is_load */, _spill_offset, opto_reg,
+                   ideal_reg, tty);
+  _spill_offset += reg_data._size;
 }
 
 void SaveLiveRegisters::gp_register_restore(Register reg) {
@@ -597,7 +597,7 @@ void SaveLiveRegisters::opmask_register_restore(KRegister reg) {
 }
 
 void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
-  // Create mask of caller saved registers that need to
+  // Create mask of caller-saved registers that need to
   // be saved/restored if live
   RegMask caller_saved;
   caller_saved.Insert(OptoReg::as_OptoReg(rax->as_VMReg()));

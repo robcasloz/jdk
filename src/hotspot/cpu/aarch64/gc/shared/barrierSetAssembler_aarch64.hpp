@@ -143,6 +143,14 @@ public:
                                 OptoReg::Name opto_reg);
 };
 
+// This class saves and restores the registers that need to be preserved across
+// the runtime call represented by a given C2 barrier stub. Use as follows:
+// {
+//   SaveLiveRegisters save(masm, stub);
+//   ..
+//   __ blr(...);
+//   ..
+// }
 class SaveLiveRegisters {
 
 protected:
@@ -155,7 +163,6 @@ protected:
 
 public:
   SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub);
-
   ~SaveLiveRegisters();
 };
 
