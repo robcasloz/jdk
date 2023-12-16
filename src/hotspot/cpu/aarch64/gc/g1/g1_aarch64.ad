@@ -110,8 +110,6 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "str  $src, $mem\t# ptr" %}
   ins_encode %{
-    const Address ref_addr = Address($mem$$Register, 0);
-
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $mem$$Register /* obj */,
@@ -121,7 +119,7 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                          barrier_data() /* barrier_data */,
                          $mem$$Register, $src$$Register /* preserve */);
 
-    __ str($src$$Register, ref_addr);
+    __ str($src$$Register, Address($mem$$Register, 0));
 
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
@@ -176,8 +174,6 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "strw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
-    const Address ref_addr = Address($mem$$Register, 0);
-
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $mem$$Register /* obj */,
@@ -187,7 +183,7 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                          barrier_data() /* barrier_data */,
                          $mem$$Register, $src$$Register /* preserve */);
 
-    __ strw($src$$Register, ref_addr);
+    __ strw($src$$Register, Address($mem$$Register, 0));
 
     __ decode_heap_oop($tmp1$$Register, $src$$Register);
     g1_post_write_barrier(_masm /* _masm */,
@@ -754,8 +750,7 @@ instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFla
   ins_cost(4 * INSN_COST);
   format %{ "ldr  $dst, $mem\t# ptr" %}
   ins_encode %{
-    const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
-    __ ldr($dst$$Register, ref_addr);
+    __ ldr($dst$$Register, mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp));
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          noreg /* obj */,
@@ -778,7 +773,6 @@ instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_cost(VOLATILE_REF_COST);
   format %{ "ldar  $dst, $mem\t# ptr" %}
   ins_encode %{
-    const Address ref_addr = Address($mem$$Register);
     __ ldar($dst$$Register, $mem$$Register);
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
@@ -802,8 +796,7 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
   ins_cost(4 * INSN_COST);
   format %{ "ldrw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
-    const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
-    __ ldrw($dst$$Register, ref_addr);
+    __ ldrw($dst$$Register, mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp));
 
     if ((barrier_data() & G1C2BarrierPre) != 0) {
       __ decode_heap_oop($tmp1$$Register, $dst$$Register);
@@ -830,7 +823,6 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_cost(VOLATILE_REF_COST);
   format %{ "ldarw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
-    const Address ref_addr = Address($mem$$Register);
     __ ldarw($dst$$Register, $mem$$Register);
 
     if ((barrier_data() & G1C2BarrierPre) != 0) {
