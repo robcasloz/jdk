@@ -168,26 +168,7 @@ int ZBarrierStubC2::stubs_start_offset() {
   return barrier_set_state()->stubs_start_offset();
 }
 
-ZBarrierStubC2::ZBarrierStubC2(const MachNode* node)
-  : BarrierStubC2(node),
-    _entry(),
-    _continuation() {}
-
-Register ZBarrierStubC2::result() const {
-  return noreg;
-}
-
-Label* ZBarrierStubC2::entry() {
-  // The _entry will never be bound when in_scratch_emit_size() is true.
-  // However, we still need to return a label that is not bound now, but
-  // will eventually be bound. Any eventually bound label will do, as it
-  // will only act as a placeholder, so we return the _continuation label.
-  return Compile::current()->output()->in_scratch_emit_size() ? &_continuation : &_entry;
-}
-
-Label* ZBarrierStubC2::continuation() {
-  return &_continuation;
-}
+ZBarrierStubC2::ZBarrierStubC2(const MachNode* node) : BarrierStubC2(node) {}
 
 ZLoadBarrierStubC2* ZLoadBarrierStubC2::create(const MachNode* node, Address ref_addr, Register ref) {
   AARCH64_ONLY(fatal("Should use ZLoadBarrierStubC2Aarch64::create"));
@@ -273,10 +254,6 @@ bool ZStoreBarrierStubC2::is_native() const {
 
 bool ZStoreBarrierStubC2::is_atomic() const {
   return _is_atomic;
-}
-
-Register ZStoreBarrierStubC2::result() const {
-  return noreg;
 }
 
 void ZStoreBarrierStubC2::emit_code(MacroAssembler& masm) {
