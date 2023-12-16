@@ -33,6 +33,7 @@
 #include "opto/idealKit.hpp"
 #include "opto/macro.hpp"
 #include "opto/narrowptrnode.hpp"
+#include "opto/output.hpp"
 #include "opto/regalloc.hpp"
 #include "opto/runtime.hpp"
 #include "utilities/macros.hpp"
@@ -79,6 +80,36 @@ bool C2Access::needs_cpu_membar() const {
   }
 
   return false;
+}
+
+RegMask& BarrierStubC2::liveout_external() {
+  void* state = Compile::current()->barrier_set_state();
+  return *reinterpret_cast<BarrierSetC2State*>(state)->live(_node);
+}
+
+BarrierStubC2::BarrierStubC2(const MachNode* node)
+  : _node(node),
+    _entry(),
+    _continuation() {}
+
+Label* BarrierStubC2::entry() {
+  // The _entry will never be bound when in_scratch_emit_size() is true.
+  // However, we still need to return a label that is not bound now, but
+  // will eventually be bound. Any eventually bound label will do, as it
+  // will only act as a placeholder, so we return the _continuation label.
+  return Compile::current()->output()->in_scratch_emit_size() ? &_continuation : &_entry;
+}
+
+Label* BarrierStubC2::continuation() {
+  return &_continuation;
+}
+
+RegMask& BarrierStubC2::liveout() {
+  return liveout_external();
+}
+
+Register BarrierStubC2::result() const {
+  return noreg;
 }
 
 Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) const {

@@ -65,6 +65,7 @@ class Node;
 class PhaseGVN;
 class PhaseIdealLoop;
 class PhaseMacroExpand;
+class PhaseOutput;
 class Type;
 class TypePtr;
 class Unique_Node_List;
@@ -250,23 +251,31 @@ public:
   virtual bool needs_livein_data() = 0;
 };
 
+// This class represents the slow path in a C2 barrier. It is defined by a
+// memory access, an entry point, and a continuation point (typically the end of
+// the barrier). It provides a set of registers that are live out of the
+// barrier, and hence must be preserved across runtime calls from the stub.
 class BarrierStubC2 : public ArenaObj {
 protected:
-  const MachNode* _node;
+  const MachNode* _node;         // Memory access for which the barrier is generated.
+  Label           _entry;        // Entry point to the stub.
+  Label           _continuation; // Return point from the stub (typically end of barrier).
+
+  // Registers that are live out of the entire memory access implementation
+  // (possibly including multiple barriers).
+  RegMask& liveout_external();
 
 public:
-  BarrierStubC2(const MachNode* node) : _node(node) {}
+  BarrierStubC2(const MachNode* node);
 
-  RegMask& live() {
-    void* state = Compile::current()->barrier_set_state();
-    return *reinterpret_cast<BarrierSetC2State*>(state)->live(_node);
-  }
+  Label* entry();
+  Label* continuation();
 
-  virtual RegMask& live_after_runtime_call() {
-    return live();
-  }
+  // Registers that are live out of this specific barrier.
+  virtual RegMask& liveout();
 
-  virtual Register result() const = 0;
+  // Register that does not need to be preserved across runtime calls.
+  virtual Register result() const;
 };
 
 // This is the top-level class for the backend of the Access API in C2.

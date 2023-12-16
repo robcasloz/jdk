@@ -1116,32 +1116,16 @@ G1BarrierStubC2* G1BarrierStubC2::create(const MachNode* node, Register arg, add
 G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, address slow_path)
   : BarrierStubC2(node),
     _arg(arg),
-    _live_internal(),
+    _liveout_internal(),
     _slow_path(slow_path) {}
 
 Register G1BarrierStubC2::arg() const {
   return _arg;
 }
 
-Label* G1BarrierStubC2::entry() {
-  // The _entry will never be bound when in_scratch_emit_size() is true.
-  // However, we still need to return a label that is not bound now, but
-  // will eventually be bound. Any label will do, as it will only act as
-  // a placeholder, so we return the _continuation label.
-  return Compile::current()->output()->in_scratch_emit_size() ? &_continuation : &_entry;
-}
-
-Label* G1BarrierStubC2::continuation() {
-  return &_continuation;
-}
-
-RegMask& G1BarrierStubC2::live_after_runtime_call() {
-  _live_internal.OR(live());
-  return _live_internal;
-}
-
-Register G1BarrierStubC2::result() const {
-  return noreg;
+RegMask& G1BarrierStubC2::liveout() {
+  _liveout_internal.OR(liveout_external());
+  return _liveout_internal;
 }
 
 address G1BarrierStubC2::slow_path() {
@@ -1149,7 +1133,7 @@ address G1BarrierStubC2::slow_path() {
 }
 
 void G1BarrierStubC2::preserve(Register r) {
-  _live_internal.Insert(OptoReg::as_OptoReg(r->as_VMReg()));
+  _liveout_internal.Insert(OptoReg::as_OptoReg(r->as_VMReg()));
 }
 
 void* G1BarrierSetC2::create_barrier_state(Arena* comp_arena) const {
