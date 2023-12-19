@@ -253,17 +253,19 @@ public:
 
 // This class represents the slow path in a C2 barrier. It is defined by a
 // memory access, an entry point, and a continuation point (typically the end of
-// the barrier). It provides a set of registers that are live out of the
+// the barrier). It provides a set of registers whose value is live across the
 // barrier, and hence must be preserved across runtime calls from the stub.
 class BarrierStubC2 : public ArenaObj {
 protected:
   const MachNode* _node;         // Memory access for which the barrier is generated.
   Label           _entry;        // Entry point to the stub.
   Label           _continuation; // Return point from the stub (typically end of barrier).
+  RegMask         _preserve;     // Registers that need to be preserved across runtime calls in this barrier.
+  RegMask         _no_preserve;  // Registers that should not be preserved across runtime calls in this barrier.
 
   // Registers that are live out of the entire memory access implementation
   // (possibly including multiple barriers).
-  RegMask& liveout_external();
+  RegMask& node_liveout();
 
 public:
   BarrierStubC2(const MachNode* node);
@@ -271,11 +273,12 @@ public:
   Label* entry();
   Label* continuation();
 
-  // Registers that are live out of this specific barrier.
-  virtual RegMask& liveout();
-
-  // Register that does not need to be preserved across runtime calls.
-  virtual Register result() const;
+  // Preserve the value in reg across runtime calls in this barrier.
+  void preserve(Register reg);
+  // Do not preserve the value in reg across runtime calls in this barrier.
+  void dont_preserve(Register reg);
+  // Set of registers whose value needs to be preserved across runtime calls in this barrier.
+  RegMask& preserve_set();
 };
 
 // This is the top-level class for the backend of the Access API in C2.

@@ -184,6 +184,9 @@ ZLoadBarrierStubC2::ZLoadBarrierStubC2(const MachNode* node, Address ref_addr, R
     _ref(ref) {
   assert_different_registers(ref, ref_addr.base());
   assert_different_registers(ref, ref_addr.index());
+  // The runtime call updates the value of ref, so we should not spill and
+  // reload its outdated value.
+  dont_preserve(ref);
 }
 
 Address ZLoadBarrierStubC2::ref_addr() const {
@@ -192,10 +195,6 @@ Address ZLoadBarrierStubC2::ref_addr() const {
 
 Register ZLoadBarrierStubC2::ref() const {
   return _ref;
-}
-
-Register ZLoadBarrierStubC2::result() const {
-  return ref();
 }
 
 address ZLoadBarrierStubC2::slow_path() const {

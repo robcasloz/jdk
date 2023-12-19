@@ -1116,24 +1116,14 @@ G1BarrierStubC2* G1BarrierStubC2::create(const MachNode* node, Register arg, add
 G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, address slow_path)
   : BarrierStubC2(node),
     _arg(arg),
-    _liveout_internal(),
     _slow_path(slow_path) {}
 
 Register G1BarrierStubC2::arg() const {
   return _arg;
 }
 
-RegMask& G1BarrierStubC2::liveout() {
-  _liveout_internal.OR(liveout_external());
-  return _liveout_internal;
-}
-
 address G1BarrierStubC2::slow_path() {
   return _slow_path;
-}
-
-void G1BarrierStubC2::preserve(Register r) {
-  _liveout_internal.Insert(OptoReg::as_OptoReg(r->as_VMReg()));
 }
 
 void* G1BarrierSetC2::create_barrier_state(Arena* comp_arena) const {
