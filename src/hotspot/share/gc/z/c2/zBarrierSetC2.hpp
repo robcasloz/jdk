@@ -71,7 +71,6 @@ public:
   Register ref() const;
   address slow_path() const;
 
-  virtual Register result() const;
   virtual void emit_code(MacroAssembler& masm);
 };
 

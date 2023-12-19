@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "code/vmreg.inline.hpp"
 #include "gc/shared/tlab_globals.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
@@ -82,7 +83,7 @@ bool C2Access::needs_cpu_membar() const {
   return false;
 }
 
-RegMask& BarrierStubC2::liveout_external() {
+RegMask& BarrierStubC2::node_liveout() {
   void* state = Compile::current()->barrier_set_state();
   return *reinterpret_cast<BarrierSetC2State*>(state)->live(_node);
 }
@@ -90,7 +91,9 @@ RegMask& BarrierStubC2::liveout_external() {
 BarrierStubC2::BarrierStubC2(const MachNode* node)
   : _node(node),
     _entry(),
-    _continuation() {}
+    _continuation(),
+    _preserve(),
+    _no_preserve() {}
 
 Label* BarrierStubC2::entry() {
   // The _entry will never be bound when in_scratch_emit_size() is true.
@@ -104,12 +107,24 @@ Label* BarrierStubC2::continuation() {
   return &_continuation;
 }
 
-RegMask& BarrierStubC2::liveout() {
-  return liveout_external();
+void BarrierStubC2::preserve(Register r) {
+  if (r == noreg) {
+    return;
+  }
+  _preserve.Insert(OptoReg::as_OptoReg(r->as_VMReg()));
 }
 
-Register BarrierStubC2::result() const {
-  return noreg;
+void BarrierStubC2::dont_preserve(Register r) {
+  if (r == noreg) {
+    return;
+  }
+  _no_preserve.Insert(OptoReg::as_OptoReg(r->as_VMReg()));
+}
+
+RegMask& BarrierStubC2::preserve_set() {
+  _preserve.OR(node_liveout());
+  _preserve.SUBTRACT(_no_preserve);
+  return _preserve;
 }
 
 Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) const {

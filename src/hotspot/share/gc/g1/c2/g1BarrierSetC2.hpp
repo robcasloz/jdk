@@ -41,7 +41,6 @@ const int G1C2BarrierElided      = 8;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
   Register _arg;
-  RegMask _liveout_internal;
 
   address _slow_path;
 
@@ -50,11 +49,7 @@ public:
 
   Register arg() const;
 
-  virtual RegMask& liveout();
-
   address slow_path();
-
-  void preserve(Register reg);
 
   static G1BarrierStubC2* create(const MachNode* node, Register arg, address slow_path);
 };
