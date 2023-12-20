@@ -462,7 +462,7 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   }
 
   // Remove C-ABI SOE registers and scratch regs
-    _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
+  _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
 }
 
 SaveLiveRegisters::SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub)
