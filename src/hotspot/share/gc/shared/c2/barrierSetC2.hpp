@@ -265,7 +265,7 @@ protected:
 
   // Registers that are live out of the entire memory access implementation
   // (possibly including multiple barriers).
-  RegMask& node_liveout();
+  RegMask& node_liveout() const;
 
 public:
   BarrierStubC2(const MachNode* node);
