@@ -798,6 +798,23 @@ Node* G1BarrierSetC2::step_over_gc_barrier(Node* c) const {
   return c;
 }
 
+uint G1BarrierSetC2::estimated_barrier_size(const Node* node) const {
+  // These Ideal node counts are extracted from the pre-matching Ideal graph
+  // generated when compiling the following method with early barrier expansion:
+  //   static void write(MyObject obj1, Object o) {
+  //     obj1.o1 = o;
+  //   }
+  uint8_t barrier_data = MemNode::barrier_data(node);
+  uint nodes = 0;
+  if ((barrier_data & G1C2BarrierPre) != 0) {
+    nodes += 50;
+  }
+  if ((barrier_data & G1C2BarrierPost) != 0) {
+    nodes += 60;
+  }
+  return nodes;
+}
+
 #ifdef ASSERT
 bool G1BarrierSetC2::has_cas_in_use_chain(Node *n) const {
   Unique_Node_List visited;
