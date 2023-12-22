@@ -128,6 +128,7 @@ public:
   virtual void eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const;
   virtual void eliminate_gc_barrier_data(Node* node) const;
   virtual Node* step_over_gc_barrier(Node* c) const;
+  virtual uint estimated_barrier_size(const Node* node) const;
 
 #ifdef ASSERT
   virtual void verify_gc_barriers(Compile* compile, CompilePhase phase) const;
