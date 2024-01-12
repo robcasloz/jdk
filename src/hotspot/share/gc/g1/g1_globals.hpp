@@ -340,7 +340,11 @@
                     product,                                                \
                     product_pd,                                             \
                     range,                                                  \
-                    constraint)
+                    constraint)                                             \
+                                                                            \
+  product(bool, G1UseLateBarrierExpansion, true,                            \
+          "Expand G1 barriers late during C2 compilation "                  \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")
 
 // end of GC_G1_FLAGS
 
