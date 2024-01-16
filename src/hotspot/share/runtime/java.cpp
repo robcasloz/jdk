@@ -239,6 +239,29 @@ void print_bytecode_count() {}
 
 #endif // PRODUCT
 
+class CollectG1BarrierStatsClosure : public ThreadClosure {
+public:
+  unsigned long long _total_store;
+  unsigned long long _total_store_encode_candidate;
+  unsigned long long _total_store_encode;
+  unsigned long long _total_atomic;
+  unsigned long long _total_load;
+  CollectG1BarrierStatsClosure() :
+    _total_store(0),
+    _total_store_encode_candidate(0),
+    _total_store_encode(0),
+    _total_atomic(0),
+    _total_load(0) {}
+
+  void do_thread(Thread* thread) {
+    const JavaThread* javaThread = JavaThread::cast(thread);
+    _total_store += javaThread->_total_store;
+    _total_store_encode_candidate += javaThread->_total_store_encode_candidate;
+    _total_store_encode += javaThread->_total_store_encode;
+    _total_atomic += javaThread->_total_atomic;
+    _total_load += javaThread->_total_load;
+  }
+};
 
 // General statistics printing (profiling ...)
 void print_statistics() {
@@ -262,6 +285,19 @@ void print_statistics() {
 #ifndef COMPILER1
     SharedRuntime::print_statistics();
 #endif //COMPILER1
+  }
+
+  if (G1ProfileBarriers) {
+    CollectG1BarrierStatsClosure cl;
+    Threads_lock->lock();
+    Threads::java_threads_do(&cl);
+    Threads_lock->unlock();
+    double t = os::elapsedTime();
+    int eltime = (int)t;  // elapsed time in seconds
+    int eltimeFraction = (int) ((t - eltime) * 1000000);
+    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld",
+                  eltime, eltimeFraction,
+                  cl._total_store, cl._total_store_encode_candidate, cl._total_store_encode, cl._total_atomic, cl._total_load);
   }
 
   if (PrintLockStatistics || PrintPreciseRTMLockingStatistics) {
