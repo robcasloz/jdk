@@ -155,6 +155,38 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   ins_pipe(ialu_mem_reg);
 %}
 
+instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
+%{
+  predicate(UseG1GC && G1OptimizeCompressedOOPWrites && n->as_Store()->barrier_data() != 0);
+  match(Set mem (StoreN mem (EncodeP src)));
+  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+
+  ins_cost(125); // XXX
+  format %{ "encode_heap_oop $src\n\t"
+            "movl   $mem, $src\t# ptr" %}
+  ins_encode %{
+    __ lea($tmp1$$Register, $mem$$Address);
+    g1_pre_write_barrier(_masm /* _masm */,
+                         this /* node */,
+                         $tmp1$$Register /* obj */,
+                         $tmp2$$Register /* pre_val */,
+                         $tmp3$$Register /* tmp */,
+                         barrier_data() /* barrier_data */,
+                         RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
+    __ movq($tmp2$$Register, $src$$Register);
+    __ encode_heap_oop($tmp2$$Register);
+    __ movl(Address($tmp1$$Register, 0), $tmp2$$Register);
+    g1_post_write_barrier(_masm /* _masm */,
+                          this /* node */,
+                          $tmp1$$Register /* store_addr */,
+                          $src$$Register /* new_val */,
+                          $tmp3$$Register /* tmp1 */,
+                          $tmp2$$Register /* tmp2 */,
+                          barrier_data() /* barrier_data */);
+  %}
+  ins_pipe(ialu_mem_reg);
+%}
+
 instruct g1CompareAndExchangeP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rax_RegP oldval, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
