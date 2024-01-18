@@ -812,7 +812,7 @@ uint G1BarrierSetC2::estimated_barrier_size(const Node* node) const {
   if ((barrier_data & G1C2BarrierPost) != 0) {
     nodes += 60;
   }
-  return nodes;
+  return nodes * G1BarrierSizeFactor;
 }
 
 #ifdef ASSERT
