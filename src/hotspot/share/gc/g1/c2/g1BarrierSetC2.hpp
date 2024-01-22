@@ -36,8 +36,9 @@ class TypeFunc;
 
 const int G1C2BarrierPre         = 1;
 const int G1C2BarrierPost        = 2;
-const int G1C2BarrierPostPrecise = 4;
-const int G1C2BarrierElided      = 8;
+const int G1C2BarrierPostNotNull = 4;
+const int G1C2BarrierPostPrecise = 8;
+const int G1C2BarrierElided      = 16;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
   Register _arg;
@@ -128,6 +129,7 @@ public:
   virtual void eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const;
   virtual void eliminate_gc_barrier_data(Node* node) const;
   virtual Node* step_over_gc_barrier(Node* c) const;
+  virtual bool expand_barriers(Compile* C, PhaseIterGVN& igvn) const;
   virtual uint estimated_barrier_size(const Node* node) const;
 
 #ifdef ASSERT

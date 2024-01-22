@@ -798,6 +798,57 @@ Node* G1BarrierSetC2::step_over_gc_barrier(Node* c) const {
   return c;
 }
 
+void refine_barrier_by_new_val_type(Node* n) {
+  if (n->Opcode() != Op_StoreP &&
+      n->Opcode() != Op_StoreN) {
+    return;
+  }
+  MemNode* store = n->as_Mem();
+  const Node* newval = n->in(MemNode::ValueIn);
+  assert(newval != nullptr, "");
+  const Type* newval_bottom = newval->bottom_type();
+  assert(newval_bottom->isa_ptr() || newval_bottom->isa_narrowoop(), "newval should be an OOP");
+  TypePtr::PTR newval_type = newval_bottom->make_ptr()->ptr();
+  uint8_t barrier_data = store->barrier_data();
+  if (newval_type == TypePtr::Null) {
+    // Simply elide post-barrier if writing null.
+    barrier_data &= ~G1C2BarrierPost;
+  } else if (((barrier_data & G1C2BarrierPost) != 0) &&
+             newval_type == TypePtr::NotNull) {
+    // If the post-barrier has not been elided yet (e.g. due to newval being
+    // freshly allocated), mark it as not-null (simplifies barrier tests and
+    // compressed OOPs logic).
+    barrier_data |= G1C2BarrierPostNotNull;
+  }
+  // TODO: should we also exploit TypePtr::Constant? See e.g. "instruct
+  // decodeHeapOop" in x86_64.ad.
+  store->set_barrier_data(barrier_data);
+  return;
+}
+
+// Refine (not really expand) G1 barriers by looking at the new value type
+// (whether it is necessarily null or necessarily non-null).
+bool G1BarrierSetC2::expand_barriers(Compile* C, PhaseIterGVN& igvn) const {
+  ResourceMark rm;
+  VectorSet visited;
+  Node_List worklist;
+  worklist.push(C->root());
+  while (worklist.size() > 0) {
+    Node* n = worklist.pop();
+    if (visited.test_set(n->_idx)) {
+      continue;
+    }
+    refine_barrier_by_new_val_type(n);
+    for (uint j = 0; j < n->req(); j++) {
+      Node* in = n->in(j);
+      if (in != nullptr) {
+        worklist.push(in);
+      }
+    }
+  }
+  return false;
+}
+
 uint G1BarrierSetC2::estimated_barrier_size(const Node* node) const {
   // These Ideal node counts are extracted from the pre-matching Ideal graph
   // generated when compiling the following method with early barrier expansion:

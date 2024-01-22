@@ -88,6 +88,7 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
                                 r15_thread /* thread */,
                                 tmp1 /* tmp */,
                                 tmp2 /* tmp2 */,
+                                (barrier_data & G1C2BarrierPostNotNull) == 0 /* new_val_may_be_null */,
                                 stub);
   __ bind(*stub->continuation());
 }
@@ -171,8 +172,14 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
                          barrier_data() /* barrier_data */,
                          RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
-    __ movl($tmp2$$Register, $src$$Register);
-    __ decode_heap_oop($tmp2$$Register);
+    if ((barrier_data() & G1C2BarrierPost) != 0) {
+      __ movl($tmp2$$Register, $src$$Register);
+      if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
+        __ decode_heap_oop($tmp2$$Register);
+      } else {
+        __ decode_heap_oop_not_null($tmp2$$Register);
+      }
+    }
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $tmp1$$Register /* store_addr */,
@@ -206,7 +213,11 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
                          barrier_data() /* barrier_data */,
                          RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
     __ movq($tmp2$$Register, $src$$Register);
-    __ encode_heap_oop($tmp2$$Register);
+    if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
+      __ encode_heap_oop($tmp2$$Register);
+    } else {
+      __ encode_heap_oop_not_null($tmp2$$Register);
+    }
     __ movl(Address($tmp1$$Register, 0), $tmp2$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
