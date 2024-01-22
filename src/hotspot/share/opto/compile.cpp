@@ -3408,7 +3408,9 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
         Node *m = wq.at(next);
         for (DUIterator_Fast imax, i = m->fast_outs(imax); i < imax; i++) {
           Node* use = m->fast_out(i);
-          if (use->is_Mem() || use->is_EncodeNarrowPtr()) {
+          if (use->is_Mem() ||
+              (use->is_EncodeNarrowPtr() &&
+               (!DelegateEncodePinning || BarrierSet::barrier_set()->barrier_set_c2()->treat_encode_narrowptr_as_mem_operation()))) {
             use->ensure_control_or_add_prec(n->in(0));
           } else {
             switch(use->Opcode()) {
