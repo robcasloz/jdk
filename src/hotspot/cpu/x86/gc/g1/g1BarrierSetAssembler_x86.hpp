@@ -70,6 +70,7 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                              Register thread,
                              Register tmp,
                              Register tmp2,
+                             bool new_val_may_be_null = true,
                              G1BarrierStubC2* c2_stub = nullptr);
 
  protected:
