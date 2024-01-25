@@ -1581,6 +1581,12 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
     // the same register.  See find_shared_node.
     return false;
   } else {                      // Not a constant
+    if (MatchPinnedEncodes && n->Opcode() == Op_StoreN && m->is_EncodeP() && !shared) {
+      // Make it possible to match "encode and store" patterns where the encode
+      // operation is non-shared, regardless of whether it has been pinned to a
+      // control node (e.g. by CastPP node removal in final graph reshaping).
+      return false;
+    }
     // Stop recursion if they have different Controls.
     Node* m_control = m->in(0);
     // Control of load's memory can post-dominates load's control.
