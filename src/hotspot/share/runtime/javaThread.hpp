@@ -245,11 +245,15 @@ class JavaThread: public Thread {
   unsigned long long _store_counter;
   unsigned long long _store_encode_candidate_counter;
   unsigned long long _store_encode_counter;
+  unsigned long long _store_nopost_counter;
+  unsigned long long _store_notnull_counter;
   unsigned long long _atomic_counter;
   unsigned long long _load_counter;
   static unsigned long long _total_store;
   static unsigned long long _total_store_encode_candidate;
   static unsigned long long _total_store_encode;
+  static unsigned long long _total_store_nopost;
+  static unsigned long long _total_store_notnull;
   static unsigned long long _total_atomic;
   static unsigned long long _total_load;
  private:
@@ -782,6 +786,8 @@ private:
   static ByteSize store_counter_offset()         { return byte_offset_of(JavaThread, _store_counter);}
   static ByteSize store_encode_candidate_counter_offset() { return byte_offset_of(JavaThread, _store_encode_candidate_counter);}
   static ByteSize store_encode_counter_offset()  { return byte_offset_of(JavaThread, _store_encode_counter);}
+  static ByteSize store_nopost_counter_offset()  { return byte_offset_of(JavaThread, _store_nopost_counter);}
+  static ByteSize store_notnull_counter_offset() { return byte_offset_of(JavaThread, _store_notnull_counter);}
   static ByteSize atomic_counter_offset()        { return byte_offset_of(JavaThread, _atomic_counter);}
   static ByteSize load_counter_offset()          { return byte_offset_of(JavaThread, _load_counter);}
 #if INCLUDE_JVMCI
