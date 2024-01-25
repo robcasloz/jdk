@@ -107,6 +107,12 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
   ins_encode %{
     if (G1ProfileBarriers) {
       __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+      if ((barrier_data() & G1C2BarrierPost) == 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_nopost_counter_offset()));
+      }
+      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_notnull_counter_offset()));
+      }
     }
     __ lea($tmp1$$Register, $mem$$Address);
     g1_pre_write_barrier(_masm /* _masm */,
@@ -162,6 +168,12 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
       } else {
         __ incrementq(Address(r15_thread, JavaThread::store_encode_candidate_counter_offset()));
       }
+      if ((barrier_data() & G1C2BarrierPost) == 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_nopost_counter_offset()));
+      }
+      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_notnull_counter_offset()));
+      }
     }
     __ lea($tmp1$$Register, $mem$$Address);
     g1_pre_write_barrier(_masm /* _masm */,
@@ -203,6 +215,12 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
   ins_encode %{
     if (G1ProfileBarriers) {
       __ incrementq(Address(r15_thread, JavaThread::store_encode_counter_offset()));
+      if ((barrier_data() & G1C2BarrierPost) == 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_nopost_counter_offset()));
+      }
+      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_notnull_counter_offset()));
+      }
     }
     __ lea($tmp1$$Register, $mem$$Address);
     g1_pre_write_barrier(_masm /* _masm */,

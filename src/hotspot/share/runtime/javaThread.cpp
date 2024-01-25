@@ -116,6 +116,8 @@ size_t      JavaThread::_stack_size_at_create = 0;
 unsigned long long JavaThread::_total_store;
 unsigned long long JavaThread::_total_store_encode_candidate;
 unsigned long long JavaThread::_total_store_encode;
+unsigned long long JavaThread::_total_store_nopost;
+unsigned long long JavaThread::_total_store_notnull;
 unsigned long long JavaThread::_total_atomic;
 unsigned long long JavaThread::_total_load;
 
@@ -444,6 +446,8 @@ JavaThread::JavaThread() :
   _store_counter(0),
   _store_encode_candidate_counter(0),
   _store_encode_counter(0),
+  _store_nopost_counter(0),
+  _store_notnull_counter(0),
   _atomic_counter(0),
   _load_counter(0),
   _saved_exception_pc(nullptr),
@@ -671,6 +675,8 @@ JavaThread::~JavaThread() {
   _total_store += _store_counter;
   _total_store_encode_candidate += _store_encode_candidate_counter;
   _total_store_encode += _store_encode_counter;
+  _total_store_nopost += _store_nopost_counter;
+  _total_store_notnull += _store_notnull_counter;
   _total_atomic += _atomic_counter;
   _total_load += _load_counter;
 
