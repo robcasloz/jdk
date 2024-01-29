@@ -144,16 +144,11 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   format %{ "movl    $mem, $src\t# ptr" %}
   ins_encode %{
     if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
       Node* src_node = in(operand_index(2));
       int opc = src_node->is_Mach() ? src_node->as_Mach()->ideal_Opcode() : -1;
-      if (src_node->is_Phi() || src_node->is_Con() || src_node->is_MachProj() ||
-          (src_node->is_Mach() && (opc == Op_LoadN || opc == Op_CMoveN))) {
-        __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
-      } else {
-        assert(!G1OptimizeCompressedOOPWrites || !MatchPinnedEncodes || (opc != Op_EncodeP),
-               "EncodeP src nodes should always be matched together with their corresponding StoreN nodes");
-        __ incrementq(Address(r15_thread, JavaThread::store_encode_candidate_counter_offset()));
-      }
+      assert(!G1OptimizeCompressedOOPWrites || !MatchPinnedEncodes || (opc != Op_EncodeP),
+             "EncodeP src nodes should always be matched together with their corresponding StoreN nodes");
       if ((barrier_data() & G1C2BarrierPost) == 0) {
         __ incrementq(Address(r15_thread, JavaThread::store_nopost_counter_offset()));
       }

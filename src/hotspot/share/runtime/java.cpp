@@ -242,7 +242,6 @@ static void print_bytecode_count() {}
 class CollectG1BarrierStatsClosure : public ThreadClosure {
 public:
   unsigned long long _total_store;
-  unsigned long long _total_store_encode_candidate;
   unsigned long long _total_store_encode;
   unsigned long long _total_store_nopost;
   unsigned long long _total_store_notnull;
@@ -250,7 +249,6 @@ public:
   unsigned long long _total_load;
   CollectG1BarrierStatsClosure() :
     _total_store(0),
-    _total_store_encode_candidate(0),
     _total_store_encode(0),
     _total_store_nopost(0),
     _total_store_notnull(0),
@@ -260,7 +258,6 @@ public:
   void do_thread(Thread* thread) {
     const JavaThread* javaThread = JavaThread::cast(thread);
     _total_store += javaThread->_total_store;
-    _total_store_encode_candidate += javaThread->_total_store_encode_candidate;
     _total_store_encode += javaThread->_total_store_encode;
     _total_store_nopost += javaThread->_total_store_nopost;
     _total_store_notnull += javaThread->_total_store_notnull;
@@ -301,9 +298,9 @@ void print_statistics() {
     double t = os::elapsedTime();
     int eltime = (int)t;  // elapsed time in seconds
     int eltimeFraction = (int) ((t - eltime) * 1000000);
-    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
+    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld",
                   eltime, eltimeFraction,
-                  cl._total_store, cl._total_store_encode_candidate, cl._total_store_encode,
+                  cl._total_store, cl._total_store_encode,
                   cl._total_store_nopost, cl._total_store_notnull,
                   cl._total_atomic, cl._total_load);
   }
