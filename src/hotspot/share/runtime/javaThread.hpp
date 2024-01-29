@@ -241,14 +241,12 @@ class JavaThread: public Thread {
  public:                                                        // Expose _thread_state for SafeFetchInt()
   volatile JavaThreadState _thread_state;
   unsigned long long _store_counter;
-  unsigned long long _store_encode_candidate_counter;
   unsigned long long _store_encode_counter;
   unsigned long long _store_nopost_counter;
   unsigned long long _store_notnull_counter;
   unsigned long long _atomic_counter;
   unsigned long long _load_counter;
   static unsigned long long _total_store;
-  static unsigned long long _total_store_encode_candidate;
   static unsigned long long _total_store_encode;
   static unsigned long long _total_store_nopost;
   static unsigned long long _total_store_notnull;
@@ -783,7 +781,6 @@ private:
   static ByteSize saved_exception_pc_offset()    { return byte_offset_of(JavaThread, _saved_exception_pc); }
   static ByteSize osthread_offset()              { return byte_offset_of(JavaThread, _osthread); }
   static ByteSize store_counter_offset()         { return byte_offset_of(JavaThread, _store_counter);}
-  static ByteSize store_encode_candidate_counter_offset() { return byte_offset_of(JavaThread, _store_encode_candidate_counter);}
   static ByteSize store_encode_counter_offset()  { return byte_offset_of(JavaThread, _store_encode_counter);}
   static ByteSize store_nopost_counter_offset()  { return byte_offset_of(JavaThread, _store_nopost_counter);}
   static ByteSize store_notnull_counter_offset() { return byte_offset_of(JavaThread, _store_notnull_counter);}
