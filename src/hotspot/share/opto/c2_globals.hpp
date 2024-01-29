@@ -792,10 +792,6 @@
                                                                             \
   notproduct(bool, TraceStubLiveness, false,                                \
           "Trace liveness computation for GC stubs")                        \
-                                                                            \
-  product(bool, DelegateEncodePinning, false,                               \
-          "Make control pinning of EncodeP nodes GC-dependent "             \
-          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
 
 // end of C2_FLAGS
 
