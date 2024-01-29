@@ -1581,10 +1581,10 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
     // the same register.  See find_shared_node.
     return false;
   } else {                      // Not a constant
-    if (MatchPinnedEncodes && n->Opcode() == Op_StoreN && m->is_EncodeP() && !shared) {
-      // Make it possible to match "encode and store" patterns where the encode
-      // operation is non-shared, regardless of whether it has been pinned to a
-      // control node (e.g. by CastPP node removal in final graph reshaping).
+    if (MatchPinnedEncodes && n->Opcode() == Op_StoreN && m->is_EncodeP()) {
+      // Make it possible to match "encode and store" patterns, regardless of
+      // whether the encode operation is pinned to a control node (e.g. by
+      // CastPP node removal in final graph reshaping).
       return false;
     }
     // Stop recursion if they have different Controls.
@@ -2082,6 +2082,13 @@ bool Matcher::is_vshift_con_pattern(Node* n, Node* m) {
            VectorNode::is_vector_shift_count(m) && m->in(1)->is_Con();
   }
   return false;
+}
+
+bool Matcher::is_encode_and_store_pattern(Node* n, Node* m) {
+  return n != nullptr &&
+         m != nullptr &&
+         n->Opcode() == Op_StoreN &&
+         m->is_EncodeP();
 }
 
 bool Matcher::clone_node(Node* n, Node* m, Matcher::MStack& mstack) {
