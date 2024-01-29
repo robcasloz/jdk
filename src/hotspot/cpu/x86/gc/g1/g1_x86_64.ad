@@ -152,7 +152,7 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
         __ incrementq(Address(r15_thread, JavaThread::store_notnull_counter_offset()));
       }
     }
-    assert(!G1OptimizeCompressedOOPWrites || !in(operand_index(2))->is_Mach() ||
+    assert(!in(operand_index(2))->is_Mach() ||
            (in(operand_index(2))->as_Mach()->ideal_Opcode() != Op_EncodeP),
            "EncodeP src nodes should be matched with their corresponding StoreN nodes");
     __ lea($tmp1$$Register, $mem$$Address);
@@ -185,7 +185,7 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
 
 instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && G1OptimizeCompressedOOPWrites && n->as_Store()->barrier_data() != 0);
+  predicate(UseG1GC && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreN mem (EncodeP src)));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
