@@ -132,6 +132,7 @@ private:
   void find_shared_post_visit(Node* n, uint opcode);
 
   bool is_vshift_con_pattern(Node* n, Node* m);
+  bool is_encode_and_store_pattern(Node* n, Node* m);
 
   // Debug and profile information for nodes in old space:
   GrowableArray<Node_Notes*>* _old_node_note_array;
