@@ -1810,8 +1810,6 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   NOT_PRODUCT(record_new2old(mach, leaf);)
   // Check for instruction or instruction chain rule
   if( rule >= _END_INST_CHAIN_RULE || rule < _BEGIN_INST_CHAIN_RULE ) {
-    assert(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf),
-           "duplicating node that's already been matched");
     // Instruction
     mach->add_req( leaf->in(0) ); // Set initial control
     // Reduce interior of complex instruction
