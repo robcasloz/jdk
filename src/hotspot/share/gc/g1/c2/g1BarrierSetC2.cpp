@@ -1275,6 +1275,20 @@ int G1BarrierSetC2::estimate_stub_size() const {
   return 0;
 }
 
+#ifndef PRODUCT
+void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) const {
+  if ((mach->barrier_data() & G1C2BarrierPre) != 0) {
+    st->print("pre ");
+  }
+  if ((mach->barrier_data() & G1C2BarrierPost) != 0) {
+    st->print("post ");
+  }
+  if ((mach->barrier_data() & G1C2BarrierPostNotNull) != 0) {
+    st->print("notnull ");
+  }
+}
+#endif // !PRODUCT
+
 const TypeFunc *G1BarrierSetC2Early::write_ref_field_pre_entry_Type() {
   const Type **fields = TypeTuple::fields(2);
   fields[TypeFunc::Parms+0] = TypeInstPtr::NOTNULL; // original field value
