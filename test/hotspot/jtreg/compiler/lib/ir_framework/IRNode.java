@@ -546,10 +546,46 @@ public class IRNode {
         vectorNode(FMA_VD, "FmaVD", TYPE_DOUBLE);
     }
 
+    public static final String G1_COMPARE_AND_EXCHANGE_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_COMPARE_AND_EXCHANGE_N_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1CompareAndExchangeN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_COMPARE_AND_EXCHANGE_N_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_COMPARE_AND_EXCHANGE_P_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_COMPARE_AND_EXCHANGE_P_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1CompareAndExchangeP\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_COMPARE_AND_EXCHANGE_P_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_COMPARE_AND_SWAP_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_COMPARE_AND_SWAP_N_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1CompareAndSwapN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_COMPARE_AND_SWAP_N_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_COMPARE_AND_SWAP_P_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_COMPARE_AND_SWAP_P_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1CompareAndSwapP\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_COMPARE_AND_SWAP_P_WITH_BARRIER_FLAG, regex);
+    }
+
     public static final String G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG" + POSTFIX;
     static {
         String regex = START + "g1EncodePAndStoreN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
         machOnly(G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_GET_AND_SET_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_GET_AND_SET_N_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1XChgN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_GET_AND_SET_N_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_GET_AND_SET_P_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_GET_AND_SET_P_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1XChgP\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_GET_AND_SET_P_WITH_BARRIER_FLAG, regex);
     }
 
     public static final String G1_STORE_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_STORE_N_WITH_BARRIER_FLAG" + POSTFIX;
