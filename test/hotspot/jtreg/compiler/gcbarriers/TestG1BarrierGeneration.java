@@ -24,6 +24,8 @@
 package compiler.gcbarriers;
 
 import compiler.lib.ir_framework.*;
+import java.lang.invoke.VarHandle;
+import java.lang.invoke.MethodHandles;
 
 /**
  * @test
@@ -40,6 +42,16 @@ public class TestG1BarrierGeneration {
 
     static class Outer {
         Object f;
+    }
+
+    static final VarHandle fVarHandle;
+    static {
+        MethodHandles.Lookup l = MethodHandles.lookup();
+        try {
+            fVarHandle = l.findVarHandle(Outer.class, "f", Object.class);
+        } catch (Exception e) {
+            throw new Error(e);
+        }
     }
 
     public static void main(String[] args) {
@@ -87,15 +99,114 @@ public class TestG1BarrierGeneration {
         o.f = o1;
     }
 
-    @Run(test = {"testStore",
-                 "testStoreNull",
-                 "testStoreNotNull"})
-    public void runGenerationTests() {
-        Outer o = new Outer();
-        Object o1 = new Object();
-        testStore(o, o1);
-        testStoreNull(o);
-        testStoreNotNull(o, o1);
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, PRE_AND_POST, "2"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG, PRE_AND_POST, "2"},
+        phase = CompilePhase.FINAL_CODE)
+    public static void testStoreTwice(Outer o, Outer p, Object o1) {
+        o.f = o1;
+        p.f = o1;
     }
 
+    @Run(test = {"testStore",
+                 "testStoreNull",
+                 "testStoreNotNull",
+                 "testStoreTwice"})
+    public void runStoreTests() {
+        {
+            Outer o = new Outer();
+            Outer p = new Outer();
+            Object o1 = new Object();
+            testStore(o, o1);
+            assert(o.f == o1);
+        }
+        {
+            Outer o = new Outer();
+            testStoreNull(o);
+            assert(o.f == null);
+        }
+        {
+            Outer o = new Outer();
+            Object o1 = new Object();
+            testStoreNotNull(o, o1);
+            assert(o.f == o1);
+        }
+        {
+            Outer o = new Outer();
+            Outer p = new Outer();
+            Object o1 = new Object();
+            testStoreTwice(o, p, o1);
+            assert(o.f == o1);
+            assert(p.f == o1);
+        }
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_COMPARE_AND_EXCHANGE_P_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_COMPARE_AND_EXCHANGE_N_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    static Object testCompareAndExchange(Outer o, Object oldVal, Object newVal) {
+        return fVarHandle.compareAndExchange(o, oldVal, newVal);
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_COMPARE_AND_SWAP_P_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_COMPARE_AND_SWAP_N_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    static boolean testCompareAndSwap(Outer o, Object oldVal, Object newVal) {
+        return fVarHandle.compareAndSet(o, oldVal, newVal);
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_GET_AND_SET_P_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_GET_AND_SET_N_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    static Object testGetAndSet(Outer o, Object newVal) {
+        return fVarHandle.getAndSet(o, newVal);
+    }
+
+    @Run(test = {"testCompareAndExchange",
+                 "testCompareAndSwap",
+                 "testGetAndSet"})
+    public void runAtomicTests() {
+        {
+            Outer o = new Outer();
+            Object oldVal = new Object();
+            o.f = oldVal;
+            Object newVal = new Object();
+            Object oldVal2 = testCompareAndExchange(o, oldVal, newVal);
+            assert(oldVal == oldVal2);
+            assert(o.f == newVal);
+        }
+        {
+            Outer o = new Outer();
+            Object oldVal = new Object();
+            o.f = oldVal;
+            Object newVal = new Object();
+            boolean b = testCompareAndSwap(o, oldVal, newVal);
+            assert(b);
+            assert(o.f == newVal);
+        }
+        {
+            Outer o = new Outer();
+            Object oldVal = new Object();
+            o.f = oldVal;
+            Object newVal = new Object();
+            Object oldVal2 = testGetAndSet(o, newVal);
+            assert(oldVal == oldVal2);
+            assert(o.f == newVal);
+        }
+    }
 }
