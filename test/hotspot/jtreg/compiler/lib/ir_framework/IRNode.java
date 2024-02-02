@@ -588,6 +588,18 @@ public class IRNode {
         machOnly(G1_GET_AND_SET_P_WITH_BARRIER_FLAG, regex);
     }
 
+    public static final String G1_LOAD_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_LOAD_N_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1LoadN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_LOAD_N_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_LOAD_P_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_LOAD_P_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "g1LoadP\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(G1_LOAD_P_WITH_BARRIER_FLAG, regex);
+    }
+
     public static final String G1_STORE_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_STORE_N_WITH_BARRIER_FLAG" + POSTFIX;
     static {
         String regex = START + "g1StoreN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;

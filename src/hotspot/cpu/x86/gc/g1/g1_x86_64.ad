@@ -456,7 +456,7 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
 %}
 
 // Load Pointer
-instruct g1loadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
+instruct g1LoadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_Load()->barrier_data() != 0);
   match(Set dst (LoadP mem));
@@ -480,7 +480,7 @@ instruct g1loadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
 %}
 
 // Load Compressed Pointer
-instruct g1loadN(rRegN dst, memory mem, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
+instruct g1LoadN(rRegN dst, memory mem, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_Load()->barrier_data() != 0);
   match(Set dst (LoadN mem));

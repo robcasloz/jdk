@@ -26,6 +26,10 @@ package compiler.gcbarriers;
 import compiler.lib.ir_framework.*;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 
 /**
  * @test
@@ -207,6 +211,45 @@ public class TestG1BarrierGeneration {
             Object oldVal2 = testGetAndSet(o, newVal);
             assert(oldVal == oldVal2);
             assert(o.f == newVal);
+        }
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_LOAD_P_WITH_BARRIER_FLAG, PRE_ONLY, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_LOAD_N_WITH_BARRIER_FLAG, PRE_ONLY, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    static Object testLoadSoftReference(SoftReference<Object> ref) {
+        return ref.get();
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_LOAD_P_WITH_BARRIER_FLAG, PRE_ONLY, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_LOAD_N_WITH_BARRIER_FLAG, PRE_ONLY, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    static Object testLoadWeakReference(WeakReference<Object> ref) {
+        return ref.get();
+    }
+
+    @Run(test = {"testLoadSoftReference",
+                 "testLoadWeakReference"})
+    public void runReferenceTests() {
+        {
+            Object o1 = new Object();
+            SoftReference<Object> sref = new SoftReference<Object>(o1);
+            Object o2 = testLoadSoftReference(sref);
+            assert(o2 == o1 || o2 == null);
+        }
+        {
+            Object o1 = new Object();
+            WeakReference<Object> wref = new WeakReference<Object>(o1);
+            Object o2 = testLoadWeakReference(wref);
+            assert(o2 == o1 || o2 == null);
         }
     }
 }
