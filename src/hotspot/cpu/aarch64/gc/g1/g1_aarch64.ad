@@ -186,6 +186,37 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_pipe(pipe_serial);
 %}
 
+instruct g1EncodePAndStoreN(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
+%{
+  predicate(UseG1GC && !needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
+  match(Set mem (StoreN mem (EncodeP src)));
+  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+
+  ins_cost(125); // XXX
+  format %{ "encode_heap_oop $tmp1, $src\n\t"
+            "strw  $tmp1, $mem\t# compressed ptr" %}
+  ins_encode %{
+    g1_pre_write_barrier(_masm /* _masm */,
+                         this /* node */,
+                         $mem$$Register /* obj */,
+                         $tmp1$$Register /* pre_val */,
+                         $tmp2$$Register /* tmp1 */,
+                         $tmp3$$Register /* tmp2 */,
+                         barrier_data() /* barrier_data */,
+                         RegSet::of($mem$$Register, $src$$Register) /* preserve */);
+    __ encode_heap_oop($tmp1$$Register, $src$$Register);
+    __ strw($tmp1$$Register, Address($mem$$Register, 0));
+    g1_post_write_barrier(_masm /* _masm */,
+                          this /* node */,
+                          $mem$$Register /* store_addr */,
+                          $src$$Register /* new_val */,
+                          $tmp2$$Register /* tmp1 */,
+                          $tmp3$$Register /* tmp2 */,
+                          barrier_data() /* barrier_data */);
+  %}
+  ins_pipe(pipe_serial);
+%}
+
 instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
