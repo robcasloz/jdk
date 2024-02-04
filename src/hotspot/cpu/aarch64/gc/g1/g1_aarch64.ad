@@ -90,6 +90,7 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
                                 rthread /* thread */,
                                 tmp1 /* tmp1 */,
                                 tmp2 /* tmp2 */,
+                                (barrier_data & G1C2BarrierPostNotNull) == 0 /* new_val_may_be_null */,
                                 stub);
   __ bind(*stub->continuation());
 }

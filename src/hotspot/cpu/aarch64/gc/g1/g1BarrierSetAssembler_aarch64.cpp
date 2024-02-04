@@ -365,6 +365,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
                                                   Register thread,
                                                   Register tmp1,
                                                   Register tmp2,
+                                                  bool new_val_may_be_null,
                                                   G1BarrierStubC2* c2_stub) {
   if (!supports_c2_late_barrier_expansion()) {
     g1_write_barrier_post_early(masm, store_addr, new_val, thread, tmp1, tmp2);
@@ -395,7 +396,9 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   // crosses regions, storing null?
 
-  __ cbz(new_val, done);
+  if (new_val_may_be_null) {
+    __ cbz(new_val, done);
+  }
 
   // storing region crossing non-null, is card already dirty?
 
