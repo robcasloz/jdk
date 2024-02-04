@@ -264,7 +264,7 @@ instruct g1EncodePAndStoreN(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp t
   ins_pipe(pipe_serial);
 %}
 
-// TODO: evaluate whether we need encode-and-store version of this.
+// These are fewer than 1% of the total executed stores, no need to define an encode-and-store version.
 instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
