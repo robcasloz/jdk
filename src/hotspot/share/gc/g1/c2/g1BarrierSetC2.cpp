@@ -1650,7 +1650,7 @@ void G1BarrierSetC2Early::post_barrier(GraphKit* kit,
     return;
   }
 
-  if (!use_precise) {
+  if (!use_precise && (!G1AlwaysPrecise || adr == nullptr)) {
     // All card marks for a (non-array) instance are in one place:
     adr = obj;
   }
