@@ -146,7 +146,7 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
   format %{ "stlr  $src, $mem\t# ptr" %}
   ins_encode %{
     if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_counter_offset()));
+      __ increment(Address(rthread, JavaThread::store_volatile_counter_offset()));
       if ((barrier_data() & G1C2BarrierPost) == 0) {
         __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
       }
@@ -264,7 +264,7 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
   format %{ "stlrw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
     if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_counter_offset()));
+      __ increment(Address(rthread, JavaThread::store_volatile_counter_offset()));
       if ((barrier_data() & G1C2BarrierPost) == 0) {
         __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
       }
