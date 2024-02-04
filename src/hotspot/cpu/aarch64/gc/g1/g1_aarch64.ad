@@ -201,7 +201,13 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                          barrier_data() /* barrier_data */,
                          RegSet::of($mem$$Register, $src$$Register) /* preserve */);
     __ strw($src$$Register, Address($mem$$Register, 0));
-    __ decode_heap_oop($tmp1$$Register, $src$$Register);
+    if ((barrier_data() & G1C2BarrierPost) != 0) {
+      if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
+        __ decode_heap_oop($tmp1$$Register, $src$$Register);
+      } else {
+        __ decode_heap_oop_not_null($tmp1$$Register, $src$$Register);
+      }
+    }
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
@@ -240,7 +246,11 @@ instruct g1EncodePAndStoreN(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp t
                          $tmp3$$Register /* tmp2 */,
                          barrier_data() /* barrier_data */,
                          RegSet::of($mem$$Register, $src$$Register) /* preserve */);
-    __ encode_heap_oop($tmp1$$Register, $src$$Register);
+    if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
+      __ encode_heap_oop($tmp1$$Register, $src$$Register);
+    } else {
+      __ encode_heap_oop_not_null($tmp1$$Register, $src$$Register);
+    }
     __ strw($tmp1$$Register, Address($mem$$Register, 0));
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
@@ -281,7 +291,13 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
                          barrier_data() /* barrier_data */,
                          RegSet::of($mem$$Register, $src$$Register) /* preserve */);
     __ stlrw($src$$Register, $mem$$Register);
-    __ decode_heap_oop($tmp1$$Register, $src$$Register);
+    if ((barrier_data() & G1C2BarrierPost) != 0) {
+      if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
+        __ decode_heap_oop($tmp1$$Register, $src$$Register);
+      } else {
+        __ decode_heap_oop_not_null($tmp1$$Register, $src$$Register);
+      }
+    }
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
                           $mem$$Register /* store_addr */,
