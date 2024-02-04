@@ -75,6 +75,7 @@ public:
                              Register thread,
                              Register tmp1,
                              Register tmp2,
+                             bool new_val_may_be_null = true,
                              G1BarrierStubC2* c2_stub = nullptr);
 
 protected:
