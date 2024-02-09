@@ -570,6 +570,11 @@ public class IRNode {
         machOnly(G1_COMPARE_AND_SWAP_P_WITH_BARRIER_FLAG, regex);
     }
 
+    public static final String G1_ENCODE_P_AND_STORE_N = PREFIX + "G1_ENCODE_P_AND_STORE_N" + POSTFIX;
+    static {
+        machOnlyNameRegex(G1_ENCODE_P_AND_STORE_N, "g1EncodePAndStoreN");
+    }
+
     public static final String G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG" + POSTFIX;
     static {
         String regex = START + "g1EncodePAndStoreN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
@@ -600,10 +605,20 @@ public class IRNode {
         machOnly(G1_LOAD_P_WITH_BARRIER_FLAG, regex);
     }
 
+    public static final String G1_STORE_N = PREFIX + "G1_STORE_N" + POSTFIX;
+    static {
+        machOnlyNameRegex(G1_STORE_N, "g1StoreN");
+    }
+
     public static final String G1_STORE_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_STORE_N_WITH_BARRIER_FLAG" + POSTFIX;
     static {
         String regex = START + "g1StoreN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
         machOnly(G1_STORE_N_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String G1_STORE_P = PREFIX + "G1_STORE_P" + POSTFIX;
+    static {
+        machOnlyNameRegex(G1_STORE_P, "g1StoreP");
     }
 
     public static final String G1_STORE_P_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_STORE_P_WITH_BARRIER_FLAG" + POSTFIX;

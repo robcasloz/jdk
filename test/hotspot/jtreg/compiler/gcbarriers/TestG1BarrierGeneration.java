@@ -115,10 +115,24 @@ public class TestG1BarrierGeneration {
         p.f = o1;
     }
 
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        failOn = {IRNode.G1_STORE_P},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        failOn = {IRNode.G1_STORE_N, IRNode.G1_ENCODE_P_AND_STORE_N},
+        phase = CompilePhase.FINAL_CODE)
+    public static Outer testStoreOnNewObject(Object o1) {
+        Outer o = new Outer();
+        o.f = o1;
+        return o;
+    }
+
     @Run(test = {"testStore",
                  "testStoreNull",
                  "testStoreNotNull",
-                 "testStoreTwice"})
+                 "testStoreTwice",
+                 "testStoreOnNewObject"})
     public void runStoreTests() {
         {
             Outer o = new Outer();
@@ -145,6 +159,11 @@ public class TestG1BarrierGeneration {
             testStoreTwice(o, p, o1);
             assert(o.f == o1);
             assert(p.f == o1);
+        }
+        {
+            Object o1 = new Object();
+            Outer o = testStoreOnNewObject(o1);
+            assert(o.f == o1);
         }
     }
 
