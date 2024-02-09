@@ -361,6 +361,10 @@
                                                                             \
   product(bool, G1AlwaysPrecise, false,                                     \
           "Force precise card-marking in early barrier expansion model "    \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
+  product(bool, G1OptimizeBarrierLayout, true,                              \
+          "Optimize basic block placement of post-barrier "                 \
           "(TEMPORARY, FOR EXPERIMENTATION ONLY)")
 
 // end of GC_G1_FLAGS
