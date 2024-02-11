@@ -249,6 +249,17 @@ class JavaThread: public Thread {
   unsigned long long _store_notnull_counter;
   unsigned long long _atomic_counter;
   unsigned long long _load_counter;
+  unsigned long long _pre_entry_counter;
+  unsigned long long _pre_marking_counter;
+  unsigned long long _pre_notnull_counter;
+  unsigned long long _pre_runtime_counter;
+  unsigned long long _post_entry_counter;
+  unsigned long long _post_inter_counter;
+  unsigned long long _post_notnull_counter;
+  unsigned long long _post_clean_counter;
+  unsigned long long _post_stillclean_counter;
+  unsigned long long _post_runtime_counter;
+
   static unsigned long long _total_store;
   static unsigned long long _total_store_volatile;
   static unsigned long long _total_store_encode;
@@ -256,6 +267,16 @@ class JavaThread: public Thread {
   static unsigned long long _total_store_notnull;
   static unsigned long long _total_atomic;
   static unsigned long long _total_load;
+  static unsigned long long _total_pre_entry;
+  static unsigned long long _total_pre_marking;
+  static unsigned long long _total_pre_notnull;
+  static unsigned long long _total_pre_runtime;
+  static unsigned long long _total_post_entry;
+  static unsigned long long _total_post_inter;
+  static unsigned long long _total_post_notnull;
+  static unsigned long long _total_post_clean;
+  static unsigned long long _total_post_stillclean;
+  static unsigned long long _total_post_runtime;
  private:
   SafepointMechanism::ThreadData _poll_data;
   ThreadSafepointState*          _safepoint_state;              // Holds information about a thread during a safepoint
@@ -790,6 +811,17 @@ private:
   static ByteSize store_notnull_counter_offset() { return byte_offset_of(JavaThread, _store_notnull_counter);}
   static ByteSize atomic_counter_offset()        { return byte_offset_of(JavaThread, _atomic_counter);}
   static ByteSize load_counter_offset()          { return byte_offset_of(JavaThread, _load_counter);}
+  static ByteSize pre_entry_counter_offset()     { return byte_offset_of(JavaThread, _pre_entry_counter);}
+  static ByteSize pre_marking_counter_offset()   { return byte_offset_of(JavaThread, _pre_marking_counter);}
+  static ByteSize pre_notnull_counter_offset()   { return byte_offset_of(JavaThread, _pre_notnull_counter);}
+  static ByteSize pre_runtime_counter_offset()   { return byte_offset_of(JavaThread, _pre_runtime_counter);}
+  static ByteSize post_entry_counter_offset()    { return byte_offset_of(JavaThread, _post_entry_counter);}
+  static ByteSize post_inter_counter_offset()    { return byte_offset_of(JavaThread, _post_inter_counter);}
+  static ByteSize post_notnull_counter_offset()  { return byte_offset_of(JavaThread, _post_notnull_counter);}
+  static ByteSize post_clean_counter_offset()    { return byte_offset_of(JavaThread, _post_clean_counter);}
+  static ByteSize post_stillclean_counter_offset() { return byte_offset_of(JavaThread, _post_stillclean_counter);}
+  static ByteSize post_runtime_counter_offset()  { return byte_offset_of(JavaThread, _post_runtime_counter);}
+
 #if INCLUDE_JVMCI
   static ByteSize pending_deoptimization_offset() { return byte_offset_of(JavaThread, _pending_deoptimization); }
   static ByteSize pending_monitorenter_offset()  { return byte_offset_of(JavaThread, _pending_monitorenter); }
