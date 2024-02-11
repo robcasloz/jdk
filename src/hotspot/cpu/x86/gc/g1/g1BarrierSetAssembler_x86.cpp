@@ -377,6 +377,10 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
   Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
 
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_entry_counter_offset()));
+  }
+
   // Is marking active?
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
     __ cmpl(in_progress, 0);
@@ -386,6 +390,10 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   }
   __ jcc(Assembler::equal, done);
 
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_marking_counter_offset()));
+  }
+
   // Do we need to load the previous value?
   if (obj != noreg) {
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
@@ -394,6 +402,10 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   // Is the previous value null?
   __ cmpptr(pre_val, NULL_WORD);
   __ jcc(Assembler::equal, done);
+
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_notnull_counter_offset()));
+  }
 
   // Can we store original value in the thread's buffer?
   // Is index == 0?
@@ -484,6 +496,10 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   Label inplace_stub;
   Label& runtime = c2_stub != nullptr ? *c2_stub->entry() : inplace_stub;
 
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::post_entry_counter_offset()));
+  }
+
   // Does store cross heap regions?
 
   __ movptr(tmp, store_addr);
@@ -491,11 +507,19 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   __ shrptr(tmp, HeapRegion::LogOfHRGrainBytes);
   __ jcc(Assembler::equal, done);
 
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::post_inter_counter_offset()));
+  }
+
   // crosses regions, storing null?
 
   if (new_val_may_be_null) {
     __ cmpptr(new_val, NULL_WORD);
     __ jcc(Assembler::equal, done);
+  }
+
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::post_notnull_counter_offset()));
   }
 
   // storing region crossing non-null, is card already dirty?
@@ -513,10 +537,17 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   __ cmpb(Address(card_addr, 0), G1CardTable::g1_young_card_val());
   __ jcc(Assembler::equal, done);
 
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::post_clean_counter_offset()));
+  }
+
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));
   __ cmpb(Address(card_addr, 0), G1CardTable::dirty_card_val());
   __ jcc(Assembler::equal, done);
 
+  if (G1ProfileBarriers && c2_stub != nullptr) {
+    __ incrementq(Address(r15_thread, JavaThread::post_stillclean_counter_offset()));
+  }
 
   // storing a region crossing, non-null oop, card is clean.
   // dirty card and log.
@@ -561,6 +592,15 @@ void G1BarrierSetAssembler::emit_c2_barrier_stub(MacroAssembler* masm, G1Barrier
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   __ bind(*stub->entry());
   {
+    if (G1ProfileBarriers) {
+      if (stub->slow_path() == CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry)) {
+        __ incrementq(Address(r15_thread, JavaThread::pre_runtime_counter_offset()));
+      } else if (stub->slow_path() == CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry)) {
+        __ incrementq(Address(r15_thread, JavaThread::post_runtime_counter_offset()));
+      } else {
+        assert(false, "unknown address");
+      }
+    }
     SaveLiveRegisters save_registers(masm, stub);
     if (c_rarg0 != stub->arg()) {
       __ mov(c_rarg0, stub->arg());
