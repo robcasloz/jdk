@@ -61,8 +61,10 @@ public class TestG1BarrierGeneration {
     public static void main(String[] args) {
         TestFramework framework = new TestFramework();
         Scenario[] scenarios = new Scenario[2];
-        scenarios[0] = new Scenario(0, "-XX:-UseCompressedOops");
-        scenarios[1] = new Scenario(1, "-XX:+UseCompressedOops");
+        for (int i = 0; i < 2; i++) {
+            scenarios[i] = new Scenario(i, "-XX:CompileCommand=inline,java.lang.ref.*::*",
+                                        "-XX:" + (i == 0 ? "-" : "+") + "UseCompressedOops");
+        }
         framework.addScenarios(scenarios);
         framework.start();
     }
