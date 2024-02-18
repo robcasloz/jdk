@@ -33,6 +33,8 @@ class StubAssembler;
 class G1PreBarrierStub;
 class G1PostBarrierStub;
 class G1BarrierStubC2;
+class G1PreBarrierStubC2;
+class G1PostBarrierStubC2;
 
 class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
  protected:
@@ -55,6 +57,14 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                                    Register tmp2);
 
  public:
+  void g1_write_barrier_pre_c2(MacroAssembler* masm,
+                               Register obj,
+                               Register pre_val,
+                               Register thread,
+                               Register tmp,
+                               bool tosca_live,
+                               bool expand_call,
+                               G1PreBarrierStubC2* c2_stub = nullptr);
   void g1_write_barrier_pre(MacroAssembler* masm,
                             Register obj,
                             Register pre_val,
@@ -91,6 +101,10 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
 #ifdef COMPILER2
   static bool supports_c2_late_barrier_expansion() { return true; }
   void emit_c2_barrier_stub(MacroAssembler* masm, G1BarrierStubC2* stub);
+  void generate_c2_pre_barrier_stub(MacroAssembler* masm,
+                                    G1PreBarrierStubC2* stub) const;
+  void generate_c2_post_barrier_stub(MacroAssembler* masm,
+                                     G1PostBarrierStubC2* stub) const;
 #endif // COMPILER2
 };
 

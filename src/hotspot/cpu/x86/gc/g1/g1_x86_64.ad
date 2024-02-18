@@ -48,21 +48,21 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
+  G1PreBarrierStubC2* const stub = G1PreBarrierStubC2::create(node);
   for (RegSetIterator<Register> reg = preserve.begin(); *reg != noreg; ++reg) {
     stub->preserve(*reg);
   }
   for (RegSetIterator<Register> reg = no_preserve.begin(); *reg != noreg; ++reg) {
     stub->dont_preserve(*reg);
   }
-  g1_asm->g1_write_barrier_pre(&_masm /* masm */,
-                               obj /* obj */,
-                               pre_val /* pre_val */,
-                               r15_thread /* thread */,
-                               tmp /* tmp */,
-                               false /* tosca_live */,
-                               true /* expand_call */,
-                               stub);
+  g1_asm->g1_write_barrier_pre_c2(&_masm /* masm */,
+                                  obj /* obj */,
+                                  pre_val /* pre_val */,
+                                  r15_thread /* thread */,
+                                  tmp /* tmp */,
+                                  false /* tosca_live */,
+                                  true /* expand_call */,
+                                  stub);
   __ bind(*stub->continuation());
 }
 
@@ -81,7 +81,7 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
+  G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
   g1_asm->g1_write_barrier_post(&_masm /* masm */,
                                 store_addr /* store_addr */,
                                 new_val /* new_val */,
