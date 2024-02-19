@@ -74,6 +74,14 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                             bool expand_call,
                             G1BarrierStubC2* c2_stub = nullptr);
 
+  void g1_write_barrier_post_c2(MacroAssembler* masm,
+                                Register store_addr,
+                                Register new_val,
+                                Register thread,
+                                Register tmp,
+                                Register tmp2,
+                                bool new_val_may_be_null = true,
+                                G1PostBarrierStubC2* c2_stub = nullptr);
   void g1_write_barrier_post(MacroAssembler* masm,
                              Register store_addr,
                              Register new_val,

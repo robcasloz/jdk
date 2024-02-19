@@ -79,12 +79,19 @@ public:
 
 class G1PostBarrierStubC2 : public G1BarrierStubC2 {
 private:
+  Register _thread;
+  Register _tmp1;
+  Register _tmp2;
 
 protected:
-  G1PostBarrierStubC2(const MachNode* node, Register arg, address slow_path);
+  G1PostBarrierStubC2(const MachNode* node);
 
 public:
-  static G1PostBarrierStubC2* create(const MachNode* node, Register arg, address slow_path);
+  static G1PostBarrierStubC2* create(const MachNode* node);
+  void initialize_registers(Register thread, Register tmp1, Register tmp2);
+  Register thread() const;
+  Register tmp1() const;
+  Register tmp2() const;
   virtual void emit_code(MacroAssembler& masm);
 };
 

@@ -81,15 +81,15 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
-  g1_asm->g1_write_barrier_post(&_masm /* masm */,
-                                store_addr /* store_addr */,
-                                new_val /* new_val */,
-                                r15_thread /* thread */,
-                                tmp1 /* tmp */,
-                                tmp2 /* tmp2 */,
-                                (barrier_data & G1C2BarrierPostNotNull) == 0 /* new_val_may_be_null */,
-                                stub);
+  G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node);
+  g1_asm->g1_write_barrier_post_c2(&_masm /* masm */,
+                                   store_addr /* store_addr */,
+                                   new_val /* new_val */,
+                                   r15_thread /* thread */,
+                                   tmp1 /* tmp */,
+                                   tmp2 /* tmp2 */,
+                                   (barrier_data & G1C2BarrierPostNotNull) == 0 /* new_val_may_be_null */,
+                                   stub);
   __ bind(*stub->continuation());
 }
 
