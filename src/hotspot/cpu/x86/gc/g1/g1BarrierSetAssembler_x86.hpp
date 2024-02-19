@@ -62,8 +62,6 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                                Register pre_val,
                                Register thread,
                                Register tmp,
-                               bool tosca_live,
-                               bool expand_call,
                                G1PreBarrierStubC2* c2_stub = nullptr);
   void g1_write_barrier_pre(MacroAssembler* masm,
                             Register obj,

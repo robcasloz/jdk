@@ -349,15 +349,13 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
                                                     Register pre_val,
                                                     Register thread,
                                                     Register tmp,
-                                                    bool tosca_live,
-                                                    bool expand_call,
-                                                    G1PreBarrierStubC2* c2_stub) {
+                                                    G1PreBarrierStubC2* stub) {
 #ifdef _LP64
   assert(thread == r15_thread, "must be");
 #endif // _LP64
 
-  assert(c2_stub != nullptr, "");
-  c2_stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
+  assert(stub != nullptr, "");
+  stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
   assert(pre_val != noreg, "check this code");
 
@@ -374,7 +372,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
     __ cmpb(in_progress, 0);
   }
-  __ jcc(Assembler::notEqual, *c2_stub->entry());
+  __ jcc(Assembler::notEqual, *stub->entry());
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
@@ -510,7 +508,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
                                                      Register tmp,
                                                      Register tmp2,
                                                      bool new_val_may_be_null,
-                                                     G1PostBarrierStubC2* c2_stub) {
+                                                     G1PostBarrierStubC2* stub) {
 #ifdef _LP64
   assert(thread == r15_thread, "must be");
 #endif // _LP64
@@ -518,10 +516,10 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   CardTableBarrierSet* ct =
     barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
 
-  assert(c2_stub != nullptr, "");
-  c2_stub->initialize_registers(thread, tmp, tmp2);
+  assert(stub != nullptr, "");
+  stub->initialize_registers(thread, tmp, tmp2);
 
-  Label& done = *c2_stub->continuation();
+  Label& done = *stub->continuation();
 
   // Does store cross heap regions?
 
@@ -550,7 +548,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   __ addptr(card_addr, cardtable);
 
   __ cmpb(Address(card_addr, 0), G1CardTable::g1_young_card_val());
-  __ jcc(Assembler::notEqual, *c2_stub->entry());
+  __ jcc(Assembler::notEqual, *stub->entry());
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,

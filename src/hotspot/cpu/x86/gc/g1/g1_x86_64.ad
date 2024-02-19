@@ -60,8 +60,6 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
                                   pre_val /* pre_val */,
                                   r15_thread /* thread */,
                                   tmp /* tmp */,
-                                  false /* tosca_live */,
-                                  true /* expand_call */,
                                   stub);
   __ bind(*stub->continuation());
 }

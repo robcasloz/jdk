@@ -41,17 +41,8 @@ const int G1C2BarrierPostPrecise = 8;
 const int G1C2BarrierElided      = 16;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
-  Register _arg;
-
-  address _slow_path;
-
 public:
-  G1BarrierStubC2(const MachNode* node, Register arg, address slow_path);
-
-  Register arg() const;
-
-  address slow_path();
-
+  G1BarrierStubC2(const MachNode* node);
   virtual void emit_code(MacroAssembler& masm) = 0;
 };
 

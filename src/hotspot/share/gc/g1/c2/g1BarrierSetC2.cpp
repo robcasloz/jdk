@@ -1172,21 +1172,9 @@ static G1BarrierSetC2State* barrier_set_state() {
   return reinterpret_cast<G1BarrierSetC2State*>(Compile::current()->barrier_set_state());
 }
 
-G1BarrierStubC2::G1BarrierStubC2(const MachNode* node, Register arg, address slow_path)
-  : BarrierStubC2(node),
-    _arg(arg),
-    _slow_path(slow_path) {}
+G1BarrierStubC2::G1BarrierStubC2(const MachNode* node) : BarrierStubC2(node) {}
 
-Register G1BarrierStubC2::arg() const {
-  return _arg;
-}
-
-address G1BarrierStubC2::slow_path() {
-  return _slow_path;
-}
-
-G1PreBarrierStubC2::G1PreBarrierStubC2(const MachNode* node)
-  : G1BarrierStubC2(node, noreg, nullptr) {}
+G1PreBarrierStubC2::G1PreBarrierStubC2(const MachNode* node) : G1BarrierStubC2(node) {}
 
 G1PreBarrierStubC2* G1PreBarrierStubC2::create(const MachNode* node) {
   G1PreBarrierStubC2* const stub = new (Compile::current()->comp_arena()) G1PreBarrierStubC2(node);
@@ -1229,8 +1217,7 @@ void G1PreBarrierStubC2::emit_code(MacroAssembler& masm) {
   bs->generate_c2_pre_barrier_stub(&masm, static_cast<G1PreBarrierStubC2*>(this));
 }
 
-G1PostBarrierStubC2::G1PostBarrierStubC2(const MachNode* node)
-  : G1BarrierStubC2(node, noreg, nullptr) {}
+G1PostBarrierStubC2::G1PostBarrierStubC2(const MachNode* node) : G1BarrierStubC2(node) {}
 
 G1PostBarrierStubC2* G1PostBarrierStubC2::create(const MachNode* node) {
   G1PostBarrierStubC2* const stub = new (Compile::current()->comp_arena()) G1PostBarrierStubC2(node);
