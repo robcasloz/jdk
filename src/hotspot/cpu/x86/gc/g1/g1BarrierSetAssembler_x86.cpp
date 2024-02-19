@@ -163,6 +163,50 @@ void G1BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorator
   }
 }
 
+// Uses: thread
+static Assembler::Condition generate_marking_active_test(MacroAssembler* masm, const Register thread) {
+  Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
+  if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
+    __ cmpl(in_progress, 0);
+  } else {
+    assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
+    __ cmpb(in_progress, 0);
+  }
+  return Assembler::notEqual;
+}
+
+// Uses: obj
+// Defs: pre_val
+static Assembler::Condition generate_pre_val_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
+  if (obj != noreg) {
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
+  }
+  __ cmpptr(pre_val, NULL_WORD);
+  return Assembler::equal;
+}
+
+// Uses: thread
+// Defs: tmp
+static Assembler::Condition generate_queue_full_test(MacroAssembler* masm, const Register thread, const Register tmp) {
+  Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
+  // Can we store original value in the thread's buffer?
+  // Is index == 0?
+  // (The index field is typed as size_t.)
+  __ movptr(tmp, index);                   // tmp := *index_adr
+  __ cmpptr(tmp, 0);                       // tmp == 0?
+  return Assembler::equal;
+}
+
+static void generate_queue_insertion(MacroAssembler* masm, const Register thread, const Register pre_val, const Register tmp) {
+  Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
+  Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
+  __ subptr(tmp, wordSize);                // tmp := tmp - wordSize
+  __ movptr(index, tmp);                   // *index_adr := tmp
+  __ addptr(tmp, buffer);                  // tmp := tmp + *buffer_adr
+  // Record the previous value
+  __ movptr(Address(tmp, 0), pre_val);
+}
+
 void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
                                                  Register obj,
                                                  Register pre_val,
@@ -188,42 +232,16 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
     assert(pre_val != rax, "check this code");
   }
 
-  Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
-  Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
+  Assembler::Condition is_marking_active = generate_marking_active_test(masm, thread);
+  __ jcc(MacroAssembler::negate_condition(is_marking_active), done);
 
-  // Is marking active?
-  if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    __ cmpl(in_progress, 0);
-  } else {
-    assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    __ cmpb(in_progress, 0);
-  }
-  __ jcc(Assembler::equal, done);
+  Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
+  __ jcc(is_pre_val_null, done);
 
-  // Do we need to load the previous value?
-  if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
-  }
+  Assembler::Condition is_queue_full = generate_queue_full_test(masm, thread, tmp);
+  __ jcc(is_queue_full, runtime);
 
-  // Is the previous value null?
-  __ cmpptr(pre_val, NULL_WORD);
-  __ jcc(Assembler::equal, done);
-
-  // Can we store original value in the thread's buffer?
-  // Is index == 0?
-  // (The index field is typed as size_t.)
-
-  __ movptr(tmp, index);                   // tmp := *index_adr
-  __ cmpptr(tmp, 0);                       // tmp == 0?
-  __ jcc(Assembler::equal, runtime);       // If yes, goto runtime
-
-  __ subptr(tmp, wordSize);                // tmp := tmp - wordSize
-  __ movptr(index, tmp);                   // *index_adr := tmp
-  __ addptr(tmp, buffer);                  // tmp := tmp + *buffer_adr
-
-  // Record the previous value
-  __ movptr(Address(tmp, 0), pre_val);
+  generate_queue_insertion(masm, thread, pre_val, tmp);
   __ jmp(done);
 
   __ bind(runtime);
@@ -371,26 +389,15 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 #ifdef _LP64
   assert(thread == r15_thread, "must be");
 #endif // _LP64
-
-  assert(stub != nullptr, "");
-  stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
-
   assert(pre_val != noreg, "check this code");
-
   if (obj != noreg) {
     assert_different_registers(obj, pre_val, tmp);
   }
 
-  Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
+  stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
-  // Is marking active?
-  if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    __ cmpl(in_progress, 0);
-  } else {
-    assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    __ cmpb(in_progress, 0);
-  }
-  __ jcc(Assembler::notEqual, *stub->entry());
+  Assembler::Condition is_marking_active = generate_marking_active_test(masm, thread);
+  __ jcc(is_marking_active, *stub->entry());
   __ bind(*stub->continuation());
 }
 
@@ -398,48 +405,24 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   assert(supports_c2_late_barrier_expansion(), "");
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   __ bind(*stub->entry());
-
   Label runtime;
-  Label& done = *stub->continuation();
   Register obj = stub->obj();
   Register pre_val = stub->pre_val();
   Register thread = stub->thread();
   Register tmp = stub->tmp1();
 
-  Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
-  Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
+  Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
+  __ jcc(is_pre_val_null, *stub->continuation());
 
-  // Do we need to load the previous value?
-  if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
-  }
+  Assembler::Condition is_queue_full = generate_queue_full_test(masm, thread, tmp);
+  __ jcc(is_queue_full, runtime);
 
-  // Is the previous value null?
-  __ cmpptr(pre_val, NULL_WORD);
-  __ jcc(Assembler::equal, done);
-
-  // Can we store original value in the thread's buffer?
-  // Is index == 0?
-  // (The index field is typed as size_t.)
-
-  // __ testq(index, 0);
-  // __ jcc(Assembler::zero, runtime);
-  __ movptr(tmp, index);                   // tmp := *index_adr
-  __ cmpptr(tmp, 0);                       // tmp == 0?
-  __ jcc(Assembler::equal, runtime);       // If yes, goto runtime
-
-  __ subptr(tmp, wordSize);                // tmp := tmp - wordSize
-  __ movptr(index, tmp);                   // *index_adr := tmp
-  __ addptr(tmp, buffer);                  // tmp := tmp + *buffer_adr
-
-  // Record the previous value
-  __ movptr(Address(tmp, 0), pre_val);
-
-  __ jmp(done);
+  generate_queue_insertion(masm, thread, pre_val, tmp);
+  __ jmp(*stub->continuation());
 
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
-  __ jmp(done);
+  __ jmp(*stub->continuation());
 }
 
 
