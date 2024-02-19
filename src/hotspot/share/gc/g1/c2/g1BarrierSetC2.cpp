@@ -1176,6 +1176,11 @@ G1BarrierStubC2::G1BarrierStubC2(const MachNode* node) : BarrierStubC2(node) {}
 
 G1PreBarrierStubC2::G1PreBarrierStubC2(const MachNode* node) : G1BarrierStubC2(node) {}
 
+bool G1PreBarrierStubC2::needs_barrier(const MachNode* node) {
+  return (node->barrier_data() != G1C2BarrierElided) &&
+    ((node->barrier_data() & G1C2BarrierPre) != 0);
+}
+
 G1PreBarrierStubC2* G1PreBarrierStubC2::create(const MachNode* node) {
   G1PreBarrierStubC2* const stub = new (Compile::current()->comp_arena()) G1PreBarrierStubC2(node);
   if (!Compile::current()->output()->in_scratch_emit_size()) {
@@ -1218,6 +1223,11 @@ void G1PreBarrierStubC2::emit_code(MacroAssembler& masm) {
 }
 
 G1PostBarrierStubC2::G1PostBarrierStubC2(const MachNode* node) : G1BarrierStubC2(node) {}
+
+bool G1PostBarrierStubC2::needs_barrier(const MachNode* node) {
+  return (node->barrier_data() != G1C2BarrierElided) &&
+    ((node->barrier_data() & G1C2BarrierPost) != 0);
+}
 
 G1PostBarrierStubC2* G1PostBarrierStubC2::create(const MachNode* node) {
   G1PostBarrierStubC2* const stub = new (Compile::current()->comp_arena()) G1PostBarrierStubC2(node);

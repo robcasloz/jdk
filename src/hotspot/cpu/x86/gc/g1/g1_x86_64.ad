@@ -40,10 +40,7 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
                                  uint8_t barrier_data,
                                  RegSet preserve = RegSet(),
                                  RegSet no_preserve = RegSet()) {
-  if (barrier_data == G1C2BarrierElided) {
-    return;
-  }
-  if ((barrier_data & G1C2BarrierPre) == 0) {
+  if (!G1PreBarrierStubC2::needs_barrier(node)) {
     return;
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
@@ -61,7 +58,6 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
                                   r15_thread /* thread */,
                                   tmp /* tmp */,
                                   stub);
-  __ bind(*stub->continuation());
 }
 
 static void g1_post_write_barrier(MacroAssembler& _masm,
@@ -71,10 +67,7 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
                                   Register tmp1,
                                   Register tmp2,
                                   uint8_t barrier_data) {
-  if (barrier_data == G1C2BarrierElided) {
-    return;
-  }
-  if ((barrier_data & G1C2BarrierPost) == 0) {
+  if (!G1PostBarrierStubC2::needs_barrier(node)) {
     return;
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
@@ -86,9 +79,7 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
                                    r15_thread /* thread */,
                                    tmp1 /* tmp */,
                                    tmp2 /* tmp2 */,
-                                   (barrier_data & G1C2BarrierPostNotNull) == 0 /* new_val_may_be_null */,
                                    stub);
-  __ bind(*stub->continuation());
 }
 
 %}

@@ -272,6 +272,7 @@ public:
 
   Label* entry();
   Label* continuation();
+  uint8_t barrier_data() const;
 
   // Preserve the value in reg across runtime calls in this barrier.
   void preserve(Register reg);

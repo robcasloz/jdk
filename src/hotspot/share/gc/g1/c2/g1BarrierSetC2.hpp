@@ -58,6 +58,7 @@ protected:
   G1PreBarrierStubC2(const MachNode* node);
 
 public:
+  static bool needs_barrier(const MachNode* node);
   static G1PreBarrierStubC2* create(const MachNode* node);
   void initialize_registers(Register obj, Register pre_val, Register thread, Register tmp1, Register tmp2);
   Register obj() const;
@@ -78,6 +79,7 @@ protected:
   G1PostBarrierStubC2(const MachNode* node);
 
 public:
+  static bool needs_barrier(const MachNode* node);
   static G1PostBarrierStubC2* create(const MachNode* node);
   void initialize_registers(Register thread, Register tmp1, Register tmp2);
   Register thread() const;
