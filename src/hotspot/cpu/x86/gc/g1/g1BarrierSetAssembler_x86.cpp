@@ -163,14 +163,13 @@ void G1BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorator
   }
 }
 
-
-void G1BarrierSetAssembler::g1_write_barrier_pre_early(MacroAssembler* masm,
-                                                       Register obj,
-                                                       Register pre_val,
-                                                       Register thread,
-                                                       Register tmp,
-                                                       bool tosca_live,
-                                                       bool expand_call) {
+void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
+                                                 Register obj,
+                                                 Register pre_val,
+                                                 Register thread,
+                                                 Register tmp,
+                                                 bool tosca_live,
+                                                 bool expand_call) {
   // If expand_call is true then we expand the call_VM_leaf macro
   // directly to skip generating the check by
   // InterpreterMacroAssembler::call_VM_leaf_base that checks _last_sp.
@@ -267,12 +266,12 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_early(MacroAssembler* masm,
   __ bind(done);
 }
 
-void G1BarrierSetAssembler::g1_write_barrier_post_early(MacroAssembler* masm,
-                                                        Register store_addr,
-                                                        Register new_val,
-                                                        Register thread,
-                                                        Register tmp,
-                                                        Register tmp2) {
+void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
+                                                  Register store_addr,
+                                                  Register new_val,
+                                                  Register thread,
+                                                  Register tmp,
+                                                  Register tmp2) {
   // Generated code assumes that buffer index is pointer sized.
   STATIC_ASSERT(in_bytes(SATBMarkQueue::byte_width_of_index()) == sizeof(intptr_t));
 #ifdef _LP64
@@ -344,6 +343,25 @@ void G1BarrierSetAssembler::g1_write_barrier_post_early(MacroAssembler* masm,
   __ bind(done);
 }
 
+#if defined(COMPILER2) && defined(_LP64)
+
+#undef __
+#define __ masm->
+
+static void generate_c2_barrier_runtime_call(MacroAssembler* masm, G1BarrierStubC2* stub, const Register arg, const address runtime_path) {
+  SaveLiveRegisters save_registers(masm, stub);
+  if (c_rarg0 != arg) {
+    __ mov(c_rarg0, arg);
+  }
+  __ mov(c_rarg1, r15_thread);
+  // rax is a caller-saved, non-argument-passing register, so it does not
+  // interfere with c_rarg0 or c_rarg1. If it contained any live value before
+  // entering this stub, it is saved at this point, and restored after the
+  // call. If it did not contain any live value, it is free to be used. In
+  // either case, it is safe to use it here as a call scratch register.
+  __ call(RuntimeAddress(runtime_path), rax);
+}
+
 void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
                                                     Register obj,
                                                     Register pre_val,
@@ -374,278 +392,6 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   }
   __ jcc(Assembler::notEqual, *stub->entry());
   __ bind(*stub->continuation());
-}
-
-void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
-                                                 Register obj,
-                                                 Register pre_val,
-                                                 Register thread,
-                                                 Register tmp,
-                                                 bool tosca_live,
-                                                 bool expand_call,
-                                                 G1BarrierStubC2* c2_stub) {
-  if (!supports_c2_late_barrier_expansion()) {
-    g1_write_barrier_pre_early(masm, obj, pre_val, thread, tmp, tosca_live, expand_call);
-    return;
-  }
-  // If expand_call is true then we expand the call_VM_leaf macro
-  // directly to skip generating the check by
-  // InterpreterMacroAssembler::call_VM_leaf_base that checks _last_sp.
-#ifdef _LP64
-  assert(thread == r15_thread, "must be");
-#endif // _LP64
-
-  Label done;
-  Label inplace_stub;
-  Label& runtime = c2_stub != nullptr ? *c2_stub->entry() : inplace_stub;
-
-  assert(pre_val != noreg, "check this code");
-
-  if (obj != noreg) {
-    assert_different_registers(obj, pre_val, tmp);
-  }
-
-  Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
-  Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
-
-  // Is marking active?
-  if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    __ cmpl(in_progress, 0);
-  } else {
-    assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    __ cmpb(in_progress, 0);
-  }
-  __ jcc(Assembler::equal, done);
-
-  // Do we need to load the previous value?
-  if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
-  }
-
-  // Is the previous value null?
-  __ cmpptr(pre_val, NULL_WORD);
-  __ jcc(Assembler::equal, done);
-
-  // Can we store original value in the thread's buffer?
-  // Is index == 0?
-  // (The index field is typed as size_t.)
-
-  // __ testq(index, 0);
-  // __ jcc(Assembler::zero, runtime);
-  __ movptr(tmp, index);                   // tmp := *index_adr
-  __ cmpptr(tmp, 0);                       // tmp == 0?
-  __ jcc(Assembler::equal, runtime);       // If yes, goto runtime
-
-  __ subptr(tmp, wordSize);                // tmp := tmp - wordSize
-  __ movptr(index, tmp);                   // *index_adr := tmp
-  __ addptr(tmp, buffer);                  // tmp := tmp + *buffer_adr
-
-  // Record the previous value
-  __ movptr(Address(tmp, 0), pre_val);
-
-  if (c2_stub == nullptr) {
-    __ jmp(done);
-  }
-
-  __ bind(inplace_stub);
-
-  if (c2_stub == nullptr) {
-    // Determine and save the live input values
-    __ push_call_clobbered_registers();
-
-    // Calling the runtime using the regular call_VM_leaf mechanism generates
-    // code (generated by InterpreterMacroAssember::call_VM_leaf_base)
-    // that checks that the *(ebp+frame::interpreter_frame_last_sp) == NULL.
-    //
-    // If we care generating the pre-barrier without a frame (e.g. in the
-    // intrinsified Reference.get() routine) then ebp might be pointing to
-    // the caller frame and so this check will most likely fail at runtime.
-    //
-    // Expanding the call directly bypasses the generation of the check.
-    // So when we do not have have a full interpreter frame on the stack
-    // expand_call should be passed true.
-
-    if (expand_call) {
-      LP64_ONLY( assert(pre_val != c_rarg1, "smashed arg"); )
-#ifdef _LP64
-      if (c_rarg1 != thread) {
-        __ mov(c_rarg1, thread);
-      }
-      if (c_rarg0 != pre_val) {
-        __ mov(c_rarg0, pre_val);
-      }
-#else
-      __ push(thread);
-      __ push(pre_val);
-#endif
-      __ MacroAssembler::call_VM_leaf_base(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry), 2);
-    } else {
-      __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry), pre_val, thread);
-    }
-
-    __ pop_call_clobbered_registers();
-  }
-
-  __ bind(done);
-}
-
-void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
-                                                     Register store_addr,
-                                                     Register new_val,
-                                                     Register thread,
-                                                     Register tmp,
-                                                     Register tmp2,
-                                                     G1PostBarrierStubC2* stub) {
-#ifdef _LP64
-  assert(thread == r15_thread, "must be");
-#endif // _LP64
-
-  CardTableBarrierSet* ct =
-    barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
-
-  assert(stub != nullptr, "");
-  stub->initialize_registers(thread, tmp, tmp2);
-
-  Label& done = *stub->continuation();
-
-  // Does store cross heap regions?
-
-  __ movptr(tmp, store_addr);
-  __ xorptr(tmp, new_val);
-  __ shrptr(tmp, HeapRegion::LogOfHRGrainBytes);
-  __ jcc(Assembler::equal, done);
-
-  // crosses regions, storing null?
-
-  if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
-    __ cmpptr(new_val, NULL_WORD);
-    __ jcc(Assembler::equal, done);
-  }
-
-  // storing region crossing non-null, is card already dirty?
-
-  const Register card_addr = tmp;
-  const Register cardtable = tmp2;
-
-  __ movptr(card_addr, store_addr);
-  __ shrptr(card_addr, CardTable::card_shift());
-  // Do not use ExternalAddress to load 'byte_map_base', since 'byte_map_base' is NOT
-  // a valid address and therefore is not properly handled by the relocation code.
-  __ movptr(cardtable, (intptr_t)ct->card_table()->byte_map_base());
-  __ addptr(card_addr, cardtable);
-
-  __ cmpb(Address(card_addr, 0), G1CardTable::g1_young_card_val());
-  __ jcc(Assembler::notEqual, *stub->entry());
-  __ bind(*stub->continuation());
-}
-
-void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
-                                                  Register store_addr,
-                                                  Register new_val,
-                                                  Register thread,
-                                                  Register tmp,
-                                                  Register tmp2,
-                                                  bool new_val_may_be_null,
-                                                  G1BarrierStubC2* c2_stub) {
-  if (!supports_c2_late_barrier_expansion()) {
-    g1_write_barrier_post_early(masm, store_addr, new_val, thread, tmp, tmp2);
-    return;
-  }
-#ifdef _LP64
-  assert(thread == r15_thread, "must be");
-#endif // _LP64
-
-  Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
-
-  CardTableBarrierSet* ct =
-    barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
-
-  Label done;
-  Label inplace_stub;
-  Label& runtime = c2_stub != nullptr ? *c2_stub->entry() : inplace_stub;
-
-  // Does store cross heap regions?
-
-  __ movptr(tmp, store_addr);
-  __ xorptr(tmp, new_val);
-  __ shrptr(tmp, HeapRegion::LogOfHRGrainBytes);
-  __ jcc(Assembler::equal, done);
-
-  // crosses regions, storing null?
-
-  if (new_val_may_be_null) {
-    __ cmpptr(new_val, NULL_WORD);
-    __ jcc(Assembler::equal, done);
-  }
-
-  // storing region crossing non-null, is card already dirty?
-
-  const Register card_addr = tmp;
-  const Register cardtable = tmp2;
-
-  __ movptr(card_addr, store_addr);
-  __ shrptr(card_addr, CardTable::card_shift());
-  // Do not use ExternalAddress to load 'byte_map_base', since 'byte_map_base' is NOT
-  // a valid address and therefore is not properly handled by the relocation code.
-  __ movptr(cardtable, (intptr_t)ct->card_table()->byte_map_base());
-  __ addptr(card_addr, cardtable);
-
-  __ cmpb(Address(card_addr, 0), G1CardTable::g1_young_card_val());
-  __ jcc(Assembler::equal, done);
-
-  __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));
-  __ cmpb(Address(card_addr, 0), G1CardTable::dirty_card_val());
-  __ jcc(Assembler::equal, done);
-
-  // storing a region crossing, non-null oop, card is clean.
-  // dirty card and log.
-
-  __ movb(Address(card_addr, 0), G1CardTable::dirty_card_val());
-
-  __ movptr(tmp2, queue_index);
-  __ testptr(tmp2, tmp2);
-  __ jcc(Assembler::zero, runtime);
-  __ subptr(tmp2, wordSize);
-  __ movptr(queue_index, tmp2);
-  __ addptr(tmp2, buffer);
-  __ movptr(Address(tmp2, 0), card_addr);
-
-  if (c2_stub == nullptr) {
-    __ jmp(done);
-  }
-
-  __ bind(inplace_stub);
-
-  if (c2_stub == nullptr) {
-    // save the live input values
-    RegSet saved = RegSet::of(store_addr NOT_LP64(COMMA thread));
-    __ push_set(saved);
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry), card_addr, thread);
-    __ pop_set(saved);
-  }
-
-  __ bind(done);
-}
-
-#if defined(COMPILER2) && defined(_LP64)
-
-#undef __
-#define __ masm->
-
-static void generate_c2_barrier_runtime_call(MacroAssembler* masm, G1BarrierStubC2* stub, const Register arg, const address runtime_path) {
-  SaveLiveRegisters save_registers(masm, stub);
-  if (c_rarg0 != arg) {
-    __ mov(c_rarg0, arg);
-  }
-  __ mov(c_rarg1, r15_thread);
-  // rax is a caller-saved, non-argument-passing register, so it does not
-  // interfere with c_rarg0 or c_rarg1. If it contained any live value before
-  // entering this stub, it is saved at this point, and restored after the
-  // call. If it did not contain any live value, it is free to be used. In
-  // either case, it is safe to use it here as a call scratch register.
-  __ call(RuntimeAddress(runtime_path), rax);
 }
 
 void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G1PreBarrierStubC2* stub) const {
@@ -696,6 +442,56 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   __ jmp(done);
 }
 
+
+void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
+                                                     Register store_addr,
+                                                     Register new_val,
+                                                     Register thread,
+                                                     Register tmp,
+                                                     Register tmp2,
+                                                     G1PostBarrierStubC2* stub) {
+#ifdef _LP64
+  assert(thread == r15_thread, "must be");
+#endif // _LP64
+
+  CardTableBarrierSet* ct =
+    barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
+
+  assert(stub != nullptr, "");
+  stub->initialize_registers(thread, tmp, tmp2);
+
+  Label& done = *stub->continuation();
+
+  // Does store cross heap regions?
+
+  __ movptr(tmp, store_addr);
+  __ xorptr(tmp, new_val);
+  __ shrptr(tmp, HeapRegion::LogOfHRGrainBytes);
+  __ jcc(Assembler::equal, done);
+
+  // crosses regions, storing null?
+
+  if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
+    __ cmpptr(new_val, NULL_WORD);
+    __ jcc(Assembler::equal, done);
+  }
+
+  // storing region crossing non-null, is card already dirty?
+
+  const Register card_addr = tmp;
+  const Register cardtable = tmp2;
+
+  __ movptr(card_addr, store_addr);
+  __ shrptr(card_addr, CardTable::card_shift());
+  // Do not use ExternalAddress to load 'byte_map_base', since 'byte_map_base' is NOT
+  // a valid address and therefore is not properly handled by the relocation code.
+  __ movptr(cardtable, (intptr_t)ct->card_table()->byte_map_base());
+  __ addptr(card_addr, cardtable);
+
+  __ cmpb(Address(card_addr, 0), G1CardTable::g1_young_card_val());
+  __ jcc(Assembler::notEqual, *stub->entry());
+  __ bind(*stub->continuation());
+}
 
 void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, G1PostBarrierStubC2* stub) const {
   assert(supports_c2_late_barrier_expansion(), "");
