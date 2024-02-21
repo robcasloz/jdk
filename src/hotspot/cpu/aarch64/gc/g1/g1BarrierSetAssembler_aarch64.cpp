@@ -98,14 +98,14 @@ void G1BarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembler* mas
   __ pop(saved_regs, sp);
 }
 
-void G1BarrierSetAssembler::g1_write_barrier_pre_early(MacroAssembler* masm,
-                                                       Register obj,
-                                                       Register pre_val,
-                                                       Register thread,
-                                                       Register tmp1,
-                                                       Register tmp2,
-                                                       bool tosca_live,
-                                                       bool expand_call) {
+void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
+                                                 Register obj,
+                                                 Register pre_val,
+                                                 Register thread,
+                                                 Register tmp1,
+                                                 Register tmp2,
+                                                 bool tosca_live,
+                                                 bool expand_call) {
   // If expand_call is true then we expand the call_VM_leaf macro
   // directly to skip generating the check by
   // InterpreterMacroAssembler::call_VM_leaf_base that checks _last_sp.
@@ -185,12 +185,12 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_early(MacroAssembler* masm,
 
 }
 
-void G1BarrierSetAssembler::g1_write_barrier_post_early(MacroAssembler* masm,
-                                                        Register store_addr,
-                                                        Register new_val,
-                                                        Register thread,
-                                                        Register tmp1,
-                                                        Register tmp2) {
+void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
+                                                  Register store_addr,
+                                                  Register new_val,
+                                                  Register thread,
+                                                  Register tmp1,
+                                                  Register tmp2) {
   assert(thread == rthread, "must be");
   assert_different_registers(store_addr, new_val, thread, tmp1, tmp2,
                              rscratch1);
@@ -261,31 +261,36 @@ void G1BarrierSetAssembler::g1_write_barrier_post_early(MacroAssembler* masm,
   __ bind(done);
 }
 
-void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
-                                                 Register obj,
-                                                 Register pre_val,
-                                                 Register thread,
-                                                 Register tmp1,
-                                                 Register tmp2,
-                                                 bool tosca_live,
-                                                 bool expand_call,
-                                                 G1BarrierStubC2* c2_stub) {
-  if (!supports_c2_late_barrier_expansion()) {
-    g1_write_barrier_pre_early(masm, obj, pre_val, thread, tmp1, tmp2, tosca_live, expand_call);
-    return;
+#if defined(COMPILER2)
+
+#undef __
+#define __ masm->
+
+static void generate_c2_barrier_runtime_call(MacroAssembler* masm, G1BarrierStubC2* stub, const Register arg, const address runtime_path) {
+  SaveLiveRegisters save_registers(masm, stub);
+  if (c_rarg0 != arg) {
+    __ mov(c_rarg0, arg);
   }
-  // If expand_call is true then we expand the call_VM_leaf macro
-  // directly to skip generating the check by
-  // InterpreterMacroAssembler::call_VM_leaf_base that checks _last_sp.
+  __ mov(c_rarg1, rthread);
+  __ mov(rscratch1, runtime_path);
+  __ blr(rscratch1);
+}
 
+void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
+                                                    Register obj,
+                                                    Register pre_val,
+                                                    Register thread,
+                                                    Register tmp1,
+                                                    Register tmp2,
+                                                    G1PreBarrierStubC2* stub) {
   assert(thread == rthread, "must be");
-
-  Label done;
-  Label inplace_stub;
-  Label& runtime = c2_stub != nullptr ? *c2_stub->entry() : inplace_stub;
-
   assert_different_registers(obj, pre_val, tmp1, tmp2);
   assert(pre_val != noreg && tmp1 != noreg && tmp2 != noreg, "expecting a register");
+
+  stub->initialize_registers(obj, pre_val, thread, tmp1, tmp2);
+
+  Label done;
+  Label& runtime = *stub->entry();
 
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
@@ -324,58 +329,34 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   // Record the previous value
   __ str(pre_val, Address(tmp1, 0));
 
-  if (c2_stub == nullptr) {
-    __ b(done);
-  }
-
-  __ bind(inplace_stub);
-
-  if (c2_stub == nullptr) {
-    // Determine and save the live input values
-    __ push_call_clobbered_registers();
-
-    // Calling the runtime using the regular call_VM_leaf mechanism generates
-    // code (generated by InterpreterMacroAssember::call_VM_leaf_base)
-    // that checks that the *(rfp+frame::interpreter_frame_last_sp) == nullptr.
-    //
-    // If we care generating the pre-barrier without a frame (e.g. in the
-    // intrinsified Reference.get() routine) then rfp might be pointing to
-    // the caller frame and so this check will most likely fail at runtime.
-    //
-    // Expanding the call directly bypasses the generation of the check.
-    // So when we do not have have a full interpreter frame on the stack
-    // expand_call should be passed true.
-
-    if (expand_call) {
-      __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry), pre_val, thread);
-    } else {
-      __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry), pre_val, thread);
-    }
-
-    __ pop_call_clobbered_registers();
-  }
-
   __ bind(done);
+  __ bind(*stub->continuation());
 
 }
 
-void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
-                                                  Register store_addr,
-                                                  Register new_val,
-                                                  Register thread,
-                                                  Register tmp1,
-                                                  Register tmp2,
-                                                  bool new_val_may_be_null,
-                                                  G1BarrierStubC2* c2_stub) {
-  if (!supports_c2_late_barrier_expansion()) {
-    g1_write_barrier_post_early(masm, store_addr, new_val, thread, tmp1, tmp2);
-    return;
-  }
+void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G1PreBarrierStubC2* stub) const {
+  assert(supports_c2_late_barrier_expansion(), "");
+  Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
+  Register pre_val = stub->pre_val();
+  __ bind(*stub->entry());
+  generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
+  __ b(*stub->continuation());
+}
+
+
+void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
+                                                     Register store_addr,
+                                                     Register new_val,
+                                                     Register thread,
+                                                     Register tmp1,
+                                                     Register tmp2,
+                                                     G1PostBarrierStubC2* stub) {
   assert(thread == rthread, "must be");
   assert_different_registers(store_addr, new_val, thread, tmp1, tmp2,
                              rscratch1);
   assert(store_addr != noreg && new_val != noreg && tmp1 != noreg
          && tmp2 != noreg, "expecting a register");
+  stub->initialize_registers(thread, tmp1, tmp2);
 
   Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
   Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
@@ -385,8 +366,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   CardTable* ct = ctbs->card_table();
 
   Label done;
-  Label inplace_stub;
-  Label& runtime = c2_stub != nullptr ? *c2_stub->entry() : inplace_stub;
+  Label& runtime = *stub->entry();
 
   // Does store cross heap regions?
 
@@ -396,7 +376,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   // crosses regions, storing null?
 
-  if (new_val_may_be_null) {
+  if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
     __ cbz(new_val, done);
   }
 
@@ -433,41 +413,15 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   __ ldr(tmp2, buffer);
   __ str(card_addr, Address(tmp2, rscratch1));
 
-  if (c2_stub == nullptr) {
-    __ b(done);
-  }
-
-  __ bind(inplace_stub);
-
-  if (c2_stub == nullptr) {
-    // save the live input values
-    RegSet saved = RegSet::of(store_addr);
-    __ push(saved, sp);
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry), card_addr, thread);
-    __ pop(saved, sp);
-  }
-
   __ bind(done);
+  __ bind(*stub->continuation());
 }
 
-#if defined(COMPILER2)
-
-#undef __
-#define __ masm->
-
-void G1BarrierSetAssembler::emit_c2_barrier_stub(MacroAssembler* masm, G1BarrierStubC2* stub) {
-  assert(supports_c2_late_barrier_expansion(), "");
+void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, G1PostBarrierStubC2* stub) const {
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
+  Register tmp1 = stub->tmp1();
   __ bind(*stub->entry());
-  {
-    SaveLiveRegisters save_registers(masm, stub);
-    if (c_rarg0 != stub->arg()) {
-      __ mov(c_rarg0, stub->arg());
-    }
-    __ mov(c_rarg1, rthread);
-    __ mov(rscratch1, stub->slow_path());
-    __ blr(rscratch1);
-  }
+  generate_c2_barrier_runtime_call(masm, stub, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
   __ b(*stub->continuation());
 }
 

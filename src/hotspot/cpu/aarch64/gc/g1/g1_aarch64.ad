@@ -41,31 +41,25 @@ static void g1_pre_write_barrier(MacroAssembler& _masm,
                                  uint8_t barrier_data,
                                  RegSet preserve = RegSet(),
                                  RegSet no_preserve = RegSet()) {
-  if (barrier_data == G1C2BarrierElided) {
-    return;
-  }
-  if ((barrier_data & G1C2BarrierPre) == 0) {
+  if (!G1PreBarrierStubC2::needs_barrier(node)) {
     return;
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
+  G1PreBarrierStubC2* const stub = G1PreBarrierStubC2::create(node);
   for (RegSetIterator<Register> reg = preserve.begin(); *reg != noreg; ++reg) {
     stub->preserve(*reg);
   }
   for (RegSetIterator<Register> reg = no_preserve.begin(); *reg != noreg; ++reg) {
     stub->dont_preserve(*reg);
   }
-  g1_asm->g1_write_barrier_pre(&_masm /* masm */,
-                               obj /* obj */,
-                               pre_val /* pre_val */,
-                               rthread /* thread */,
-                               tmp1 /* tmp1 */,
-                               tmp2 /* tmp2 */,
-                               false /* tosca_live */,
-                               true /* expand_call */,
-                               stub);
-  __ bind(*stub->continuation());
+  g1_asm->g1_write_barrier_pre_c2(&_masm /* masm */,
+                                  obj /* obj */,
+                                  pre_val /* pre_val */,
+                                  rthread /* thread */,
+                                  tmp1 /* tmp1 */,
+                                  tmp2 /* tmp2 */,
+                                  stub);
 }
 
 static void g1_post_write_barrier(MacroAssembler& _masm,
@@ -75,24 +69,19 @@ static void g1_post_write_barrier(MacroAssembler& _masm,
                                   Register tmp1,
                                   Register tmp2,
                                   uint8_t barrier_data) {
-  if (barrier_data == G1C2BarrierElided) {
-    return;
-  }
-  if ((barrier_data & G1C2BarrierPost) == 0) {
+  if (!G1PostBarrierStubC2::needs_barrier(node)) {
     return;
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(&_masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-  G1BarrierStubC2* const stub = G1BarrierStubC2::create(node, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
-  g1_asm->g1_write_barrier_post(&_masm /* masm */,
-                                store_addr /* store_addr */,
-                                new_val /* new_val */,
-                                rthread /* thread */,
-                                tmp1 /* tmp1 */,
-                                tmp2 /* tmp2 */,
-                                (barrier_data & G1C2BarrierPostNotNull) == 0 /* new_val_may_be_null */,
-                                stub);
-  __ bind(*stub->continuation());
+  G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node);
+  g1_asm->g1_write_barrier_post_c2(&_masm /* masm */,
+                                   store_addr /* store_addr */,
+                                   new_val /* new_val */,
+                                   rthread /* thread */,
+                                   tmp1 /* tmp1 */,
+                                   tmp2 /* tmp2 */,
+                                   stub);
 }
 
 %}

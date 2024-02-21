@@ -76,7 +76,7 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                                Register pre_val,
                                Register thread,
                                Register tmp,
-                               G1PreBarrierStubC2* c2_stub = nullptr);
+                               G1PreBarrierStubC2* c2_stub);
   void generate_c2_pre_barrier_stub(MacroAssembler* masm,
                                     G1PreBarrierStubC2* stub) const;
   void g1_write_barrier_post_c2(MacroAssembler* masm,
@@ -85,7 +85,7 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                                 Register thread,
                                 Register tmp,
                                 Register tmp2,
-                                G1PostBarrierStubC2* c2_stub = nullptr);
+                                G1PostBarrierStubC2* c2_stub);
   void generate_c2_post_barrier_stub(MacroAssembler* masm,
                                      G1PostBarrierStubC2* stub) const;
 #endif // COMPILER2
