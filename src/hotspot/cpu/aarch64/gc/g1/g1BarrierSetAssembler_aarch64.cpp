@@ -203,6 +203,46 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
 
 }
 
+static Register generate_region_crossing_test(MacroAssembler* masm, const Register store_addr, const Register new_val, const Register tmp1) {
+  __ eor(tmp1, store_addr, new_val);
+  __ lsr(tmp1, tmp1, HeapRegion::LogOfHRGrainBytes);
+  return tmp1;
+}
+
+static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp1, const Register tmp2) {
+  __ lsr(tmp1, store_addr, CardTable::card_shift());
+  // get the address of the card
+  __ load_byte_map_base(tmp2);
+  __ add(tmp1, tmp1, tmp2);
+  __ ldrb(tmp2, Address(tmp1));
+  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
+  assert((int)CardTable::dirty_card_val() == 0, "must be 0");
+  return Assembler::EQ;
+}
+
+static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1, const Register tmp2) {
+  __ membar(Assembler::StoreLoad);
+  __ ldrb(tmp2, Address(tmp1));
+  return tmp2;
+}
+
+static Register generate_queue_not_full_test(MacroAssembler* masm, const Register thread, const Register tmp1, const Register scratch) {
+  Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
+  __ strb(zr, Address(tmp1));
+  __ ldr(scratch, queue_index);
+  return scratch;
+}
+
+
+static void generate_queue_insertion_post(MacroAssembler* masm, const Register thread, const Register tmp1, const Register tmp2, const Register scratch) {
+  Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
+  Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
+  __ sub(scratch, scratch, wordSize);
+  __ str(scratch, queue_index);
+  __ ldr(tmp2, buffer);
+  __ str(tmp1, Address(tmp2, scratch));
+}
+
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
                                                   Register store_addr,
                                                   Register new_val,
@@ -215,65 +255,32 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   assert(store_addr != noreg && new_val != noreg && tmp1 != noreg
          && tmp2 != noreg, "expecting a register");
 
-  Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
-
-  BarrierSet* bs = BarrierSet::barrier_set();
-  CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
-  CardTable* ct = ctbs->card_table();
-
   Label done;
   Label runtime;
 
-  // Does store cross heap regions?
-
-  __ eor(tmp1, store_addr, new_val);
-  __ lsr(tmp1, tmp1, HeapRegion::LogOfHRGrainBytes);
-  __ cbz(tmp1, done);
+  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
+  __ cbz(is_region_crossing, done);
 
   // crosses regions, storing null?
-
   __ cbz(new_val, done);
 
-  // storing region crossing non-null, is card already dirty?
+  Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  __ br(is_card_young, done);
 
-  const Register card_addr = tmp1;
+  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
+  __ cbzw(is_card_clean, done);
 
-  __ lsr(card_addr, store_addr, CardTable::card_shift());
+  Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1, rscratch1);
+  __ cbz(is_queue_not_full, runtime);
 
-  // get the address of the card
-  __ load_byte_map_base(tmp2);
-  __ add(card_addr, card_addr, tmp2);
-  __ ldrb(tmp2, Address(card_addr));
-  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
-  __ br(Assembler::EQ, done);
-
-  assert((int)CardTable::dirty_card_val() == 0, "must be 0");
-
-  __ membar(Assembler::StoreLoad);
-
-  __ ldrb(tmp2, Address(card_addr));
-  __ cbzw(tmp2, done);
-
-  // storing a region crossing, non-null oop, card is clean.
-  // dirty card and log.
-
-  __ strb(zr, Address(card_addr));
-
-  __ ldr(rscratch1, queue_index);
-  __ cbz(rscratch1, runtime);
-  __ sub(rscratch1, rscratch1, wordSize);
-  __ str(rscratch1, queue_index);
-
-  __ ldr(tmp2, buffer);
-  __ str(card_addr, Address(tmp2, rscratch1));
+  generate_queue_insertion_post(masm, thread, tmp1, tmp2, rscratch1);
   __ b(done);
 
   __ bind(runtime);
   // save the live input values
   RegSet saved = RegSet::of(store_addr);
   __ push(saved, sp);
-  __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry), card_addr, thread);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry), tmp1, thread);
   __ pop(saved, sp);
 
   __ bind(done);
@@ -342,60 +349,27 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
                              rscratch1);
   assert(store_addr != noreg && new_val != noreg && tmp1 != noreg
          && tmp2 != noreg, "expecting a register");
+
   stub->initialize_registers(thread, tmp1, tmp2);
 
-  Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
-
-  BarrierSet* bs = BarrierSet::barrier_set();
-  CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
-  CardTable* ct = ctbs->card_table();
-
-  // Does store cross heap regions?
-
-  __ eor(tmp1, store_addr, new_val);
-  __ lsr(tmp1, tmp1, HeapRegion::LogOfHRGrainBytes);
-  __ cbz(tmp1, *stub->continuation());
+  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
+  __ cbz(is_region_crossing, *stub->continuation());
 
   // crosses regions, storing null?
-
   if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
     __ cbz(new_val, *stub->continuation());
   }
 
-  // storing region crossing non-null, is card already dirty?
+  Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  __ br(is_card_young, *stub->continuation());
 
-  const Register card_addr = tmp1;
+  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
+  __ cbzw(is_card_clean, *stub->continuation());
 
-  __ lsr(card_addr, store_addr, CardTable::card_shift());
+  Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1, rscratch1);
+  __ cbz(is_queue_not_full, *stub->entry());
 
-  // get the address of the card
-  __ load_byte_map_base(tmp2);
-  __ add(card_addr, card_addr, tmp2);
-  __ ldrb(tmp2, Address(card_addr));
-  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
-  __ br(Assembler::EQ, *stub->continuation());
-
-  assert((int)CardTable::dirty_card_val() == 0, "must be 0");
-
-  __ membar(Assembler::StoreLoad);
-
-  __ ldrb(tmp2, Address(card_addr));
-  __ cbzw(tmp2, *stub->continuation());
-
-  // storing a region crossing, non-null oop, card is clean.
-  // dirty card and log.
-
-  __ strb(zr, Address(card_addr));
-
-  __ ldr(rscratch1, queue_index);
-  __ cbz(rscratch1, *stub->entry());
-  __ sub(rscratch1, rscratch1, wordSize);
-  __ str(rscratch1, queue_index);
-
-  __ ldr(tmp2, buffer);
-  __ str(card_addr, Address(tmp2, rscratch1));
-
+    generate_queue_insertion_post(masm, thread, tmp1, tmp2, rscratch1);
   __ bind(*stub->continuation());
 }
 
