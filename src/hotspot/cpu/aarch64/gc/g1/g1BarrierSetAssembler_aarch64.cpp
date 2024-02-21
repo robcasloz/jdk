@@ -289,9 +289,6 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 
   stub->initialize_registers(obj, pre_val, thread, tmp1, tmp2);
 
-  Label done;
-  Label& runtime = *stub->entry();
-
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
   Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
@@ -303,7 +300,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
     __ ldrb(tmp1, in_progress);
   }
-  __ cbzw(tmp1, done);
+  __ cbzw(tmp1, *stub->continuation());
 
   // Do we need to load the previous value?
   if (obj != noreg) {
@@ -311,15 +308,15 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   }
 
   // Is the previous value null?
-  __ cbz(pre_val, done);
+  __ cbz(pre_val, *stub->continuation());
 
   // Can we store original value in the thread's buffer?
   // Is index == 0?
   // (The index field is typed as size_t.)
 
   __ ldr(tmp1, index);                      // tmp := *index_adr
-  __ cbz(tmp1, runtime);                    // tmp == 0?
-                                        // If yes, goto runtime
+  __ cbz(tmp1, *stub->entry());             // tmp == 0?
+                                            // If yes, goto runtime
 
   __ sub(tmp1, tmp1, wordSize);             // tmp := tmp - wordSize
   __ str(tmp1, index);                      // *index_adr := tmp
@@ -329,9 +326,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   // Record the previous value
   __ str(pre_val, Address(tmp1, 0));
 
-  __ bind(done);
   __ bind(*stub->continuation());
-
 }
 
 void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G1PreBarrierStubC2* stub) const {
@@ -365,19 +360,16 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
 
-  Label done;
-  Label& runtime = *stub->entry();
-
   // Does store cross heap regions?
 
   __ eor(tmp1, store_addr, new_val);
   __ lsr(tmp1, tmp1, HeapRegion::LogOfHRGrainBytes);
-  __ cbz(tmp1, done);
+  __ cbz(tmp1, *stub->continuation());
 
   // crosses regions, storing null?
 
   if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
-    __ cbz(new_val, done);
+    __ cbz(new_val, *stub->continuation());
   }
 
   // storing region crossing non-null, is card already dirty?
@@ -391,14 +383,14 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   __ add(card_addr, card_addr, tmp2);
   __ ldrb(tmp2, Address(card_addr));
   __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
-  __ br(Assembler::EQ, done);
+  __ br(Assembler::EQ, *stub->continuation());
 
   assert((int)CardTable::dirty_card_val() == 0, "must be 0");
 
   __ membar(Assembler::StoreLoad);
 
   __ ldrb(tmp2, Address(card_addr));
-  __ cbzw(tmp2, done);
+  __ cbzw(tmp2, *stub->continuation());
 
   // storing a region crossing, non-null oop, card is clean.
   // dirty card and log.
@@ -406,14 +398,13 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   __ strb(zr, Address(card_addr));
 
   __ ldr(rscratch1, queue_index);
-  __ cbz(rscratch1, runtime);
+  __ cbz(rscratch1, *stub->entry());
   __ sub(rscratch1, rscratch1, wordSize);
   __ str(rscratch1, queue_index);
 
   __ ldr(tmp2, buffer);
   __ str(card_addr, Address(tmp2, rscratch1));
 
-  __ bind(done);
   __ bind(*stub->continuation());
 }
 
