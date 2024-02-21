@@ -163,7 +163,6 @@ void G1BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorator
   }
 }
 
-// Uses: thread
 static Assembler::Condition generate_marking_active_test(MacroAssembler* masm, const Register thread) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
@@ -175,8 +174,6 @@ static Assembler::Condition generate_marking_active_test(MacroAssembler* masm, c
   return Assembler::notEqual;
 }
 
-// Uses: obj
-// Defs: pre_val
 static Assembler::Condition generate_pre_val_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
   if (obj != noreg) {
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
@@ -185,8 +182,6 @@ static Assembler::Condition generate_pre_val_null_test(MacroAssembler* masm, con
   return Assembler::equal;
 }
 
-// Uses: thread
-// Defs: tmp
 static Assembler::Condition generate_queue_full_test(MacroAssembler* masm, const Register thread, const Register tmp) {
   Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
   // Can we store original value in the thread's buffer?
@@ -284,8 +279,6 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   __ bind(done);
 }
 
-// Uses: store_addr, new_val
-// Defs: tmp
 static Assembler::Condition generate_single_region_test(MacroAssembler* masm, const Register store_addr, const Register new_val, const Register tmp) {
   __ movptr(tmp, store_addr);
   __ xorptr(tmp, new_val);
@@ -293,14 +286,11 @@ static Assembler::Condition generate_single_region_test(MacroAssembler* masm, co
   return Assembler::equal;
 }
 
-// Uses: new_val
 static Assembler::Condition generate_new_val_null_test(MacroAssembler* masm, const Register new_val) {
   __ cmpptr(new_val, NULL_WORD);
   return Assembler::equal;
 }
 
-// Uses: store_addr
-// Defines: tmp, tmp2
 static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp, const Register tmp2) {
   CardTableBarrierSet* ct = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
   const Register card_addr = tmp;
@@ -315,7 +305,6 @@ static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const
   return Assembler::equal;
 }
 
-// Uses: tmp
 static Assembler::Condition generate_card_dirty_test(MacroAssembler* masm, const Register tmp) {
   const Register card_addr = tmp;
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));
@@ -323,8 +312,6 @@ static Assembler::Condition generate_card_dirty_test(MacroAssembler* masm, const
   return Assembler::equal;
 }
 
-// Uses: thread, tmp
-// Defs: tmp2
 static Assembler::Condition generate_queue_full_test(MacroAssembler* masm, const Register thread, const Register tmp, const Register tmp2) {
   const Register card_addr = tmp;
   Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
@@ -334,8 +321,6 @@ static Assembler::Condition generate_queue_full_test(MacroAssembler* masm, const
   return Assembler::zero;
 }
 
-// Uses: thread, tmp
-// Defs: tmp2
 static void generate_queue_insertion_post(MacroAssembler* masm, const Register thread, const Register tmp, const Register tmp2) {
   Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
   Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));

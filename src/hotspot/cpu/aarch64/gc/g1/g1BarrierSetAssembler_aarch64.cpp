@@ -98,8 +98,6 @@ void G1BarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembler* mas
   __ pop(saved_regs, sp);
 }
 
-// Uses: thread
-// Defines: tmp1
 static Register generate_marking_active_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
@@ -111,8 +109,6 @@ static Register generate_marking_active_test(MacroAssembler* masm, const Registe
   return tmp1;
 }
 
-// Uses: obj
-// Defs: pre_val
 static Register generate_pre_val_not_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
   if (obj != noreg) {
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
@@ -120,8 +116,6 @@ static Register generate_pre_val_not_null_test(MacroAssembler* masm, const Regis
   return pre_val;
 }
 
-// Uses: thread
-// Defs: tmp1
 static Register generate_queue_not_full_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
   Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
   // Can we store original value in the thread's buffer?
@@ -232,7 +226,6 @@ static Register generate_queue_not_full_test(MacroAssembler* masm, const Registe
   __ ldr(scratch, queue_index);
   return scratch;
 }
-
 
 static void generate_queue_insertion_post(MacroAssembler* masm, const Register thread, const Register tmp1, const Register tmp2, const Register scratch) {
   Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
