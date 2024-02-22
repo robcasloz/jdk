@@ -41,18 +41,51 @@ const int G1C2BarrierPostPrecise = 8;
 const int G1C2BarrierElided      = 16;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
-  Register _arg;
+public:
+  G1BarrierStubC2(const MachNode* node);
+  virtual void emit_code(MacroAssembler& masm) = 0;
+};
 
-  address _slow_path;
+class G1PreBarrierStubC2 : public G1BarrierStubC2 {
+private:
+  Register _obj;
+  Register _pre_val;
+  Register _thread;
+  Register _tmp1;
+  Register _tmp2;
+
+protected:
+  G1PreBarrierStubC2(const MachNode* node);
 
 public:
-  G1BarrierStubC2(const MachNode* node, Register arg, address slow_path);
+  static bool needs_barrier(const MachNode* node);
+  static G1PreBarrierStubC2* create(const MachNode* node);
+  void initialize_registers(Register obj, Register pre_val, Register thread, Register tmp1, Register tmp2);
+  Register obj() const;
+  Register pre_val() const;
+  Register thread() const;
+  Register tmp1() const;
+  Register tmp2() const;
+  virtual void emit_code(MacroAssembler& masm);
+};
 
-  Register arg() const;
+class G1PostBarrierStubC2 : public G1BarrierStubC2 {
+private:
+  Register _thread;
+  Register _tmp1;
+  Register _tmp2;
 
-  address slow_path();
+protected:
+  G1PostBarrierStubC2(const MachNode* node);
 
-  static G1BarrierStubC2* create(const MachNode* node, Register arg, address slow_path);
+public:
+  static bool needs_barrier(const MachNode* node);
+  static G1PostBarrierStubC2* create(const MachNode* node);
+  void initialize_registers(Register thread, Register tmp1, Register tmp2);
+  Register thread() const;
+  Register tmp1() const;
+  Register tmp2() const;
+  virtual void emit_code(MacroAssembler& masm);
 };
 
 class G1BarrierSetC2: public CardTableBarrierSetC2 {
