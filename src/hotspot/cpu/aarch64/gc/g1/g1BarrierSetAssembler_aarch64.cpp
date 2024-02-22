@@ -308,15 +308,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   stub->initialize_registers(obj, pre_val, thread, tmp1, tmp2);
 
   Register is_marking_active = generate_marking_active_test(masm, thread, tmp1);
-  __ cbzw(is_marking_active, *stub->continuation());
-
-  Register is_pre_val_not_null = generate_pre_val_not_null_test(masm, obj, pre_val);
-  __ cbz(is_pre_val_not_null, *stub->continuation());
-
-  Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1);
-  __ cbz(is_queue_not_full, *stub->entry());
-
-  generate_queue_insertion_pre(masm, thread, pre_val, tmp1, tmp2);
+  __ cbnzw(is_marking_active, *stub->entry());
 
   __ bind(*stub->continuation());
 }
@@ -324,8 +316,25 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G1PreBarrierStubC2* stub) const {
   assert(supports_c2_late_barrier_expansion(), "");
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
+  Label runtime;
+  Register obj = stub->obj();
   Register pre_val = stub->pre_val();
+  Register thread = stub->thread();
+  Register tmp1 = stub->tmp1();
+  Register tmp2 = stub->tmp2();
+
   __ bind(*stub->entry());
+
+  Register is_pre_val_not_null = generate_pre_val_not_null_test(masm, obj, pre_val);
+  __ cbz(is_pre_val_not_null, *stub->continuation());
+
+  Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1);
+  __ cbz(is_queue_not_full, runtime);
+
+  generate_queue_insertion_pre(masm, thread, pre_val, tmp1, tmp2);
+  __ b(*stub->continuation());
+
+  __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
   __ b(*stub->continuation());
 }
