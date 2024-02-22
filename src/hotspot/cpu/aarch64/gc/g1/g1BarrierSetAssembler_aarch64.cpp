@@ -203,7 +203,7 @@ static Register generate_region_crossing_test(MacroAssembler* masm, const Regist
   return tmp1;
 }
 
-static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp1, const Register tmp2) {
+static void generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp1, const Register tmp2) {
   __ lsr(tmp1, store_addr, CardTable::card_shift());
   // get the address of the card
   __ load_byte_map_base(tmp2);
@@ -211,7 +211,6 @@ static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const
   __ ldrb(tmp2, Address(tmp1));
   __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
   assert((int)CardTable::dirty_card_val() == 0, "must be 0");
-  return Assembler::EQ;
 }
 
 static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1, const Register tmp2) {
@@ -257,8 +256,8 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   // crosses regions, storing null?
   __ cbz(new_val, done);
 
-  Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp1, tmp2);
-  __ br(is_card_young, done);
+  generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  __ br(Assembler::EQ, done);
 
   Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
   __ cbzw(is_card_clean, done);
@@ -362,23 +361,31 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
     __ cbz(new_val, *stub->continuation());
   }
 
-  Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp1, tmp2);
-  __ br(is_card_young, *stub->continuation());
+  generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  __ br(Assembler::NE, *stub->entry());
 
-  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
-  __ cbzw(is_card_clean, *stub->continuation());
-
-  Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1, rscratch1);
-  __ cbz(is_queue_not_full, *stub->entry());
-
-    generate_queue_insertion_post(masm, thread, tmp1, tmp2, rscratch1);
   __ bind(*stub->continuation());
 }
 
 void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, G1PostBarrierStubC2* stub) const {
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
+  Label runtime;
+  Register thread = stub->thread();
   Register tmp1 = stub->tmp1();
+  Register tmp2 = stub->tmp2();
+
   __ bind(*stub->entry());
+
+  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
+  __ cbzw(is_card_clean, *stub->continuation());
+
+  Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1, rscratch1);
+  __ cbz(is_queue_not_full, runtime);
+
+  generate_queue_insertion_post(masm, thread, tmp1, tmp2, rscratch1);
+  __ b(*stub->continuation());
+
+  __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
   __ b(*stub->continuation());
 }
