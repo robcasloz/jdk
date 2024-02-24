@@ -813,6 +813,8 @@ void refine_barrier_by_new_val_type(Node* n) {
   if (newval_type == TypePtr::Null) {
     // Simply elide post-barrier if writing null.
     barrier_data &= ~G1C2BarrierPost;
+    barrier_data &= ~G1C2BarrierPostNotNull;
+    barrier_data &= ~G1C2BarrierPostImprecise;
   } else if (((barrier_data & G1C2BarrierPost) != 0) &&
              newval_type == TypePtr::NotNull) {
     // If the post-barrier has not been elided yet (e.g. due to newval being
@@ -1307,8 +1309,8 @@ int G1BarrierSetC2::get_store_barrier(C2Access& access, C2AccessValue& val) cons
   bool is_array = (decorators & IS_ARRAY) != 0;
   bool anonymous = (decorators & ON_UNKNOWN_OOP_REF) != 0;
 
-  if (is_array || anonymous) {
-    barriers |= G1C2BarrierPostPrecise;
+  if (!is_array && !anonymous) {
+    barriers |= G1C2BarrierPostImprecise;
   }
 
   return barriers;
@@ -1351,6 +1353,9 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
   }
   if ((mach->barrier_data() & G1C2BarrierPostNotNull) != 0) {
     st->print("notnull ");
+  }
+  if ((mach->barrier_data() & G1C2BarrierPostImprecise) != 0) {
+    st->print("imprecise ");
   }
 }
 #endif // !PRODUCT
