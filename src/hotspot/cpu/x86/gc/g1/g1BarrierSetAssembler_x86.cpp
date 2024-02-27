@@ -439,6 +439,33 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   __ jmp(*stub->continuation());
 }
 
+Register G1BarrierSetAssembler::imprecise_marking_address(const MachNode* node, const Address obj) const {
+  assert(node->ideal_Opcode() == Op_StoreP || node->ideal_Opcode() == Op_StoreN,
+         "imprecise marking is only implemented for store barriers");
+  if ((node->barrier_data() & G1C2BarrierPostImprecise) == 0) {
+    return noreg;
+  }
+  if (obj.scale() != Address::no_scale) {
+    return noreg;
+  }
+  if (obj.index() != noreg || obj.xmmindex() != xnoreg) {
+    return noreg;
+  }
+  if (UseNewCode) {
+    tty->print_cr("base: %s, index: %s, xmmindex: %s, scale: %d, disp: %d",
+                  obj.base()->name(),
+                  obj.index()->name(),
+                  obj.xmmindex()->name(),
+                  obj.scale(),
+                  obj.disp());
+    Node* obj_node = node->in(node->operand_index(1));
+    // TODO: assert that the type of 'obj_node' is Oop (no offset) and assert that its register is the same as obj.base()
+    obj_node->dump();
+  }
+  // obj is formed by the class instance address (base) and a simple offset for the accessed field (disp). Return the base register only.
+  return obj.base();
+
+}
 
 void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
                                                      Register store_addr,
