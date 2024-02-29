@@ -41,7 +41,6 @@
 #endif // COMPILER1
 #ifdef COMPILER2
 #include "gc/g1/c2/g1BarrierSetC2.hpp"
-#include "opto/regalloc.hpp"
 #endif // COMPILER2
 
 #define __ masm->
@@ -438,52 +437,6 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
   __ jmp(*stub->continuation());
-}
-
-Register G1BarrierSetAssembler::imprecise_marking_address_via_address(const MachNode* node, const Address obj) const {
-  assert(node->ideal_Opcode() == Op_StoreP || node->ideal_Opcode() == Op_StoreN,
-         "imprecise marking is only implemented for store barriers");
-  if ((node->barrier_data() & G1C2BarrierPost) == 0) {
-    return noreg;
-  }
-  if ((node->barrier_data() & G1C2BarrierPostImprecise) == 0) {
-    return noreg;
-  }
-  if (obj.scale() != Address::no_scale) {
-    return noreg;
-  }
-  if (obj.index() != noreg || obj.xmmindex() != xnoreg) {
-    return noreg;
-  }
-  if (UseNewCode) {
-    tty->print_cr("base: %s, index: %s, xmmindex: %s, scale: %d, disp: %d",
-                  obj.base()->name(),
-                  obj.index()->name(),
-                  obj.xmmindex()->name(),
-                  obj.scale(),
-                  obj.disp());
-  }
-  // obj is formed by the class instance address (base) and a simple offset for the accessed field (disp). Return the base register only.
-  return obj.base();
-}
-
-Register G1BarrierSetAssembler::imprecise_marking_address_via_type(const MachNode* node) const {
-  assert(node->ideal_Opcode() == Op_StoreP || node->ideal_Opcode() == Op_StoreN,
-         "imprecise marking is only implemented for store barriers");
-  if ((node->barrier_data() & G1C2BarrierPost) == 0) {
-    return noreg;
-  }
-  if ((node->barrier_data() & G1C2BarrierPostImprecise) == 0) {
-    return noreg;
-  }
-  Node* obj_node = node->in(node->operand_index(1));
-  const Type* obj_bottom = obj_node->bottom_type();
-  assert(obj_bottom->isa_ptr() || obj_bottom->isa_narrowoop(), "");
-  assert(obj_bottom->make_ptr()->offset() == 0, "should this be an assert or a test? is this enough?");
-  OptoReg::Name oreg = Compile::current()->regalloc()->get_reg_first(obj_node);
-  assert(OptoReg::as_VMReg(oreg)->is_Register(), "");
-  Register base = OptoReg::as_VMReg(oreg)->as_Register();
-  return base;
 }
 
 

@@ -104,14 +104,9 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
       }
     }
     __ lea($tmp1$$Register, $mem$$Address);
+    Register base = G1BarrierSetC2::imprecise_marking_address(this);
     RegSet preserve_set = RegSet::of($tmp1$$Register, $src$$Register);
-    G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
-    Register base = g1_asm->imprecise_marking_address_via_address(this, $mem$$Address);
-    Register base2 = g1_asm->imprecise_marking_address_via_type(this);
-    Register base3 = G1BarrierSetC2::imprecise_marking_address(this);
-    assert(base == base2, "should be equivalent");
-    assert(base == base3, "should be equivalent");
-    if (base != noreg) {
+    if (base != noreg && G1PostBarrierStubC2::needs_barrier(this)) {
       preserve_set += RegSet::of(base);
     }
     g1_pre_write_barrier(_masm /* _masm */,

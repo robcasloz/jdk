@@ -1355,7 +1355,9 @@ Register G1BarrierSetC2::imprecise_marking_address(const MachNode* node) {
   Node* obj_node = node->in(node->operand_index(1));
   const Type* obj_bottom = obj_node->bottom_type();
   assert(obj_bottom->isa_ptr() || obj_bottom->isa_narrowoop(), "");
-  assert(obj_bottom->make_ptr()->offset() == 0, "should this be an assert or a test? is this enough?");
+  if (obj_bottom->make_ptr()->offset() != 0) {
+    return noreg;
+  }
   OptoReg::Name oreg = Compile::current()->regalloc()->get_reg_first(obj_node);
   assert(OptoReg::as_VMReg(oreg)->is_Register(), "");
   Register base = OptoReg::as_VMReg(oreg)->as_Register();
