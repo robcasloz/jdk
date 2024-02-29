@@ -1343,6 +1343,25 @@ int G1BarrierSetC2::estimate_stub_size() const {
   return 0;
 }
 
+Register G1BarrierSetC2::imprecise_marking_address(const MachNode* node) {
+  assert(node->ideal_Opcode() == Op_StoreP || node->ideal_Opcode() == Op_StoreN,
+         "imprecise marking is only implemented for store barriers");
+  if ((node->barrier_data() & G1C2BarrierPost) == 0) {
+    return noreg;
+  }
+  if ((node->barrier_data() & G1C2BarrierPostImprecise) == 0) {
+    return noreg;
+  }
+  Node* obj_node = node->in(node->operand_index(1));
+  const Type* obj_bottom = obj_node->bottom_type();
+  assert(obj_bottom->isa_ptr() || obj_bottom->isa_narrowoop(), "");
+  assert(obj_bottom->make_ptr()->offset() == 0, "should this be an assert or a test? is this enough?");
+  OptoReg::Name oreg = Compile::current()->regalloc()->get_reg_first(obj_node);
+  assert(OptoReg::as_VMReg(oreg)->is_Register(), "");
+  Register base = OptoReg::as_VMReg(oreg)->as_Register();
+  return base;
+}
+
 #ifndef PRODUCT
 void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) const {
   if ((mach->barrier_data() & G1C2BarrierPre) != 0) {

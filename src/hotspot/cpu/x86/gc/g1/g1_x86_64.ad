@@ -108,7 +108,9 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
     G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
     Register base = g1_asm->imprecise_marking_address_via_address(this, $mem$$Address);
     Register base2 = g1_asm->imprecise_marking_address_via_type(this);
+    Register base3 = G1BarrierSetC2::imprecise_marking_address(this);
     assert(base == base2, "should be equivalent");
+    assert(base == base3, "should be equivalent");
     if (base != noreg) {
       preserve_set += RegSet::of(base);
     }
@@ -120,10 +122,9 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
                          barrier_data() /* barrier_data */,
                          preserve_set /* preserve */);
     __ movq(Address($tmp1$$Register, 0), $src$$Register);
-    Register store_addr = base != noreg ? base : $tmp1$$Register;
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
-                          store_addr /* store_addr */,
+                          base == noreg ? $tmp1$$Register : base /* store_addr */,
                           $src$$Register /* new_val */,
                           $tmp3$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
