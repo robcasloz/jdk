@@ -150,13 +150,18 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
            (in(operand_index(2))->as_Mach()->ideal_Opcode() != Op_EncodeP),
            "EncodeP src nodes should be matched with their corresponding StoreN nodes");
     __ lea($tmp1$$Register, $mem$$Address);
+    Register base = G1BarrierSetC2::imprecise_marking_address(this);
+    RegSet preserve_set = RegSet::of($tmp1$$Register, $src$$Register);
+    if (base != noreg && G1PostBarrierStubC2::needs_barrier(this)) {
+      preserve_set += RegSet::of(base);
+    }
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $tmp1$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
                          barrier_data() /* barrier_data */,
-                         RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
+                         preserve_set /* preserve */);
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
     if ((barrier_data() & G1C2BarrierPost) != 0) {
       __ movl($tmp2$$Register, $src$$Register);
@@ -168,7 +173,9 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
     }
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
-                          $tmp1$$Register /* store_addr */,
+                          UseNewCode ?
+                          (base == noreg ? $tmp1$$Register : base /* store_addr */) :
+                          ($tmp1$$Register /* store_addr */),
                           $tmp2$$Register /* new_val */,
                           $tmp3$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
@@ -197,13 +204,18 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
       }
     }
     __ lea($tmp1$$Register, $mem$$Address);
+    Register base = G1BarrierSetC2::imprecise_marking_address(this);
+    RegSet preserve_set = RegSet::of($tmp1$$Register, $src$$Register);
+    if (base != noreg && G1PostBarrierStubC2::needs_barrier(this)) {
+      preserve_set += RegSet::of(base);
+    }
     g1_pre_write_barrier(_masm /* _masm */,
                          this /* node */,
                          $tmp1$$Register /* obj */,
                          $tmp2$$Register /* pre_val */,
                          $tmp3$$Register /* tmp */,
                          barrier_data() /* barrier_data */,
-                         RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
+                         preserve_set /* preserve */);
     __ movq($tmp2$$Register, $src$$Register);
     if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
       __ encode_heap_oop($tmp2$$Register);
@@ -213,7 +225,9 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
     __ movl(Address($tmp1$$Register, 0), $tmp2$$Register);
     g1_post_write_barrier(_masm /* _masm */,
                           this /* node */,
-                          $tmp1$$Register /* store_addr */,
+                          UseNewCode ?
+                          (base == noreg ? $tmp1$$Register : base /* store_addr */) :
+                          ($tmp1$$Register /* store_addr */),
                           $src$$Register /* new_val */,
                           $tmp3$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */,
