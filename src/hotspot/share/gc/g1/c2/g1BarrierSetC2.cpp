@@ -1309,7 +1309,7 @@ int G1BarrierSetC2::get_store_barrier(C2Access& access, C2AccessValue& val) cons
   bool is_array = (decorators & IS_ARRAY) != 0;
   bool anonymous = (decorators & ON_UNKNOWN_OOP_REF) != 0;
 
-  if (!is_array && !anonymous) {
+  if (!is_array && !anonymous && G1ImpreciseMarking) {
     barriers |= G1C2BarrierPostImprecise;
   }
 
@@ -1341,27 +1341,6 @@ void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
 int G1BarrierSetC2::estimate_stub_size() const {
   // TODO: Do something clever
   return 0;
-}
-
-Register G1BarrierSetC2::imprecise_marking_address(const MachNode* node) {
-  assert(node->ideal_Opcode() == Op_StoreP || node->ideal_Opcode() == Op_StoreN,
-         "imprecise marking is only implemented for store barriers");
-  if ((node->barrier_data() & G1C2BarrierPost) == 0) {
-    return noreg;
-  }
-  if ((node->barrier_data() & G1C2BarrierPostImprecise) == 0) {
-    return noreg;
-  }
-  Node* obj_node = node->in(node->operand_index(1));
-  const Type* obj_bottom = obj_node->bottom_type();
-  assert(obj_bottom->isa_ptr() || obj_bottom->isa_narrowoop(), "");
-  if (obj_bottom->make_ptr()->offset() != 0) {
-    return noreg;
-  }
-  OptoReg::Name oreg = Compile::current()->regalloc()->get_reg_first(obj_node);
-  assert(OptoReg::as_VMReg(oreg)->is_Register(), "");
-  Register base = OptoReg::as_VMReg(oreg)->as_Register();
-  return base;
 }
 
 #ifndef PRODUCT

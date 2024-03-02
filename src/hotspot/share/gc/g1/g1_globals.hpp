@@ -359,6 +359,10 @@
           "Profile and print C2 barrier statistics "                        \
           "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
                                                                             \
+  product(bool, G1ImpreciseMarking, true,                                   \
+          "Perform imprecise card marking in late barrier expansion "       \
+          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
+                                                                            \
   product(bool, G1AlwaysPrecise, false,                                     \
           "Force precise card-marking in early barrier expansion model "    \
           "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \

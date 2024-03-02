@@ -176,7 +176,6 @@ public:
   virtual void emit_stubs(CodeBuffer& cb) const;
   virtual int estimate_stub_size() const;
   virtual void late_barrier_analysis() const;
-  static Register imprecise_marking_address(const MachNode* node);
 
 #ifndef PRODUCT
   virtual void dump_barrier_data(const MachNode* mach, outputStream* st) const;
