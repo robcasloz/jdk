@@ -408,6 +408,10 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 
   stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_entry_counter_offset()));
+  }
+
   Assembler::Condition is_marking_active = generate_marking_active_test(masm, thread);
   __ jcc(is_marking_active, *stub->entry());
 
@@ -425,8 +429,16 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
 
   __ bind(*stub->entry());
 
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_marking_counter_offset()));
+  }
+
   Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
   __ jcc(is_pre_val_null, *stub->continuation());
+
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_notnull_counter_offset()));
+  }
 
   Assembler::Condition is_queue_full = generate_queue_full_test(masm, thread, tmp);
   __ jcc(is_queue_full, runtime);
@@ -435,6 +447,11 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   __ jmp(*stub->continuation());
 
   __ bind(runtime);
+
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::pre_runtime_counter_offset()));
+  }
+
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
   __ jmp(*stub->continuation());
 }
@@ -482,12 +499,24 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   assert(stub != nullptr, "");
   stub->initialize_registers(thread, tmp, tmp2);
 
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::post_entry_counter_offset()));
+  }
+
   Assembler::Condition is_single_region = generate_single_region_test(masm, store_addr, new_val, tmp);
   __ jcc(is_single_region, *stub->continuation());
+
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::post_inter_counter_offset()));
+  }
 
   if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
     Assembler::Condition is_new_val_null = generate_new_val_null_test(masm, new_val);
     __ jcc(is_new_val_null, *stub->continuation());
+  }
+
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::post_notnull_counter_offset()));
   }
 
   Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp, tmp2);
@@ -506,8 +535,16 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
 
   __ bind(*stub->entry());
 
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::post_clean_counter_offset()));
+  }
+
   Assembler::Condition is_card_dirty = generate_card_dirty_test(masm, tmp);
   __ jcc(is_card_dirty, *stub->continuation());
+
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::post_stillclean_counter_offset()));
+  }
 
   Assembler::Condition is_queue_full = generate_queue_full_test(masm, thread, tmp, tmp2);
   __ jcc(is_queue_full, runtime);
@@ -516,6 +553,11 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
   __ jmp(*stub->continuation());
 
   __ bind(runtime);
+
+  if (G1ProfileBarriers) {
+    __ incrementq(Address(r15_thread, JavaThread::post_runtime_counter_offset()));
+  }
+
   generate_c2_barrier_runtime_call(masm, stub, tmp, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
   __ jmp(*stub->continuation());
 }
