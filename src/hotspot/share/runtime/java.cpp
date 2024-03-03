@@ -246,6 +246,7 @@ public:
   unsigned long long _total_store_encode;
   unsigned long long _total_store_nopost;
   unsigned long long _total_store_notnull;
+  unsigned long long _total_store_imprecise;
   unsigned long long _total_atomic;
   unsigned long long _total_load;
   unsigned long long _total_pre_entry;
@@ -264,6 +265,7 @@ public:
     _total_store_encode(0),
     _total_store_nopost(0),
     _total_store_notnull(0),
+    _total_store_imprecise(0),
     _total_atomic(0),
     _total_load(0),
     _total_pre_entry(0),
@@ -284,6 +286,7 @@ public:
     _total_store_encode += javaThread->_total_store_encode;
     _total_store_nopost += javaThread->_total_store_nopost;
     _total_store_notnull += javaThread->_total_store_notnull;
+    _total_store_imprecise += javaThread->_total_store_imprecise;
     _total_atomic += javaThread->_total_atomic;
     _total_load += javaThread->_total_load;
     _total_pre_entry += javaThread->_total_pre_entry;
@@ -331,10 +334,11 @@ void print_statistics() {
     double t = os::elapsedTime();
     int eltime = (int)t;  // elapsed time in seconds
     int eltimeFraction = (int) ((t - eltime) * 1000000);
-    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
+    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
                   eltime, eltimeFraction,
                   cl._total_store, cl._total_store_volatile, cl._total_store_encode,
                   cl._total_store_nopost, cl._total_store_notnull,
+                  cl._total_store_imprecise,
                   cl._total_atomic, cl._total_load,
                   cl._total_pre_entry, cl._total_pre_marking, cl._total_pre_notnull, cl._total_pre_runtime,
                   cl._total_post_entry, cl._total_post_inter, cl._total_post_notnull, cl._total_post_clean, cl._total_post_stillclean, cl._total_post_runtime);

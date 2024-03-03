@@ -247,6 +247,7 @@ class JavaThread: public Thread {
   unsigned long long _store_encode_counter;
   unsigned long long _store_nopost_counter;
   unsigned long long _store_notnull_counter;
+  unsigned long long _store_imprecise_counter;
   unsigned long long _atomic_counter;
   unsigned long long _load_counter;
   unsigned long long _pre_entry_counter;
@@ -265,6 +266,7 @@ class JavaThread: public Thread {
   static unsigned long long _total_store_encode;
   static unsigned long long _total_store_nopost;
   static unsigned long long _total_store_notnull;
+  static unsigned long long _total_store_imprecise;
   static unsigned long long _total_atomic;
   static unsigned long long _total_load;
   static unsigned long long _total_pre_entry;
@@ -809,6 +811,7 @@ private:
   static ByteSize store_encode_counter_offset()  { return byte_offset_of(JavaThread, _store_encode_counter);}
   static ByteSize store_nopost_counter_offset()  { return byte_offset_of(JavaThread, _store_nopost_counter);}
   static ByteSize store_notnull_counter_offset() { return byte_offset_of(JavaThread, _store_notnull_counter);}
+  static ByteSize store_imprecise_counter_offset() { return byte_offset_of(JavaThread, _store_imprecise_counter);}
   static ByteSize atomic_counter_offset()        { return byte_offset_of(JavaThread, _atomic_counter);}
   static ByteSize load_counter_offset()          { return byte_offset_of(JavaThread, _load_counter);}
   static ByteSize pre_entry_counter_offset()     { return byte_offset_of(JavaThread, _pre_entry_counter);}
