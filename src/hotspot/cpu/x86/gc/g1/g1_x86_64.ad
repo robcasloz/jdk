@@ -108,8 +108,12 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
     RegSet preserve_set = RegSet::of($tmp1$$Register, $src$$Register);
     if (base != noreg && G1PostBarrierStubC2::needs_barrier(this)) {
       preserve_set += RegSet::of(base);
-      if (G1ProfileBarriers) {
+    }
+    if (G1ProfileBarriers) {
+      if (base != noreg) {
         __ incrementq(Address(r15_thread, JavaThread::store_imprecise_counter_offset()));
+      } else if (G1PostBarrierStubC2::needs_barrier(this) && ((barrier_data() & G1C2BarrierPostImprecise) != 0)) {
+        __ incrementq(Address(r15_thread, JavaThread::store_imprecise_candidate_counter_offset()));
       }
     }
     g1_pre_write_barrier(_masm /* _masm */,
@@ -157,8 +161,12 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
     RegSet preserve_set = RegSet::of($tmp1$$Register, $src$$Register);
     if (base != noreg && G1PostBarrierStubC2::needs_barrier(this)) {
       preserve_set += RegSet::of(base);
-      if (G1ProfileBarriers) {
+    }
+    if (G1ProfileBarriers) {
+      if (base != noreg) {
         __ incrementq(Address(r15_thread, JavaThread::store_imprecise_counter_offset()));
+      } else if (G1PostBarrierStubC2::needs_barrier(this) && ((barrier_data() & G1C2BarrierPostImprecise) != 0)) {
+        __ incrementq(Address(r15_thread, JavaThread::store_imprecise_candidate_counter_offset()));
       }
     }
     g1_pre_write_barrier(_masm /* _masm */,
@@ -212,8 +220,12 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
     RegSet preserve_set = RegSet::of($tmp1$$Register, $src$$Register);
     if (base != noreg && G1PostBarrierStubC2::needs_barrier(this)) {
       preserve_set += RegSet::of(base);
-      if (G1ProfileBarriers) {
+    }
+    if (G1ProfileBarriers) {
+      if (base != noreg) {
         __ incrementq(Address(r15_thread, JavaThread::store_imprecise_counter_offset()));
+      } else if (G1PostBarrierStubC2::needs_barrier(this) && ((barrier_data() & G1C2BarrierPostImprecise) != 0)) {
+        __ incrementq(Address(r15_thread, JavaThread::store_imprecise_candidate_counter_offset()));
       }
     }
     g1_pre_write_barrier(_masm /* _masm */,

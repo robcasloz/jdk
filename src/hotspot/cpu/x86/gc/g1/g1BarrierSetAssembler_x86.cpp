@@ -459,7 +459,7 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
 Register G1BarrierSetAssembler::imprecise_marking_address(const MachNode* node, const Address obj) {
   assert(node->ideal_Opcode() == Op_StoreP || node->ideal_Opcode() == Op_StoreN,
          "imprecise marking is only implemented for store barriers");
-  if ((node->barrier_data() & G1C2BarrierPost) == 0) {
+  if (!G1PostBarrierStubC2::needs_barrier(node)) {
     return noreg;
   }
   if ((node->barrier_data() & G1C2BarrierPostImprecise) == 0) {

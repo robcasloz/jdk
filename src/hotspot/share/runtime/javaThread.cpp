@@ -119,6 +119,7 @@ unsigned long long JavaThread::_total_store_encode;
 unsigned long long JavaThread::_total_store_nopost;
 unsigned long long JavaThread::_total_store_notnull;
 unsigned long long JavaThread::_total_store_imprecise;
+unsigned long long JavaThread::_total_store_imprecise_candidate;
 unsigned long long JavaThread::_total_atomic;
 unsigned long long JavaThread::_total_load;
 unsigned long long JavaThread::_total_pre_entry;
@@ -451,6 +452,7 @@ JavaThread::JavaThread() :
   _store_nopost_counter(0),
   _store_notnull_counter(0),
   _store_imprecise_counter(0),
+  _store_imprecise_candidate_counter(0),
   _atomic_counter(0),
   _load_counter(0),
   _pre_entry_counter(0),
@@ -662,6 +664,7 @@ JavaThread::~JavaThread() {
   _total_store_nopost += _store_nopost_counter;
   _total_store_notnull += _store_notnull_counter;
   _total_store_imprecise += _store_imprecise_counter;
+  _total_store_imprecise_candidate += _store_imprecise_candidate_counter;
   _total_atomic += _atomic_counter;
   _total_load += _load_counter;
   _total_pre_entry += _pre_entry_counter;
