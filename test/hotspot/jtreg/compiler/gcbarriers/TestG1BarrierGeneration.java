@@ -218,7 +218,6 @@ public class TestG1BarrierGeneration {
         b[index] = o1;
     }
 
-    // FIXME: do we need post-barriers for writes to freshly-allocated arrays?
     @Test
     @IR(applyIf = {"UseCompressedOops", "false"},
         failOn = {IRNode.G1_STORE_P},
@@ -226,9 +225,11 @@ public class TestG1BarrierGeneration {
     @IR(applyIf = {"UseCompressedOops", "true"},
         failOn = {IRNode.G1_STORE_N, IRNode.G1_ENCODE_P_AND_STORE_N},
         phase = CompilePhase.FINAL_CODE)
-    public static Object[] testStoreOnNewArray(int length, int index, Object o1) {
-        Object[] a = new Object[length];
-        a[index] = o1;
+    public static Object[] testStoreOnNewArray(Object o1) {
+        Object[] a = new Object[10];
+        // The index needs to be concrete for C2 to detect that it is safe to
+        // remove the pre-barrier.
+        a[4] = o1;
         return a;
     }
 
@@ -265,7 +266,7 @@ public class TestG1BarrierGeneration {
         }
         {
             Object o1 = new Object();
-            Object[] a = testStoreOnNewArray(10, 4, o1);
+            Object[] a = testStoreOnNewArray(o1);
             assert(a[4] == o1);
         }
     }
