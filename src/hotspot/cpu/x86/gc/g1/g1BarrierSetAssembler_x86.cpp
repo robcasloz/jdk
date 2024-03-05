@@ -408,7 +408,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 
   stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::pre_entry_counter_offset()));
   }
 
@@ -429,14 +429,14 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
 
   __ bind(*stub->entry());
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::pre_marking_counter_offset()));
   }
 
   Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
   __ jcc(is_pre_val_null, *stub->continuation());
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::pre_notnull_counter_offset()));
   }
 
@@ -448,7 +448,7 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
 
   __ bind(runtime);
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::pre_runtime_counter_offset()));
   }
 
@@ -499,14 +499,14 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   assert(stub != nullptr, "");
   stub->initialize_registers(thread, tmp, tmp2);
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::post_entry_counter_offset()));
   }
 
   Assembler::Condition is_single_region = generate_single_region_test(masm, store_addr, new_val, tmp);
   __ jcc(is_single_region, *stub->continuation());
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::post_inter_counter_offset()));
   }
 
@@ -515,7 +515,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
     __ jcc(is_new_val_null, *stub->continuation());
   }
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::post_notnull_counter_offset()));
   }
 
@@ -535,14 +535,14 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
 
   __ bind(*stub->entry());
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::post_clean_counter_offset()));
   }
 
   Assembler::Condition is_card_dirty = generate_card_dirty_test(masm, tmp);
   __ jcc(is_card_dirty, *stub->continuation());
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::post_stillclean_counter_offset()));
   }
 
@@ -554,7 +554,7 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
 
   __ bind(runtime);
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarrierTests) {
     __ incrementq(Address(r15_thread, JavaThread::post_runtime_counter_offset()));
   }
 

@@ -326,7 +326,7 @@ void print_statistics() {
 #endif //COMPILER1
   }
 
-  if (G1ProfileBarriers) {
+  if (G1ProfileBarriers || G1ProfileBarrierTests) {
     CollectG1BarrierStatsClosure cl;
     Threads_lock->lock();
     Threads::java_threads_do(&cl);
