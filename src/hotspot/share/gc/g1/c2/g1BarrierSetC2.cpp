@@ -813,6 +813,7 @@ void refine_barrier_by_new_val_type(Node* n) {
   if (newval_type == TypePtr::Null) {
     // Simply elide post-barrier if writing null.
     barrier_data &= ~G1C2BarrierPost;
+    barrier_data &= ~G1C2BarrierPostNotNull;
   } else if (((barrier_data & G1C2BarrierPost) != 0) &&
              newval_type == TypePtr::NotNull) {
     // If the post-barrier has not been elided yet (e.g. due to newval being
