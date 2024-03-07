@@ -1304,13 +1304,6 @@ int G1BarrierSetC2::get_store_barrier(C2Access& access, C2AccessValue& val) cons
     barriers ^= G1C2BarrierPost;
   }
 
-  bool is_array = (decorators & IS_ARRAY) != 0;
-  bool anonymous = (decorators & ON_UNKNOWN_OOP_REF) != 0;
-
-  if (is_array || anonymous) {
-    barriers |= G1C2BarrierPostPrecise;
-  }
-
   return barriers;
 }
 

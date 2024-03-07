@@ -37,8 +37,7 @@ class TypeFunc;
 const int G1C2BarrierPre         = 1;
 const int G1C2BarrierPost        = 2;
 const int G1C2BarrierPostNotNull = 4;
-const int G1C2BarrierPostPrecise = 8;
-const int G1C2BarrierElided      = 16;
+const int G1C2BarrierElided      = 8;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
 public:
