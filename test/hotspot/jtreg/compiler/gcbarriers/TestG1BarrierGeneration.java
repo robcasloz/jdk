@@ -138,7 +138,6 @@ public class TestG1BarrierGeneration {
     public void runStoreTests() {
         {
             Outer o = new Outer();
-            Outer p = new Outer();
             Object o1 = new Object();
             testStore(o, o1);
             assert(o.f == o1);
@@ -166,6 +165,107 @@ public class TestG1BarrierGeneration {
             Object o1 = new Object();
             Outer o = testStoreOnNewObject(o1);
             assert(o.f == o1);
+        }
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    public static void testArrayStore(Object[] a, int index, Object o1) {
+        a[index] = o1;
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, PRE_ONLY, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_STORE_N_WITH_BARRIER_FLAG, PRE_ONLY, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    public static void testArrayStoreNull(Object[] a, int index) {
+        a[index] = null;
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, PRE_AND_POST_NOT_NULL, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG, PRE_AND_POST_NOT_NULL, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    public static void testArrayStoreNotNull(Object[] a, int index, Object o1) {
+        if (o1.hashCode() == 42) {
+            return;
+        }
+        a[index] = o1;
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, PRE_AND_POST, "2"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG, PRE_AND_POST, "2"},
+        phase = CompilePhase.FINAL_CODE)
+    public static void testArrayStoreTwice(Object[] a, Object[] b, int index, Object o1) {
+        a[index] = o1;
+        b[index] = o1;
+    }
+
+    @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        failOn = {IRNode.G1_STORE_P},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        failOn = {IRNode.G1_STORE_N, IRNode.G1_ENCODE_P_AND_STORE_N},
+        phase = CompilePhase.FINAL_CODE)
+    public static Object[] testStoreOnNewArray(Object o1) {
+        Object[] a = new Object[10];
+        // The index needs to be concrete for C2 to detect that it is safe to
+        // remove the pre-barrier.
+        a[4] = o1;
+        return a;
+    }
+
+    @Run(test = {"testArrayStore",
+                 "testArrayStoreNull",
+                 "testArrayStoreNotNull",
+                 "testArrayStoreTwice",
+                 "testStoreOnNewArray"})
+    public void runArrayStoreTests() {
+        {
+            Object[] a = new Object[10];
+            Object o1 = new Object();
+            testArrayStore(a, 4, o1);
+            assert(a[4] == o1);
+        }
+        {
+            Object[] a = new Object[10];
+            testArrayStoreNull(a, 4);
+            assert(a[4] == null);
+        }
+        {
+            Object[] a = new Object[10];
+            Object o1 = new Object();
+            testArrayStoreNotNull(a, 4, o1);
+            assert(a[4] == o1);
+        }
+        {
+            Object[] a = new Object[10];
+            Object[] b = new Object[10];
+            Object o1 = new Object();
+            testArrayStoreTwice(a, b, 4, o1);
+            assert(a[4] == o1);
+            assert(b[4] == o1);
+        }
+        {
+            Object o1 = new Object();
+            Object[] a = testStoreOnNewArray(o1);
+            assert(a[4] == o1);
         }
     }
 
