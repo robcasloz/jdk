@@ -254,8 +254,8 @@ class JavaThread: public Thread {
   unsigned long long _post_entry_counter;
   unsigned long long _post_inter_counter;
   unsigned long long _post_notnull_counter;
+  unsigned long long _post_young_counter;
   unsigned long long _post_clean_counter;
-  unsigned long long _post_stillclean_counter;
   unsigned long long _post_runtime_counter;
 
   static unsigned long long _total_store;
@@ -272,8 +272,8 @@ class JavaThread: public Thread {
   static unsigned long long _total_post_entry;
   static unsigned long long _total_post_inter;
   static unsigned long long _total_post_notnull;
+  static unsigned long long _total_post_young;
   static unsigned long long _total_post_clean;
-  static unsigned long long _total_post_stillclean;
   static unsigned long long _total_post_runtime;
  private:
   SafepointMechanism::ThreadData _poll_data;
@@ -817,8 +817,8 @@ private:
   static ByteSize post_entry_counter_offset()    { return byte_offset_of(JavaThread, _post_entry_counter);}
   static ByteSize post_inter_counter_offset()    { return byte_offset_of(JavaThread, _post_inter_counter);}
   static ByteSize post_notnull_counter_offset()  { return byte_offset_of(JavaThread, _post_notnull_counter);}
+  static ByteSize post_young_counter_offset()    { return byte_offset_of(JavaThread, _post_young_counter);}
   static ByteSize post_clean_counter_offset()    { return byte_offset_of(JavaThread, _post_clean_counter);}
-  static ByteSize post_stillclean_counter_offset() { return byte_offset_of(JavaThread, _post_stillclean_counter);}
   static ByteSize post_runtime_counter_offset()  { return byte_offset_of(JavaThread, _post_runtime_counter);}
 
 #if INCLUDE_JVMCI

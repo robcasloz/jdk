@@ -127,8 +127,8 @@ unsigned long long JavaThread::_total_pre_runtime;
 unsigned long long JavaThread::_total_post_entry;
 unsigned long long JavaThread::_total_post_inter;
 unsigned long long JavaThread::_total_post_notnull;
+unsigned long long JavaThread::_total_post_young;
 unsigned long long JavaThread::_total_post_clean;
-unsigned long long JavaThread::_total_post_stillclean;
 unsigned long long JavaThread::_total_post_runtime;
 
 #ifdef DTRACE_ENABLED
@@ -467,8 +467,8 @@ JavaThread::JavaThread() :
   _post_entry_counter(0),
   _post_inter_counter(0),
   _post_notnull_counter(0),
+  _post_young_counter(0),
   _post_clean_counter(0),
-  _post_stillclean_counter(0),
   _post_runtime_counter(0),
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
@@ -706,8 +706,8 @@ JavaThread::~JavaThread() {
   _total_post_entry += _post_entry_counter;
   _total_post_inter += _post_inter_counter;
   _total_post_notnull += _post_notnull_counter;
+  _total_post_young += _post_young_counter;
   _total_post_clean += _post_clean_counter;
-  _total_post_stillclean += _post_stillclean_counter;
   _total_post_runtime += _post_runtime_counter;
 
   // Enqueue OopHandles for release by the service thread.

@@ -255,8 +255,8 @@ public:
   unsigned long long _total_post_entry;
   unsigned long long _total_post_inter;
   unsigned long long _total_post_notnull;
+  unsigned long long _total_post_young;
   unsigned long long _total_post_clean;
-  unsigned long long _total_post_stillclean;
   unsigned long long _total_post_runtime;
   CollectG1BarrierStatsClosure() :
     _total_store(0),
@@ -273,8 +273,8 @@ public:
     _total_post_entry(0),
     _total_post_inter(0),
     _total_post_notnull(0),
+    _total_post_young(0),
     _total_post_clean(0),
-    _total_post_stillclean(0),
     _total_post_runtime(0) {}
 
   void do_thread(Thread* thread) {
@@ -293,8 +293,8 @@ public:
     _total_post_entry += javaThread->_total_post_entry;
     _total_post_inter += javaThread->_total_post_inter;
     _total_post_notnull += javaThread->_total_post_notnull;
+    _total_post_young += javaThread->_total_post_young;
     _total_post_clean += javaThread->_total_post_clean;
-    _total_post_stillclean += javaThread->_total_post_stillclean;
     _total_post_runtime += javaThread->_total_post_runtime;
   }
 };
@@ -337,7 +337,7 @@ void print_statistics() {
                   cl._total_store_nopost, cl._total_store_notnull,
                   cl._total_atomic, cl._total_load,
                   cl._total_pre_entry, cl._total_pre_marking, cl._total_pre_notnull, cl._total_pre_runtime,
-                  cl._total_post_entry, cl._total_post_inter, cl._total_post_notnull, cl._total_post_clean, cl._total_post_stillclean, cl._total_post_runtime);
+                  cl._total_post_entry, cl._total_post_inter, cl._total_post_notnull, cl._total_post_young, cl._total_post_clean, cl._total_post_runtime);
   }
 
   if (PrintLockStatistics || PrintPreciseRTMLockingStatistics) {
