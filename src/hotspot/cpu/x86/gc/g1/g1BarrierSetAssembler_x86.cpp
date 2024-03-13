@@ -507,14 +507,14 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
   __ bind(*stub->entry());
 
   if (G1ProfileBarrierTests) {
-    __ incrementq(Address(r15_thread, JavaThread::post_clean_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::post_young_counter_offset()));
   }
 
   Assembler::Condition is_card_dirty = generate_card_dirty_test(masm, tmp);
   __ jcc(is_card_dirty, *stub->continuation());
 
   if (G1ProfileBarrierTests) {
-    __ incrementq(Address(r15_thread, JavaThread::post_stillclean_counter_offset()));
+    __ incrementq(Address(r15_thread, JavaThread::post_clean_counter_offset()));
   }
 
   Assembler::Condition is_queue_full = generate_queue_full_test(masm, thread, tmp, tmp2);
