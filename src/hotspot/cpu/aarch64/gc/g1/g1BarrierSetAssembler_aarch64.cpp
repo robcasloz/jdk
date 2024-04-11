@@ -106,6 +106,15 @@ static Register generate_queue_not_full_test(MacroAssembler* masm, ByteSize inde
   return temp;         // index != 0?
 }
 
+static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset, ByteSize buffer_offset,
+                                     const Register thread, const Register element, const Register temp1 /* index */, const Register temp2) {
+  __ sub(temp1, temp1, wordSize);                           // temp1 := next index
+  __ str(temp1, Address(thread, in_bytes(index_offset)));   // *(index address) := next index
+  __ ldr(temp2, Address(thread, in_bytes(buffer_offset)));  // temp2 := buffer address
+  __ add(temp1, temp1, temp2);                              // temp1 := buffer address + next index
+  __ str(element, Address(temp1, 0));                       // *(buffer address + next index) := element
+}
+
 static Register generate_marking_active_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
@@ -122,17 +131,6 @@ static Register generate_pre_val_not_null_test(MacroAssembler* masm, const Regis
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
   return pre_val;
-}
-
-static void generate_queue_insertion_pre(MacroAssembler* masm, const Register thread, const Register pre_val, const Register tmp1, const Register tmp2) {
-  Address index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
-  __ sub(tmp1, tmp1, wordSize);             // tmp := tmp - wordSize
-  __ str(tmp1, index);                      // *index_adr := tmp
-  __ ldr(tmp2, buffer);
-  __ add(tmp1, tmp1, tmp2);                 // tmp := tmp + *buffer_adr
-  // Record the previous value
-  __ str(pre_val, Address(tmp1, 0));
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
@@ -164,7 +162,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), thread, tmp1);
   __ cbz(is_queue_not_full, runtime);
 
-  generate_queue_insertion_pre(masm, thread, pre_val, tmp1, tmp2);
+  generate_queue_insertion(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), G1ThreadLocalData::satb_mark_queue_buffer_offset(), thread, pre_val, tmp1, tmp2);
   __ b(done);
 
   __ bind(runtime);
@@ -222,15 +220,6 @@ static void generate_dirty_card(MacroAssembler* masm, const Register tmp1 /* car
   __ strb(zr, Address(tmp1));  // *(card address) := dirty_card_val
 }
 
-static void generate_queue_insertion_post(MacroAssembler* masm, const Register thread, const Register tmp1, const Register tmp2, const Register scratch) {
-  Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
-  Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
-  __ sub(scratch, scratch, wordSize);
-  __ str(scratch, queue_index);
-  __ ldr(tmp2, buffer);
-  __ str(tmp1, Address(tmp2, scratch));
-}
-
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
                                                   Register store_addr,
                                                   Register new_val,
@@ -263,7 +252,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), thread, rscratch1);
   __ cbz(is_queue_not_full, runtime);
 
-  generate_queue_insertion_post(masm, thread, tmp1, tmp2, rscratch1);
+  generate_queue_insertion(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), G1ThreadLocalData::dirty_card_queue_buffer_offset(), thread, tmp1, rscratch1, tmp2);
   __ b(done);
 
   __ bind(runtime);
@@ -328,7 +317,7 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), thread, tmp1);
   __ cbz(is_queue_not_full, runtime);
 
-  generate_queue_insertion_pre(masm, thread, pre_val, tmp1, tmp2);
+  generate_queue_insertion(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), G1ThreadLocalData::satb_mark_queue_buffer_offset(), thread, pre_val, tmp1, tmp2);
   __ b(*stub->continuation());
 
   __ bind(runtime);
@@ -382,7 +371,7 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
   Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), thread, rscratch1);
   __ cbz(is_queue_not_full, runtime);
 
-  generate_queue_insertion_post(masm, thread, tmp1, tmp2, rscratch1);
+  generate_queue_insertion(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), G1ThreadLocalData::dirty_card_queue_buffer_offset(), thread, tmp1, rscratch1, tmp2);
   __ b(*stub->continuation());
 
   __ bind(runtime);
