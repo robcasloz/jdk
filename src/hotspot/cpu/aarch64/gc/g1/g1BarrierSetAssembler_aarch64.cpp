@@ -115,6 +115,13 @@ static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset
   __ str(element, Address(temp1, 0));                       // *(buffer address + next index) := element
 }
 
+static void generate_queue_test_and_insertion(MacroAssembler* masm, ByteSize index_offset, ByteSize buffer_offset, Label& runtime,
+                                              const Register thread, const Register element, const Register temp1, const Register temp2) {
+  Register is_queue_not_full = generate_queue_not_full_test(masm, index_offset, thread, temp1);
+  __ cbz(is_queue_not_full, runtime);
+  generate_queue_insertion(masm, index_offset, buffer_offset, thread, element, temp1, temp2);
+}
+
 static Register generate_marking_active_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
@@ -159,10 +166,11 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   Register is_pre_val_not_null = generate_pre_val_not_null_test(masm, obj, pre_val);
   __ cbz(is_pre_val_not_null, done);
 
-  Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), thread, tmp1);
-  __ cbz(is_queue_not_full, runtime);
-
-  generate_queue_insertion(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), G1ThreadLocalData::satb_mark_queue_buffer_offset(), thread, pre_val, tmp1, tmp2);
+  generate_queue_test_and_insertion(masm,
+                                    G1ThreadLocalData::satb_mark_queue_index_offset(),
+                                    G1ThreadLocalData::satb_mark_queue_buffer_offset(),
+                                    runtime,
+                                    thread, pre_val, tmp1, tmp2);
   __ b(done);
 
   __ bind(runtime);
@@ -209,7 +217,7 @@ static void generate_card_young_test(MacroAssembler* masm, const Register store_
   __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
 }
 
-static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1, const Register tmp2) {
+static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1 /* card address */, const Register tmp2) {
   __ membar(Assembler::StoreLoad);
   __ ldrb(tmp2, Address(tmp1));
   return tmp2;
@@ -242,6 +250,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   __ cbz(new_val, done);
 
   generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  // From here on, tmp1 holds the card address.
   __ br(Assembler::EQ, done);
 
   Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
@@ -249,10 +258,11 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   generate_dirty_card(masm, tmp1);
 
-  Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), thread, rscratch1);
-  __ cbz(is_queue_not_full, runtime);
-
-  generate_queue_insertion(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), G1ThreadLocalData::dirty_card_queue_buffer_offset(), thread, tmp1, rscratch1, tmp2);
+  generate_queue_test_and_insertion(masm,
+                                    G1ThreadLocalData::dirty_card_queue_index_offset(),
+                                    G1ThreadLocalData::dirty_card_queue_buffer_offset(),
+                                    runtime,
+                                    thread, tmp1, tmp2, rscratch1);
   __ b(done);
 
   __ bind(runtime);
@@ -314,10 +324,11 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm, G
   Register is_pre_val_not_null = generate_pre_val_not_null_test(masm, obj, pre_val);
   __ cbz(is_pre_val_not_null, *stub->continuation());
 
-  Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), thread, tmp1);
-  __ cbz(is_queue_not_full, runtime);
-
-  generate_queue_insertion(masm, G1ThreadLocalData::satb_mark_queue_index_offset(), G1ThreadLocalData::satb_mark_queue_buffer_offset(), thread, pre_val, tmp1, tmp2);
+  generate_queue_test_and_insertion(masm,
+                                    G1ThreadLocalData::satb_mark_queue_index_offset(),
+                                    G1ThreadLocalData::satb_mark_queue_buffer_offset(),
+                                    runtime,
+                                    thread, pre_val, tmp1, tmp2);
   __ b(*stub->continuation());
 
   __ bind(runtime);
@@ -349,6 +360,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   }
 
   generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  // From here on, tmp1 holds the card address.
   __ br(Assembler::NE, *stub->entry());
 
   __ bind(*stub->continuation());
@@ -358,7 +370,7 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;
   Register thread = stub->thread();
-  Register tmp1 = stub->tmp1();
+  Register tmp1 = stub->tmp1(); // tmp1 holds the card address.
   Register tmp2 = stub->tmp2();
 
   __ bind(*stub->entry());
@@ -368,10 +380,11 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
 
   generate_dirty_card(masm, tmp1);
 
-  Register is_queue_not_full = generate_queue_not_full_test(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), thread, rscratch1);
-  __ cbz(is_queue_not_full, runtime);
-
-  generate_queue_insertion(masm, G1ThreadLocalData::dirty_card_queue_index_offset(), G1ThreadLocalData::dirty_card_queue_buffer_offset(), thread, tmp1, rscratch1, tmp2);
+  generate_queue_test_and_insertion(masm,
+                                    G1ThreadLocalData::dirty_card_queue_index_offset(),
+                                    G1ThreadLocalData::dirty_card_queue_buffer_offset(),
+                                    runtime,
+                                    thread, tmp1, tmp2, rscratch1);
   __ b(*stub->continuation());
 
   __ bind(runtime);
