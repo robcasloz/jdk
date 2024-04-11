@@ -219,9 +219,13 @@ static Register generate_card_clean_test(MacroAssembler* masm, const Register tm
   return tmp2;
 }
 
+static void generate_dirty_card(MacroAssembler* masm, const Register tmp1 /* card address */) {
+  STATIC_ASSERT(CardTable::dirty_card_val() == 0);
+  __ strb(zr, Address(tmp1));  // *(card address) := dirty_card_val
+}
+
 static Register generate_queue_not_full_test(MacroAssembler* masm, const Register thread, const Register tmp1, const Register scratch) {
   Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
-  __ strb(zr, Address(tmp1));
   __ ldr(scratch, queue_index);
   return scratch;
 }
@@ -261,6 +265,8 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
   __ cbzw(is_card_clean, done);
+
+  generate_dirty_card(masm, tmp1);
 
   Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1, rscratch1);
   __ cbz(is_queue_not_full, runtime);
@@ -378,6 +384,8 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm, 
 
   Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
   __ cbzw(is_card_clean, *stub->continuation());
+
+  generate_dirty_card(masm, tmp1);
 
   Register is_queue_not_full = generate_queue_not_full_test(masm, thread, tmp1, rscratch1);
   __ cbz(is_queue_not_full, runtime);
