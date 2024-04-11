@@ -210,7 +210,6 @@ static void generate_card_young_test(MacroAssembler* masm, const Register store_
   __ add(tmp1, tmp1, tmp2);
   __ ldrb(tmp2, Address(tmp1));
   __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
-  assert((int)CardTable::dirty_card_val() == 0, "must be 0");
 }
 
 static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1, const Register tmp2) {
