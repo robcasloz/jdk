@@ -164,17 +164,17 @@ void G1BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorator
 }
 
 static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset, ByteSize buffer_offset, Label& runtime,
-                                     const Register thread, const Register value, const Register temp) {
-  // Can we store a value in the given thread's buffer?
+                                     const Register thread, const Register element, const Register temp) {
+  // Can we store an element in the given thread's buffer?
   // (The index field is typed as size_t.)
-  __ movptr(temp, Address(thread, in_bytes(index_offset)));  // temp := *(index address)
-  __ testptr(temp, temp);                                    // index == 0?
-  __ jcc(Assembler::zero, runtime);
-  // The buffer is not full, store value into it.
+  __ movptr(temp, Address(thread, in_bytes(index_offset)));   // temp := *(index address)
+  __ testptr(temp, temp);                                     // index == 0?
+  __ jcc(Assembler::zero, runtime);                           // jump to runtime if index == 0 (full buffer)
+  // The buffer is not full, store element into it.
   __ subptr(temp, wordSize);                                  // temp := next index
   __ movptr(Address(thread, in_bytes(index_offset)), temp);   // *(index address) := next index
   __ addptr(temp, Address(thread, in_bytes(buffer_offset)));  // temp := buffer address + next index
-  __ movptr(Address(temp, 0), value);                         // *(buffer address + next index) := value
+  __ movptr(Address(temp, 0), element);                       // *(buffer address + next index) := element
 }
 
 static Assembler::Condition generate_marking_active_test(MacroAssembler* masm, const Register thread) {
