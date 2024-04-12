@@ -102,14 +102,13 @@ static void generate_queue_test_and_insertion(MacroAssembler* masm, ByteSize ind
                                               const Register thread, const Register element, const Register temp1, const Register temp2) {
   // Can we store an element in the given thread's buffer?
   // (The index field is typed as size_t.)
-  __ ldr(temp1, Address(thread, in_bytes(index_offset)));    // temp1 := *(index address)
-  __ cbz(temp1, runtime);  // jump to runtime if index == 0 (full buffer)
+  __ ldr(temp1, Address(thread, in_bytes(index_offset)));   // temp1 := *(index address)
+  __ cbz(temp1, runtime);                                   // jump to runtime if index == 0 (full buffer)
   // The buffer is not full, store element into it.
   __ sub(temp1, temp1, wordSize);                           // temp1 := next index
   __ str(temp1, Address(thread, in_bytes(index_offset)));   // *(index address) := next index
   __ ldr(temp2, Address(thread, in_bytes(buffer_offset)));  // temp2 := buffer address
-  __ add(temp1, temp1, temp2);                              // temp1 := buffer address + next index
-  __ str(element, Address(temp1, 0));                       // *(buffer address + next index) := element
+  __ str(element, Address(temp2, temp1));                   // *(buffer address + next index) := element
 }
 
 static Register generate_marking_active_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
