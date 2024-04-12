@@ -98,28 +98,18 @@ void G1BarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembler* mas
   __ pop(saved_regs, sp);
 }
 
-static Register generate_queue_not_full_test(MacroAssembler* masm, ByteSize index_offset, const Register thread, const Register temp) {
-  Address index(thread, in_bytes(index_offset));
+static void generate_queue_test_and_insertion(MacroAssembler* masm, ByteSize index_offset, ByteSize buffer_offset, Label& runtime,
+                                              const Register thread, const Register element, const Register temp1, const Register temp2) {
   // Can we store an element in the given thread's buffer?
   // (The index field is typed as size_t.)
-  __ ldr(temp, index); // temp := *(index address)
-  return temp;         // index != 0?
-}
-
-static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset, ByteSize buffer_offset,
-                                     const Register thread, const Register element, const Register temp1 /* index */, const Register temp2) {
+  __ ldr(temp1, Address(thread, in_bytes(index_offset)));    // temp1 := *(index address)
+  __ cbz(temp1, runtime);  // jump to runtime if index == 0 (full buffer)
+  // The buffer is not full, store element into it.
   __ sub(temp1, temp1, wordSize);                           // temp1 := next index
   __ str(temp1, Address(thread, in_bytes(index_offset)));   // *(index address) := next index
   __ ldr(temp2, Address(thread, in_bytes(buffer_offset)));  // temp2 := buffer address
   __ add(temp1, temp1, temp2);                              // temp1 := buffer address + next index
   __ str(element, Address(temp1, 0));                       // *(buffer address + next index) := element
-}
-
-static void generate_queue_test_and_insertion(MacroAssembler* masm, ByteSize index_offset, ByteSize buffer_offset, Label& runtime,
-                                              const Register thread, const Register element, const Register temp1, const Register temp2) {
-  Register is_queue_not_full = generate_queue_not_full_test(masm, index_offset, thread, temp1);
-  __ cbz(is_queue_not_full, runtime);
-  generate_queue_insertion(masm, index_offset, buffer_offset, thread, element, temp1, temp2);
 }
 
 static Register generate_marking_active_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
