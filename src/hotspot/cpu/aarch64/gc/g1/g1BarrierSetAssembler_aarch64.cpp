@@ -114,17 +114,17 @@ static void generate_queue_test_and_insertion(MacroAssembler* masm, ByteSize ind
 static Register generate_marking_active_test(MacroAssembler* masm, const Register thread, const Register tmp1) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    __ ldrw(tmp1, in_progress);
+    __ ldrw(tmp1, in_progress);  // tmp1 := *(mark queue active address)
   } else {
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    __ ldrb(tmp1, in_progress);
+    __ ldrb(tmp1, in_progress);  // tmp1 := *(mark queue active address)
   }
   return tmp1;
 }
 
 static Register generate_pre_val_not_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
   if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
   }
   return pre_val;
 }
@@ -192,23 +192,22 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
 }
 
 static Register generate_region_crossing_test(MacroAssembler* masm, const Register store_addr, const Register new_val, const Register tmp1) {
-  __ eor(tmp1, store_addr, new_val);
-  __ lsr(tmp1, tmp1, HeapRegion::LogOfHRGrainBytes);
+  __ eor(tmp1, store_addr, new_val);                  // tmp1 := store address ^ new value
+  __ lsr(tmp1, tmp1, HeapRegion::LogOfHRGrainBytes);  // tmp1 := ((store address ^ new value) >> LogOfHRGrainBytes)
   return tmp1;
 }
 
 static void generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp1, const Register tmp2) {
-  __ lsr(tmp1, store_addr, CardTable::card_shift());
-  // get the address of the card
-  __ load_byte_map_base(tmp2);
-  __ add(tmp1, tmp1, tmp2);
-  __ ldrb(tmp2, Address(tmp1));
-  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());
+  __ lsr(tmp1, store_addr, CardTable::card_shift());     // tmp1 := card address relative to card table base
+  __ load_byte_map_base(tmp2);                           // tmp2 := card table base address
+  __ add(tmp1, tmp1, tmp2);                              // tmp1 := card address
+  __ ldrb(tmp2, Address(tmp1));                          // tmp2 := card
+  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());  // tmp2 := card == young_card_val?
 }
 
 static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1 /* card address */, const Register tmp2) {
-  __ membar(Assembler::StoreLoad);
-  __ ldrb(tmp2, Address(tmp1));
+  __ membar(Assembler::StoreLoad);  // StoreLoad membar
+  __ ldrb(tmp2, Address(tmp1));     // tmp2 := card
   return tmp2;
 }
 
