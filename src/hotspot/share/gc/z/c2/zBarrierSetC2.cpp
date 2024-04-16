@@ -201,11 +201,6 @@ int ZBarrierStubC2::stubs_start_offset() {
   return barrier_set_state()->stubs_start_offset();
 }
 
-RegMask& ZBarrierStubC2::node_livein() const {
-  void* state = Compile::current()->barrier_set_state();
-  return *reinterpret_cast<ZBarrierSetC2State*>(state)->live(_node);
-}
-
 ZBarrierStubC2::ZBarrierStubC2(const MachNode* node)
   : _node(node),
     _entry(),
@@ -230,7 +225,7 @@ void ZBarrierStubC2::dont_preserve(Register r) {
 }
 
 const RegMask& ZBarrierStubC2::preserve_set() {
-  _preserve.OR(node_livein());
+  _preserve.OR(*barrier_set_state()->live(_node));
   // Subtract not only the OptoRegs in _no_preserve, but also all related
   // OptoRegs that are sub-registers of the same general-purpose, processor
   // register (e.g. {R11, R11_H} for r11 in aarch64). We assume that OptoRegs

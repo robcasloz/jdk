@@ -56,9 +56,6 @@ static int stubs_start_offset();
 
   ZBarrierStubC2(const MachNode* node);
 
-  // Registers that are live into the memory access implementation.
-  RegMask& node_livein() const;
-
 public:
   Label* entry();
   Label* continuation();
