@@ -43,9 +43,11 @@ class MacroAssembler;
 
 class ZBarrierStubC2 : public ArenaObj {
 protected:
-  const MachNode* _node;
-  Label           _entry;
-  Label           _continuation;
+  const MachNode* _node;         // Memory access for which the barrier is generated.
+  Label           _entry;        // Entry point to the stub.
+  Label           _continuation; // Return point from the stub (typically end of barrier).
+  RegMask         _preserve;     // Registers that need to be preserved across runtime calls in this barrier.
+  RegMask         _no_preserve;  // Registers that should not be preserved across runtime calls in this barrier.
 
 static void register_stub(ZBarrierStubC2* stub);
 static void inc_trampoline_stubs_count();
@@ -54,12 +56,17 @@ static int stubs_start_offset();
 
   ZBarrierStubC2(const MachNode* node);
 
+  // Registers that are live into the memory access implementation.
+  RegMask& node_livein() const;
+
 public:
-  RegMask& live() const;
   Label* entry();
   Label* continuation();
+  // Do not preserve the value in reg across runtime calls in this barrier.
+  void dont_preserve(Register reg);
+  // Set of registers whose value needs to be preserved across runtime calls in this barrier.
+  RegMask& preserve_set();
 
-  virtual Register result() const = 0;
   virtual void emit_code(MacroAssembler& masm) = 0;
 };
 
@@ -78,7 +85,6 @@ public:
   Register ref() const;
   address slow_path() const;
 
-  virtual Register result() const;
   virtual void emit_code(MacroAssembler& masm);
 };
 
@@ -102,7 +108,6 @@ public:
   bool is_native() const;
   bool is_atomic() const;
 
-  virtual Register result() const;
   virtual void emit_code(MacroAssembler& masm);
 };
 

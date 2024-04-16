@@ -201,18 +201,15 @@ int ZBarrierStubC2::stubs_start_offset() {
   return barrier_set_state()->stubs_start_offset();
 }
 
+RegMask& ZBarrierStubC2::node_livein() const {
+  void* state = Compile::current()->barrier_set_state();
+  return *reinterpret_cast<ZBarrierSetC2State*>(state)->live(_node);
+}
+
 ZBarrierStubC2::ZBarrierStubC2(const MachNode* node)
   : _node(node),
     _entry(),
     _continuation() {}
-
-Register ZBarrierStubC2::result() const {
-  return noreg;
-}
-
-RegMask& ZBarrierStubC2::live() const {
-  return *barrier_set_state()->live(_node);
-}
 
 Label* ZBarrierStubC2::entry() {
   // The _entry will never be bound when in_scratch_emit_size() is true.
@@ -224,6 +221,34 @@ Label* ZBarrierStubC2::entry() {
 
 Label* ZBarrierStubC2::continuation() {
   return &_continuation;
+}
+
+void ZBarrierStubC2::dont_preserve(Register r) {
+  const VMReg vm_reg = r->as_VMReg();
+  assert(vm_reg->is_Register(), "r must be a general-purpose register");
+  _no_preserve.Insert(OptoReg::as_OptoReg(vm_reg));
+}
+
+RegMask& ZBarrierStubC2::preserve_set() {
+  _preserve.OR(node_livein());
+  // Subtract not only the OptoRegs in _no_preserve, but also all related
+  // OptoRegs that are sub-registers of the same general-purpose, processor
+  // register (e.g. {R11, R11_H} for r11 in aarch64). We assume that OptoRegs
+  // related to a no-preserve OptoReg have increasing, contiguous indices.
+  RegMaskIterator rmi(_no_preserve);
+  while (rmi.has_next()) {
+    OptoReg::Name reg = rmi.next();
+    Register gp_reg = OptoReg::as_VMReg(reg)->as_Register();
+    while (OptoReg::is_reg(reg)) {
+      const VMReg vm_reg = OptoReg::as_VMReg(reg);
+      if (!(vm_reg->is_Register()) || vm_reg->as_Register() != gp_reg) {
+        break;
+      }
+      _preserve.Remove(reg);
+      reg = OptoReg::add(reg, 1);
+    }
+  }
+  return _preserve;
 }
 
 ZLoadBarrierStubC2* ZLoadBarrierStubC2::create(const MachNode* node, Address ref_addr, Register ref) {
@@ -240,6 +265,9 @@ ZLoadBarrierStubC2::ZLoadBarrierStubC2(const MachNode* node, Address ref_addr, R
     _ref(ref) {
   assert_different_registers(ref, ref_addr.base());
   assert_different_registers(ref, ref_addr.index());
+  // The runtime call updates the value of ref, so we should not spill and
+  // reload its outdated value.
+  dont_preserve(ref);
 }
 
 Address ZLoadBarrierStubC2::ref_addr() const {
@@ -248,10 +276,6 @@ Address ZLoadBarrierStubC2::ref_addr() const {
 
 Register ZLoadBarrierStubC2::ref() const {
   return _ref;
-}
-
-Register ZLoadBarrierStubC2::result() const {
-  return ref();
 }
 
 address ZLoadBarrierStubC2::slow_path() const {
@@ -310,10 +334,6 @@ bool ZStoreBarrierStubC2::is_native() const {
 
 bool ZStoreBarrierStubC2::is_atomic() const {
   return _is_atomic;
-}
-
-Register ZStoreBarrierStubC2::result() const {
-  return noreg;
 }
 
 void ZStoreBarrierStubC2::emit_code(MacroAssembler& masm) {

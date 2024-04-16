@@ -1106,8 +1106,8 @@ private:
 
 public:
   void initialize(ZBarrierStubC2* stub) {
-    // Record registers that needs to be saved/restored
-    RegMaskIterator rmi(stub->live());
+    // Record registers that need to be saved/restored
+    RegMaskIterator rmi(stub->preserve_set());
     while (rmi.has_next()) {
       const OptoReg::Name opto_reg = rmi.next();
       if (OptoReg::is_reg(opto_reg)) {
@@ -1124,12 +1124,8 @@ public:
       }
     }
 
-    // Remove C-ABI SOE registers, scratch regs and _ref register that will be updated
-    if (stub->result() != noreg) {
-      _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9, stub->result());
-    } else {
-      _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
-    }
+    // Remove C-ABI SOE and scratch registers
++  _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
   }
 
   ZSaveLiveRegisters(MacroAssembler* masm, ZBarrierStubC2* stub)
