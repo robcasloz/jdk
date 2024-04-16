@@ -229,7 +229,7 @@ void ZBarrierStubC2::dont_preserve(Register r) {
   _no_preserve.Insert(OptoReg::as_OptoReg(vm_reg));
 }
 
-RegMask& ZBarrierStubC2::preserve_set() {
+const RegMask& ZBarrierStubC2::preserve_set() {
   _preserve.OR(node_livein());
   // Subtract not only the OptoRegs in _no_preserve, but also all related
   // OptoRegs that are sub-registers of the same general-purpose, processor
