@@ -1125,7 +1125,7 @@ public:
     }
 
     // Remove C-ABI SOE and scratch registers
-+  _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
+    _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
   }
 
   ZSaveLiveRegisters(MacroAssembler* masm, ZBarrierStubC2* stub)
