@@ -24,6 +24,7 @@
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
 #include "classfile/javaClasses.hpp"
+#include "code/vmreg.inline.hpp"
 #include "gc/z/c2/zBarrierSetC2.hpp"
 #include "gc/z/zBarrierSet.hpp"
 #include "gc/z/zBarrierSetAssembler.hpp"
