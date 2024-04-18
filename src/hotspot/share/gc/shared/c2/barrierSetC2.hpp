@@ -27,7 +27,6 @@
 
 #include "memory/allocation.hpp"
 #include "oops/accessDecorators.hpp"
-#include "opto/loopnode.hpp"
 #include "opto/machnode.hpp"
 #include "opto/matcher.hpp"
 #include "opto/memnode.hpp"
@@ -66,6 +65,7 @@ class Node;
 class PhaseGVN;
 class PhaseIdealLoop;
 class PhaseMacroExpand;
+class PhaseOutput;
 class Type;
 class TypePtr;
 class Unique_Node_List;
@@ -205,6 +205,82 @@ public:
   virtual bool is_opt_access() const { return true; }
 };
 
+class BarrierSetC2State : public ArenaObj {
+protected:
+  Node_Array                      _live;
+  int                             _trampoline_stubs_count;
+  int                             _stubs_start_offset;
+
+public:
+  BarrierSetC2State(Arena* arena)
+    : _live(arena),
+      _trampoline_stubs_count(0),
+      _stubs_start_offset(0) {}
+
+  RegMask* live(const Node* node) {
+    if (!node->is_Mach() || !needs_liveness_data(node->as_Mach())) {
+      // Don't need liveness for non-MachNodes or if the GC doesn't request it
+      return nullptr;
+    }
+    RegMask* live = (RegMask*)_live[node->_idx];
+    if (live == nullptr) {
+      live = new (Compile::current()->comp_arena()->AmallocWords(sizeof(RegMask))) RegMask();
+      _live.map(node->_idx, (Node*)live);
+    }
+    return live;
+  }
+
+  void inc_trampoline_stubs_count() {
+    assert(_trampoline_stubs_count != INT_MAX, "Overflow");
+    ++_trampoline_stubs_count;
+  }
+
+  int trampoline_stubs_count() {
+    return _trampoline_stubs_count;
+  }
+
+  void set_stubs_start_offset(int offset) {
+    _stubs_start_offset = offset;
+  }
+
+  int stubs_start_offset() {
+    return _stubs_start_offset;
+  }
+
+  virtual bool needs_liveness_data(const MachNode* mach) { return false; };
+  virtual bool needs_livein_data() = 0;
+};
+
+// This class represents the slow path in a C2 barrier. It is defined by a
+// memory access, an entry point, and a continuation point (typically the end of
+// the barrier). It provides a set of registers whose value is live across the
+// barrier, and hence must be preserved across runtime calls from the stub.
+class BarrierStubC2 : public ArenaObj {
+protected:
+  const MachNode* _node;         // Memory access for which the barrier is generated.
+  Label           _entry;        // Entry point to the stub.
+  Label           _continuation; // Return point from the stub (typically end of barrier).
+  RegMask         _preserve;     // Registers that need to be preserved across runtime calls in this barrier.
+  RegMask         _no_preserve;  // Registers that should not be preserved across runtime calls in this barrier.
+
+  // Registers that are live out of the entire memory access implementation
+  // (possibly including multiple barriers).
+  RegMask& node_liveout() const;
+
+public:
+  BarrierStubC2(const MachNode* node);
+
+  Label* entry();
+  Label* continuation();
+  uint8_t barrier_data() const;
+
+  // Preserve the value in reg across runtime calls in this barrier.
+  void preserve(Register reg);
+  // Do not preserve the value in reg across runtime calls in this barrier.
+  void dont_preserve(Register reg);
+  // Set of registers whose value needs to be preserved across runtime calls in this barrier.
+  RegMask& preserve_set();
+};
 
 // This is the top-level class for the backend of the Access API in C2.
 // The top-level class is responsible for performing raw accesses. The
@@ -302,6 +378,7 @@ public:
   virtual bool matcher_is_store_load_barrier(Node* x, uint xop) const { return false; }
 
   virtual void late_barrier_analysis() const { }
+  virtual void compute_liveness_at_stubs() const;
   virtual int estimate_stub_size() const { return 0; }
   virtual void emit_stubs(CodeBuffer& cb) const { }
 
