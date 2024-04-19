@@ -152,16 +152,14 @@ public:
 //   ..
 // }
 class SaveLiveRegisters {
-
-protected:
+private:
   MacroAssembler* const _masm;
   RegSet                _gp_regs;
   FloatRegSet           _fp_regs;
   PRegSet               _p_regs;
 
-  void initialize(BarrierStubC2* stub);
-
 public:
+  void initialize(BarrierStubC2* stub);
   SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub);
   ~SaveLiveRegisters();
 };

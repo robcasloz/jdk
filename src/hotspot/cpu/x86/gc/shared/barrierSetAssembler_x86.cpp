@@ -533,6 +533,7 @@ int SaveLiveRegisters::xmm_compare_register_size(XMMRegisterData* left, XMMRegis
   if (left->_size == right->_size) {
     return 0;
   }
+
   return (left->_size < right->_size) ? -1 : 1;
 }
 
@@ -598,7 +599,7 @@ void SaveLiveRegisters::opmask_register_restore(KRegister reg) {
 }
 
 void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
-  // Create mask of caller-saved registers that need to
+  // Create mask of caller saved registers that need to
   // be saved/restored if live
   RegMask caller_saved;
   caller_saved.Insert(OptoReg::as_OptoReg(rax->as_VMReg()));
@@ -611,12 +612,19 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   caller_saved.Insert(OptoReg::as_OptoReg(r10->as_VMReg()));
   caller_saved.Insert(OptoReg::as_OptoReg(r11->as_VMReg()));
 
+  if (stub->result() != noreg) {
+    caller_saved.Remove(OptoReg::as_OptoReg(stub->result()->as_VMReg()));
+  }
+
+  // Create mask of live registers
+  RegMask live = stub->live();
+
   int gp_spill_size = 0;
   int opmask_spill_size = 0;
   int xmm_spill_size = 0;
 
-  // Record registers that need to be saved/restored
-  RegMaskIterator rmi(stub->preserve_set());
+  // Record registers that needs to be saved/restored
+  RegMaskIterator rmi(live);
   while (rmi.has_next()) {
     const OptoReg::Name opto_reg = rmi.next();
     const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);
@@ -634,12 +642,10 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
         opmask_spill_size += 8;
       }
     } else if (vm_reg->is_XMMRegister()) {
-      // We encode in the low order 4 bits of the opto_reg, how large part of
-      // the register is live
+      // We encode in the low order 4 bits of the opto_reg, how large part of the register is live
       const VMReg vm_reg_base = OptoReg::as_VMReg(opto_reg & ~15);
       const int reg_size = xmm_slot_size(opto_reg);
-      const XMMRegisterData reg_data = {vm_reg_base->as_XMMRegister(),
-                                        reg_size};
+      const XMMRegisterData reg_data = { vm_reg_base->as_XMMRegister(), reg_size };
       const int reg_index = _xmm_registers.find(reg_data);
       if (reg_index == -1) {
         // Not previously appended
@@ -665,8 +671,7 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   const int arg_spill_size = frame::arg_reg_save_area_bytes;
 
   // Stack pointer must be 16 bytes aligned for the call
-  _spill_offset = _spill_size = align_up(
-      xmm_spill_size + gp_spill_size + opmask_spill_size + arg_spill_size, 16);
+  _spill_offset = _spill_size = align_up(xmm_spill_size + gp_spill_size + opmask_spill_size + arg_spill_size, 16);
 }
 
 SaveLiveRegisters::SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub)

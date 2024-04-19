@@ -130,8 +130,7 @@ public:
 //   ..
 // }
 class SaveLiveRegisters {
-
-protected:
+private:
   struct XMMRegisterData {
     XMMRegister _reg;
     int         _size;
@@ -152,16 +151,13 @@ protected:
   static int xmm_compare_register_size(XMMRegisterData* left, XMMRegisterData* right);
   static int xmm_slot_size(OptoReg::Name opto_reg);
   static uint xmm_ideal_reg_for_size(int reg_size);
-
   bool xmm_needs_vzeroupper() const;
-
   void xmm_register_save(const XMMRegisterData& reg_data);
   void xmm_register_restore(const XMMRegisterData& reg_data);
   void gp_register_save(Register reg);
   void opmask_register_save(KRegister reg);
   void gp_register_restore(Register reg);
   void opmask_register_restore(KRegister reg);
-
   void initialize(BarrierStubC2* stub);
 
 public:

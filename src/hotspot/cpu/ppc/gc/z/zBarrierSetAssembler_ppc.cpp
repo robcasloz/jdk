@@ -856,11 +856,12 @@ OptoReg::Name ZBarrierSetAssembler::refine_register(const Node* node, OptoReg::N
 class ZSaveLiveRegisters {
   MacroAssembler* _masm;
   RegMask _reg_mask;
+  Register _result_reg;
   int _frame_size;
 
  public:
   ZSaveLiveRegisters(MacroAssembler *masm, ZBarrierStubC2 *stub)
-    : _masm(masm), _reg_mask(stub->preserve_set()) {
+    : _masm(masm), _reg_mask(stub->live()), _result_reg(stub->result()) {
 
     const int register_save_size = iterate_over_register_mask(ACTION_COUNT_ONLY) * BytesPerWord;
     _frame_size = align_up(register_save_size, frame::alignment_in_bytes)
@@ -901,6 +902,11 @@ class ZSaveLiveRegisters {
       const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);
       if (vm_reg->is_Register()) {
         Register std_reg = vm_reg->as_Register();
+
+        // '_result_reg' will hold the end result of the operation. Its content must thus not be preserved.
+        if (std_reg == _result_reg) {
+          continue;
+        }
 
         if (std_reg->encoding() >= R2->encoding() && std_reg->encoding() <= R12->encoding()) {
           reg_save_index++;
