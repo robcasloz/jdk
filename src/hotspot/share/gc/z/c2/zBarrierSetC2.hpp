@@ -43,11 +43,10 @@ class MacroAssembler;
 
 class ZBarrierStubC2 : public BarrierStubC2 {
 protected:
-
-  static void register_stub(ZBarrierStubC2* stub);
-  static void inc_trampoline_stubs_count();
-  static int trampoline_stubs_count();
-  static int stubs_start_offset();
+static void register_stub(ZBarrierStubC2* stub);
+static void inc_trampoline_stubs_count();
+static int trampoline_stubs_count();
+static int stubs_start_offset();
 
   ZBarrierStubC2(const MachNode* node);
 
