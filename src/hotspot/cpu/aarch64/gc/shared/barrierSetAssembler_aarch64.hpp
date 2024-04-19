@@ -30,6 +30,13 @@
 #include "gc/shared/barrierSetNMethod.hpp"
 #include "memory/allocation.hpp"
 #include "oops/access.hpp"
+#ifdef COMPILER2
+#include "gc/shared/c2/barrierSetC2.hpp"
+#include "opto/optoreg.hpp"
+#include "register_aarch64.hpp"
+
+class Node;
+#endif // COMPILER2
 
 enum class NMethodPatchingType {
   stw_instruction_and_data_patch,
@@ -129,6 +136,46 @@ public:
   static address patching_epoch_addr();
   static void clear_patching_epoch();
   static void increment_patching_epoch();
+
+  OptoReg::Name refine_register(const Node* node,
+                                OptoReg::Name opto_reg);
+};
+
+// This class saves and restores the registers that need to be preserved across
+// the runtime call represented by a given C2 barrier stub. Use as follows:
+// {
+//   SaveLiveRegisters save(masm, stub);
+//   ..
+//   __ blr(...);
+//   ..
+// }
+class SaveLiveRegisters {
+private:
+  struct RegisterData {
+    VMReg _reg;
+    int   _slots; // slots occupied once pushed into stack
+
+    // Used by GrowableArray::find()
+    bool operator == (const RegisterData& other) {
+      return _reg == other._reg;
+    }
+  };
+
+  MacroAssembler* const _masm;
+  RegSet                _gp_regs;
+  FloatRegSet           _fp_regs;
+  FloatRegSet           _neon_regs;
+  FloatRegSet           _sve_regs;
+  PRegSet               _p_regs;
+
+  static enum RC rc_class(VMReg reg);
+  static bool is_same_register(VMReg reg1, VMReg reg2);
+  static int decode_float_vector_register_size(OptoReg::Name opto_reg);
+
+public:
+  void initialize(BarrierStubC2* stub);
+  SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub);
+  ~SaveLiveRegisters();
 };
 
 #endif // CPU_AARCH64_GC_SHARED_BARRIERSETASSEMBLER_AARCH64_HPP
