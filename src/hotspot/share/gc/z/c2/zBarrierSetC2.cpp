@@ -45,7 +45,6 @@
 #include "utilities/debug.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
-#include CPU_HEADER(gc/g1/g1BarrierSetAssembler)
 
 template<typename K, typename V, size_t _table_size>
 class ZArenaHashtable : public ResourceObj {
