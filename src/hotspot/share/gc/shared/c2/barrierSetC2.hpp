@@ -27,6 +27,7 @@
 
 #include "memory/allocation.hpp"
 #include "oops/accessDecorators.hpp"
+#include "opto/loopnode.hpp"
 #include "opto/machnode.hpp"
 #include "opto/matcher.hpp"
 #include "opto/memnode.hpp"
@@ -65,7 +66,6 @@ class Node;
 class PhaseGVN;
 class PhaseIdealLoop;
 class PhaseMacroExpand;
-class PhaseOutput;
 class Type;
 class TypePtr;
 class Unique_Node_List;

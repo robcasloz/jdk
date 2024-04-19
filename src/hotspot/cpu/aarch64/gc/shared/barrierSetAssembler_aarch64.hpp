@@ -30,13 +30,10 @@
 #include "gc/shared/barrierSetNMethod.hpp"
 #include "memory/allocation.hpp"
 #include "oops/access.hpp"
-#include "oops/accessDecorators.hpp"
 #ifdef COMPILER2
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "opto/optoreg.hpp"
-#endif // COMPILER2
 
-#ifdef COMPILER2
 class Node;
 #endif // COMPILER2
 
