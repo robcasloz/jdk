@@ -83,17 +83,22 @@ bool C2Access::needs_cpu_membar() const {
   return false;
 }
 
-RegMask& BarrierStubC2::node_liveout() const {
-  void* state = Compile::current()->barrier_set_state();
-  return *reinterpret_cast<BarrierSetC2State*>(state)->live(_node);
+static BarrierSetC2State* barrier_set_state() {
+  return reinterpret_cast<BarrierSetC2State*>(Compile::current()->barrier_set_state());
 }
 
 BarrierStubC2::BarrierStubC2(const MachNode* node)
   : _node(node),
     _entry(),
-    _continuation(),
-    _preserve(),
-    _no_preserve() {}
+    _continuation() {}
+
+Register BarrierStubC2::result() const {
+  return noreg;
+}
+
+RegMask& BarrierStubC2::live() const {
+  return *barrier_set_state()->live(_node);
+}
 
 Label* BarrierStubC2::entry() {
   // The _entry will never be bound when in_scratch_emit_size() is true.
@@ -105,44 +110,6 @@ Label* BarrierStubC2::entry() {
 
 Label* BarrierStubC2::continuation() {
   return &_continuation;
-}
-
-uint8_t BarrierStubC2::barrier_data() const {
-  return _node->barrier_data();
-}
-
-void BarrierStubC2::preserve(Register r) {
-  const VMReg vm_reg = r->as_VMReg();
-  assert(vm_reg->is_Register(), "r must be a general-purpose register");
-  _preserve.Insert(OptoReg::as_OptoReg(vm_reg));
-}
-
-void BarrierStubC2::dont_preserve(Register r) {
-  const VMReg vm_reg = r->as_VMReg();
-  assert(vm_reg->is_Register(), "r must be a general-purpose register");
-  _no_preserve.Insert(OptoReg::as_OptoReg(vm_reg));
-}
-
-RegMask& BarrierStubC2::preserve_set() {
-  _preserve.OR(node_liveout());
-  // Subtract not only the OptoRegs in _no_preserve, but also all related
-  // OptoRegs that are sub-registers of the same general-purpose, processor
-  // register (e.g. {R11, R11_H} for r11 in aarch64). We assume that OptoRegs
-  // related to a no-preserve OptoReg have increasing, contiguous indices.
-  RegMaskIterator rmi(_no_preserve);
-  while (rmi.has_next()) {
-    OptoReg::Name reg = rmi.next();
-    Register gp_reg = OptoReg::as_VMReg(reg)->as_Register();
-    while (OptoReg::is_reg(reg)) {
-      const VMReg vm_reg = OptoReg::as_VMReg(reg);
-      if (!(vm_reg->is_Register()) || vm_reg->as_Register() != gp_reg) {
-        break;
-      }
-      _preserve.Remove(reg);
-      reg = OptoReg::add(reg, 1);
-    }
-  }
-  return _preserve;
 }
 
 Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) const {

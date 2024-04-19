@@ -257,29 +257,17 @@ public:
 // barrier, and hence must be preserved across runtime calls from the stub.
 class BarrierStubC2 : public ArenaObj {
 protected:
-  const MachNode* _node;         // Memory access for which the barrier is generated.
-  Label           _entry;        // Entry point to the stub.
-  Label           _continuation; // Return point from the stub (typically end of barrier).
-  RegMask         _preserve;     // Registers that need to be preserved across runtime calls in this barrier.
-  RegMask         _no_preserve;  // Registers that should not be preserved across runtime calls in this barrier.
-
-  // Registers that are live out of the entire memory access implementation
-  // (possibly including multiple barriers).
-  RegMask& node_liveout() const;
+  const MachNode* _node;
+  Label           _entry;
+  Label           _continuation;
 
 public:
   BarrierStubC2(const MachNode* node);
-
+  RegMask& live() const;
   Label* entry();
   Label* continuation();
-  uint8_t barrier_data() const;
 
-  // Preserve the value in reg across runtime calls in this barrier.
-  void preserve(Register reg);
-  // Do not preserve the value in reg across runtime calls in this barrier.
-  void dont_preserve(Register reg);
-  // Set of registers whose value needs to be preserved across runtime calls in this barrier.
-  RegMask& preserve_set();
+  virtual Register result() const = 0;
 };
 
 // This is the top-level class for the backend of the Access API in C2.

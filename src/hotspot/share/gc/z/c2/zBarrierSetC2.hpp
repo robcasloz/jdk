@@ -44,15 +44,15 @@ class MacroAssembler;
 class ZBarrierStubC2 : public BarrierStubC2 {
 protected:
 
-static void register_stub(ZBarrierStubC2* stub);
-static void inc_trampoline_stubs_count();
-static int trampoline_stubs_count();
-static int stubs_start_offset();
+  static void register_stub(ZBarrierStubC2* stub);
+  static void inc_trampoline_stubs_count();
+  static int trampoline_stubs_count();
+  static int stubs_start_offset();
 
   ZBarrierStubC2(const MachNode* node);
 
 public:
-
+  virtual Register result() const = 0;
   virtual void emit_code(MacroAssembler& masm) = 0;
 };
 
@@ -71,6 +71,7 @@ public:
   Register ref() const;
   address slow_path() const;
 
+  virtual Register result() const;
   virtual void emit_code(MacroAssembler& masm);
 };
 
@@ -94,6 +95,7 @@ public:
   bool is_native() const;
   bool is_atomic() const;
 
+  virtual Register result() const;
   virtual void emit_code(MacroAssembler& masm);
 };
 
