@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/classLoaderData.hpp"
+#include "code/vmreg.inline.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/barrierSetNMethod.hpp"
@@ -34,6 +35,9 @@
 #include "runtime/jniHandles.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
+#ifdef COMPILER2
+#include "opto/node.hpp"
+#endif
 
 
 #define __ masm->
@@ -419,3 +423,72 @@ void BarrierSetAssembler::check_oop(MacroAssembler* masm, Register obj, Register
   __ load_klass(obj, obj); // get klass
   __ cbz(obj, error);      // if klass is null it is broken
 }
+
+#ifdef COMPILER2
+
+OptoReg::Name BarrierSetAssembler::refine_register(const Node* node, OptoReg::Name opto_reg) {
+  if (!OptoReg::is_reg(opto_reg)) {
+    return OptoReg::Bad;
+  }
+
+  const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);
+  if (vm_reg->is_FloatRegister()) {
+    return opto_reg & ~1;
+  }
+
+  return opto_reg;
+}
+
+#undef __
+#define __ _masm->
+
+void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
+  // Record registers that need to be saved/restored
+  RegMaskIterator rmi(stub->preserve_set());
+  while (rmi.has_next()) {
+    const OptoReg::Name opto_reg = rmi.next();
+    if (OptoReg::is_reg(opto_reg)) {
+      const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);
+      if (vm_reg->is_Register()) {
+        _gp_regs += RegSet::of(vm_reg->as_Register());
+      } else if (vm_reg->is_FloatRegister()) {
+        _fp_regs += FloatRegSet::of(vm_reg->as_FloatRegister());
+      } else if (vm_reg->is_PRegister()) {
+        _p_regs += PRegSet::of(vm_reg->as_PRegister());
+      } else {
+        fatal("Unknown register type");
+      }
+    }
+  }
+
+  // Remove C-ABI SOE registers and scratch regs
+  _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
+}
+
+SaveLiveRegisters::SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub)
+  : _masm(masm),
+    _gp_regs(),
+    _fp_regs(),
+    _p_regs() {
+
+  // Figure out what registers to save/restore
+  initialize(stub);
+
+  // Save registers
+  __ push(_gp_regs, sp);
+  __ push_fp(_fp_regs, sp);
+  __ push_p(_p_regs, sp);
+}
+
+SaveLiveRegisters::~SaveLiveRegisters() {
+  // Restore registers
+  __ pop_p(_p_regs, sp);
+  __ pop_fp(_fp_regs, sp);
+
+  // External runtime call may clobber ptrue reg
+  __ reinitialize_ptrue();
+
+  __ pop(_gp_regs, sp);
+}
+
+#endif // COMPILER2
