@@ -248,7 +248,6 @@ public:
   }
 
   virtual bool needs_liveness_data(const MachNode* mach) { return false; };
-  virtual bool needs_livein_data() = 0;
 };
 
 // This class represents the slow path in a C2 barrier. It is defined by a

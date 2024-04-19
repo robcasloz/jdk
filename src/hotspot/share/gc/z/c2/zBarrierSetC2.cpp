@@ -138,10 +138,6 @@ public:
     // Don't need liveness data for nodes without barriers
     return mach->barrier_data() != ZBarrierElided;
   }
-
-  bool needs_livein_data() {
-    return true;
-  }
 };
 
 static ZBarrierSetC2State* barrier_set_state() {
