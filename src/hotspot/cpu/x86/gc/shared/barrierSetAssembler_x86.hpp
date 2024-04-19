@@ -113,9 +113,13 @@ public:
 
   virtual void check_oop(MacroAssembler* masm, Register obj, Register tmp1, Register tmp2, Label& error);
 
+#ifdef COMPILER2
   OptoReg::Name refine_register(const Node* node,
                                 OptoReg::Name opto_reg);
+#endif // COMPILER2
 };
+
+#ifdef COMPILER2
 
 // This class saves and restores the registers that need to be preserved across
 // the runtime call represented by a given C2 barrier stub. Use as follows:
@@ -160,5 +164,7 @@ public:
   SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub);
   ~SaveLiveRegisters();
 };
+
+#endif // COMPILER2
 
 #endif // CPU_X86_GC_SHARED_BARRIERSETASSEMBLER_X86_HPP

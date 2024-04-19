@@ -113,9 +113,13 @@ public:
   static void clear_patching_epoch();
   static void increment_patching_epoch();
 
+#ifdef COMPILER2
   OptoReg::Name refine_register(const Node* node,
                                 OptoReg::Name opto_reg);
+#endif // COMPILER2
 };
+
+#ifdef COMPILER2
 
 // This class saves and restores the registers that need to be preserved across
 // the runtime call represented by a given C2 barrier stub. Use as follows:
@@ -137,5 +141,7 @@ public:
   SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub);
   ~SaveLiveRegisters();
 };
+
+#endif // COMPILER2
 
 #endif // CPU_RISCV_GC_SHARED_BARRIERSETASSEMBLER_RISCV_HPP
