@@ -578,6 +578,8 @@ void SaveLiveRegisters::xmm_register_restore(const XMMRegisterData& reg_data) {
   _spill_offset += reg_data._size;
 }
 
+#ifdef _LP64
+
 void SaveLiveRegisters::gp_register_save(Register reg) {
   _spill_offset -= 8;
   __ movq(Address(rsp, _spill_offset), reg);
@@ -757,5 +759,38 @@ SaveLiveRegisters::~SaveLiveRegisters() {
     __ addptr(rsp, _spill_size);
   }
 }
+
+#else // !_LP64
+
+void SaveLiveRegisters::gp_register_save(Register reg) {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+void SaveLiveRegisters::opmask_register_save(KRegister reg) {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+void SaveLiveRegisters::gp_register_restore(Register reg) {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+void SaveLiveRegisters::opmask_register_restore(KRegister reg) {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+SaveLiveRegisters::SaveLiveRegisters(MacroAssembler* masm, BarrierStubC2* stub)
+  : _masm(masm) {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+SaveLiveRegisters::~SaveLiveRegisters() {
+  Unimplemented(); // This must be implemented to support late barrier expansion.
+}
+
+#endif // _LP64
 
 #endif // COMPILER2
