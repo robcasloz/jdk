@@ -1226,6 +1226,18 @@ void ZBarrierSetAssembler::generate_c2_load_barrier_stub(MacroAssembler* masm, Z
     SaveLiveRegisters save_live_registers(masm, stub);
     ZSetupArguments setup_arguments(masm, stub);
     __ call(RuntimeAddress(stub->slow_path()));
+    // Clobber save-on-call registers. These should be saved and restored by
+    // SaveLiveRegisters. No Windows support yet.
+#ifndef _WIN64
+    RegSet clobbered_gp;
+    clobbered_gp += RegSet::of(rax, rcx, rdx) + RegSet::of(rsi, rdi) + RegSet::of(r8, r9, r10, r11);
+    assert(stub->ref() != noreg, "");
+    clobbered_gp -= RegSet::of(stub->ref());
+    clobbered_gp -= RegSet::of(rax); // Return register
+    for (RegSetIterator<Register> it = clobbered_gp.begin(); *it != noreg; ++it) {
+      __ mov64(*it, 0);
+    }
+#endif
   }
 
   // Stub exit
