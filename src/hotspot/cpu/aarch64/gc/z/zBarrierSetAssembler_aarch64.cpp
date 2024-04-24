@@ -1154,6 +1154,17 @@ void ZBarrierSetAssembler::generate_c2_load_barrier_stub(MacroAssembler* masm, Z
     ZSetupArguments setup_arguments(masm, stub);
     __ mov(rscratch1, stub->slow_path());
     __ blr(rscratch1);
+    // Clobber save-on-call registers. These should be saved and restored by
+    // SaveLiveRegisters.
+    RegSet clobbered_gp;
+    clobbered_gp += RegSet::range(r0, r7) + RegSet::range(r10, r17);
+    if (stub->result() != noreg) {
+      clobbered_gp -= RegSet::of(stub->result());
+      clobbered_gp -= RegSet::of(r0); // Return register.
+    }
+    for (RegSetIterator<Register> it = clobbered_gp.begin(); *it != noreg; ++it) {
+      __ andr(*it, *it, zr);
+    }
   }
   // Stub exit
   __ b(*stub->continuation());

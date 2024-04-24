@@ -74,10 +74,7 @@ static void z_load_barrier(MacroAssembler* masm, const MachNode* node, Address r
     return;
   }
   ZLoadBarrierStubC2* const stub = ZLoadBarrierStubC2::create(node, ref_addr, ref);
-  {
-    IntelJccErratumAlignment intel_alignment(masm, 6);
-    __ jcc(Assembler::above, *stub->entry());
-  }
+  __ jmp(*stub->entry());
   __ bind(*stub->continuation());
 }
 
