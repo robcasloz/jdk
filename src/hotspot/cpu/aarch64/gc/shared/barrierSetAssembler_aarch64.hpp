@@ -138,8 +138,8 @@ public:
   static void increment_patching_epoch();
 
 #ifdef COMPILER2
-  OptoReg::Name refine_register(const Node* node,
-                                OptoReg::Name opto_reg);
+  OptoReg::Name encode_float_vector_register_size(const Node* node, OptoReg::Name opto_reg);
+  OptoReg::Name refine_register(const Node* node, OptoReg::Name opto_reg);
 #endif // COMPILER2
 };
 

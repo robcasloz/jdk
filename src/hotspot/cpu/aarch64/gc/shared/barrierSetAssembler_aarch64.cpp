@@ -426,6 +426,35 @@ void BarrierSetAssembler::check_oop(MacroAssembler* masm, Register obj, Register
 
 #ifdef COMPILER2
 
+OptoReg::Name BarrierSetAssembler::encode_float_vector_register_size(const Node* node, OptoReg::Name opto_reg) {
+  switch (node->ideal_reg()) {
+    case Op_RegF:
+      // No need to refine. The original encoding is already fine to distinguish.
+      assert(opto_reg % 4 == 0, "Float register should only occupy a single slot");
+      break;
+    // Use different encoding values of the same fp/vector register to help distinguish different sizes.
+    // Such as V16. The OptoReg::name and its corresponding slot value are
+    // "V16": 64, "V16_H": 65, "V16_J": 66, "V16_K": 67.
+    case Op_RegD:
+    case Op_VecD:
+      opto_reg &= ~3;
+      opto_reg |= 1;
+      break;
+    case Op_VecX:
+      opto_reg &= ~3;
+      opto_reg |= 2;
+      break;
+    case Op_VecA:
+      opto_reg &= ~3;
+      opto_reg |= 3;
+      break;
+    default:
+      assert(false, "unexpected ideal register");
+      ShouldNotReachHere();
+  }
+  return opto_reg;
+}
+
 OptoReg::Name BarrierSetAssembler::refine_register(const Node* node, OptoReg::Name opto_reg) {
   if (!OptoReg::is_reg(opto_reg)) {
     return OptoReg::Bad;
@@ -433,7 +462,7 @@ OptoReg::Name BarrierSetAssembler::refine_register(const Node* node, OptoReg::Na
 
   const VMReg vm_reg = OptoReg::as_VMReg(opto_reg);
   if (vm_reg->is_FloatRegister()) {
-    return opto_reg & ~1;
+    opto_reg = encode_float_vector_register_size(node, opto_reg);
   }
 
   return opto_reg;
