@@ -1253,7 +1253,7 @@ void nmethod::init_defaults(CodeBuffer *code_buffer, CodeOffsets* offsets) {
 
   CHECKED_CAST(_entry_offset,              uint16_t, (offsets->value(CodeOffsets::Entry)));
   CHECKED_CAST(_verified_entry_offset,     uint16_t, (offsets->value(CodeOffsets::Verified_Entry)));
-  CHECKED_CAST(_skipped_instructions_size, uint16_t, (code_buffer->total_skipped_instructions_size()));
+  _skipped_instructions_size = code_buffer->total_skipped_instructions_size();
 }
 
 // Post initialization
