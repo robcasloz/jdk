@@ -43,10 +43,6 @@
 // By default this is a no-op.
 void BarrierSetC2::resolve_address(C2Access& access) const { }
 
-void* C2ParseAccess::barrier_set_state() const {
-  return _kit->barrier_set_state();
-}
-
 PhaseGVN& C2ParseAccess::gvn() const { return _kit->gvn(); }
 
 bool C2Access::needs_cpu_membar() const {
@@ -84,7 +80,7 @@ bool C2Access::needs_cpu_membar() const {
 }
 
 static BarrierSetC2State* barrier_set_state() {
-  return reinterpret_cast<BarrierSetC2State*>(Compile::current()->barrier_set_state());
+  return Compile::current()->barrier_set_state();
 }
 
 RegMask& BarrierStubC2::live() const {

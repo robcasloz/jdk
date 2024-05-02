@@ -293,7 +293,7 @@ uint ZBarrierSetC2::estimated_barrier_size(const Node* node) const {
   return uncolor_or_color_size + 4;
 }
 
-void* ZBarrierSetC2::create_barrier_state(Arena* comp_arena) const {
+BarrierSetC2State* ZBarrierSetC2::create_barrier_state(Arena* comp_arena) const {
   return new (comp_arena) ZBarrierSetC2State(comp_arena);
 }
 

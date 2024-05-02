@@ -44,39 +44,26 @@
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
 
-class XBarrierSetC2State : public ArenaObj {
+class XBarrierSetC2State : public BarrierSetC2State {
 private:
   GrowableArray<XLoadBarrierStubC2*>* _stubs;
-  Node_Array                          _live;
 
 public:
-  XBarrierSetC2State(Arena* arena) :
-    _stubs(new (arena) GrowableArray<XLoadBarrierStubC2*>(arena, 8,  0, nullptr)),
-    _live(arena) {}
+  XBarrierSetC2State(Arena* arena)
+    : BarrierSetC2State(arena),
+      _stubs(new (arena) GrowableArray<XLoadBarrierStubC2*>(arena, 8,  0, nullptr)) {}
 
   GrowableArray<XLoadBarrierStubC2*>* stubs() {
     return _stubs;
   }
 
-  RegMask* live(const Node* node) {
-    if (!node->is_Mach()) {
-      // Don't need liveness for non-MachNodes
-      return nullptr;
-    }
+  bool needs_liveness_data(const MachNode* mach) const {
+    // Don't need liveness data for nodes without barriers
+    return mach->barrier_data() != XLoadBarrierElided;
+  }
 
-    const MachNode* const mach = node->as_Mach();
-    if (mach->barrier_data() == XLoadBarrierElided) {
-      // Don't need liveness data for nodes without barriers
-      return nullptr;
-    }
-
-    RegMask* live = (RegMask*)_live[node->_idx];
-    if (live == nullptr) {
-      live = new (Compile::current()->comp_arena()->AmallocWords(sizeof(RegMask))) RegMask();
-      _live.map(node->_idx, (Node*)live);
-    }
-
-    return live;
+  bool needs_livein_data() const {
+    return true;
   }
 };
 
@@ -152,7 +139,7 @@ Label* XLoadBarrierStubC2::continuation() {
   return &_continuation;
 }
 
-void* XBarrierSetC2::create_barrier_state(Arena* comp_arena) const {
+BarrierSetC2State* XBarrierSetC2::create_barrier_state(Arena* comp_arena) const {
   return new (comp_arena) XBarrierSetC2State(comp_arena);
 }
 

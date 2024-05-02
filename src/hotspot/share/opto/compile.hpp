@@ -49,6 +49,7 @@
 
 class AbstractLockNode;
 class AddPNode;
+class BarrierSetC2State;
 class Block;
 class Bundle;
 class CallGenerator;
@@ -361,7 +362,7 @@ class Compile : public Phase {
 
   // Compilation environment.
   Arena                 _comp_arena;            // Arena with lifetime equivalent to Compile
-  void*                 _barrier_set_state;     // Potential GC barrier state for Compile
+  BarrierSetC2State*    _barrier_set_state;     // Potential GC barrier state for Compile
   ciEnv*                _env;                   // CI interface
   DirectiveSet*         _directive;             // Compiler directive
   CompileLog*           _log;                   // from CompilerThread
@@ -515,7 +516,7 @@ private:
 
  public:
 
-  void* barrier_set_state() const { return _barrier_set_state; }
+  BarrierSetC2State* barrier_set_state() const { return _barrier_set_state; }
 
   stringStream* print_inlining_stream() {
     assert(print_inlining() || print_intrinsics(), "PrintInlining off?");

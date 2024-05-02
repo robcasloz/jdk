@@ -92,7 +92,7 @@ class GraphKit : public Phase {
 
   ciEnv*        env()               const { return _env; }
   PhaseGVN&     gvn()               const { return _gvn; }
-  void*         barrier_set_state() const { return C->barrier_set_state(); }
+  BarrierSetC2State* barrier_set_state() const { return C->barrier_set_state(); }
 
   void record_for_igvn(Node* n) const { C->record_for_igvn(n); }  // delegate to Compile
   void remove_for_igvn(Node* n) const { C->remove_for_igvn(n); }

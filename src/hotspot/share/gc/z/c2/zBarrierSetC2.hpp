@@ -117,7 +117,7 @@ protected:
 
 public:
   virtual uint estimated_barrier_size(const Node* node) const;
-  virtual void* create_barrier_state(Arena* comp_arena) const;
+  virtual BarrierSetC2State* create_barrier_state(Arena* comp_arena) const;
   virtual bool array_copy_requires_gc_barriers(bool tightly_coupled_alloc,
                                                BasicType type,
                                                bool is_clone,
