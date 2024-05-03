@@ -113,6 +113,7 @@
 // Set by os layer.
 size_t      JavaThread::_stack_size_at_create = 0;
 
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
 unsigned long long JavaThread::_total_store;
 unsigned long long JavaThread::_total_store_volatile;
 unsigned long long JavaThread::_total_store_encode;
@@ -130,6 +131,7 @@ unsigned long long JavaThread::_total_post_notnull;
 unsigned long long JavaThread::_total_post_young;
 unsigned long long JavaThread::_total_post_clean;
 unsigned long long JavaThread::_total_post_runtime;
+#endif
 
 #ifdef DTRACE_ENABLED
 
@@ -453,6 +455,7 @@ JavaThread::JavaThread() :
   _suspend_flags(0),
 
   _thread_state(_thread_new),
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
   _store_counter(0),
   _store_volatile_counter(0),
   _store_encode_counter(0),
@@ -470,6 +473,7 @@ JavaThread::JavaThread() :
   _post_young_counter(0),
   _post_clean_counter(0),
   _post_runtime_counter(0),
+#endif
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
   _no_safepoint_count(0),
@@ -694,6 +698,7 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) : JavaThread
 
 JavaThread::~JavaThread() {
 
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
   _total_store += _store_counter;
   _total_store_volatile += _store_volatile_counter;
   _total_store_encode += _store_encode_counter;
@@ -711,6 +716,7 @@ JavaThread::~JavaThread() {
   _total_post_young += _post_young_counter;
   _total_post_clean += _post_clean_counter;
   _total_post_runtime += _post_runtime_counter;
+#endif
 
   // Enqueue OopHandles for release by the service thread.
   add_oop_handles_for_release();

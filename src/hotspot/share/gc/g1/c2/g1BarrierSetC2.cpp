@@ -864,7 +864,10 @@ uint G1BarrierSetC2::estimated_barrier_size(const Node* node) const {
   if ((barrier_data & G1C2BarrierPost) != 0) {
     nodes += 60;
   }
-  return nodes * G1BarrierSizeFactor;
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+  nodes *= G1BarrierSizeFactor;
+#endif
+  return nodes;
 }
 
 #ifdef ASSERT
@@ -1348,6 +1351,8 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
   }
 }
 #endif // !PRODUCT
+
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
 
 const TypeFunc *G1BarrierSetC2Early::write_ref_field_pre_entry_Type() {
   const Type **fields = TypeTuple::fields(2);
@@ -2364,3 +2369,5 @@ bool G1BarrierSetC2Early::escape_add_to_con_graph(ConnectionGraph* conn_graph, P
   }
   return false;
 }
+
+#endif // G1_LATE_BARRIER_MIGRATION_SUPPORT

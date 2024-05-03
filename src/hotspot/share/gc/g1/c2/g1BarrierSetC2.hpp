@@ -181,8 +181,8 @@ public:
 #endif
 };
 
-
-class G1BarrierSetC2Early: public CardTableBarrierSetC2 {
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
+class G1BarrierSetC2Early : public CardTableBarrierSetC2 {
 protected:
   virtual void pre_barrier(GraphKit* kit,
                            bool do_load,
@@ -254,5 +254,6 @@ public:
 
   virtual bool escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseGVN* gvn, Unique_Node_List* delayed_worklist, Node* n, uint opcode) const;
 };
+#endif // G1_LATE_BARRIER_MIGRATION_SUPPORT
 
 #endif // SHARE_GC_G1_C2_G1BARRIERSETC2_HPP

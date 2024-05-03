@@ -28,6 +28,7 @@
 
 #include "jni.h"
 #include "memory/allocation.hpp"
+#include "gc/g1/g1_globals.hpp"
 #include "oops/oop.hpp"
 #include "oops/oopHandle.hpp"
 #include "runtime/frame.hpp"
@@ -240,6 +241,7 @@ class JavaThread: public Thread {
   // Safepoint support
  public:                                                        // Expose _thread_state for SafeFetchInt()
   volatile JavaThreadState _thread_state;
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
   unsigned long long _store_counter;
   unsigned long long _store_volatile_counter;
   unsigned long long _store_encode_counter;
@@ -275,6 +277,7 @@ class JavaThread: public Thread {
   static unsigned long long _total_post_young;
   static unsigned long long _total_post_clean;
   static unsigned long long _total_post_runtime;
+#endif
  private:
   SafepointMechanism::ThreadData _poll_data;
   ThreadSafepointState*          _safepoint_state;              // Holds information about a thread during a safepoint
@@ -820,6 +823,7 @@ private:
   static ByteSize polling_page_offset()          { return byte_offset_of(JavaThread, _poll_data) + byte_offset_of(SafepointMechanism::ThreadData, _polling_page);}
   static ByteSize saved_exception_pc_offset()    { return byte_offset_of(JavaThread, _saved_exception_pc); }
   static ByteSize osthread_offset()              { return byte_offset_of(JavaThread, _osthread); }
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
   static ByteSize store_counter_offset()         { return byte_offset_of(JavaThread, _store_counter);}
   static ByteSize store_volatile_counter_offset() { return byte_offset_of(JavaThread, _store_volatile_counter);}
   static ByteSize store_encode_counter_offset()  { return byte_offset_of(JavaThread, _store_encode_counter);}
@@ -837,6 +841,7 @@ private:
   static ByteSize post_young_counter_offset()    { return byte_offset_of(JavaThread, _post_young_counter);}
   static ByteSize post_clean_counter_offset()    { return byte_offset_of(JavaThread, _post_clean_counter);}
   static ByteSize post_runtime_counter_offset()  { return byte_offset_of(JavaThread, _post_runtime_counter);}
+#endif
 
 #if INCLUDE_JVMCI
   static ByteSize pending_deoptimization_offset() { return byte_offset_of(JavaThread, _pending_deoptimization); }
