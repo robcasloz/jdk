@@ -876,46 +876,16 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
     worklist.push(cfg->get_block(i));
   }
 
-#ifndef PRODUCT
-  if (TraceStubLiveness) {
-    tty->print("initial worklist: ");
-    worklist.print();
-  }
-#endif
-
   while (worklist.size() > 0) {
-#ifndef PRODUCT
-    if (TraceStubLiveness) {
-      tty->print("worklist: ");
-      worklist.print();
-    }
-#endif
     const Block* const block = worklist.pop();
     RegMask& old_live = live[block->_pre_order];
     RegMask new_live;
-#ifndef PRODUCT
-    if (TraceStubLiveness) {
-      tty->print_cr("  visiting B%d..", block->_pre_order);
-      tty->print("  old_live: ");
-      old_live.dump_all(tty);
-      tty->cr();
-    }
-#endif
 
     // Initialize to union of successors
     for (uint i = 0; i < block->_num_succs; i++) {
       const uint succ_id = block->_succs[i]->_pre_order;
       new_live.OR(live[succ_id]);
     }
-
-#ifndef PRODUCT
-    if (TraceStubLiveness) {
-      tty->print_cr("  propagating successors...");
-      tty->print("  ");
-      new_live.dump_all(tty);
-      tty->cr();
-    }
-#endif
 
     // Walk block backwards, computing liveness
     for (int i = block->number_of_nodes() - 1; i >= 0; --i) {
@@ -926,13 +896,6 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
         RegMask* const regs = bs_state->live(node);
         if (regs != nullptr) {
           regs->OR(new_live);
-#ifndef PRODUCT
-          if (TraceStubLiveness) {
-            tty->print("    updated live-out set to ");
-            regs->dump_all(tty);
-            tty->cr();
-          }
-#endif
         }
       }
 
@@ -959,40 +922,17 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
         }
       }
 
-#ifndef PRODUCT
-      if (TraceStubLiveness) {
-        tty->print_cr("  propagating %d %s...", node->_idx, node->Name());
-        tty->print("  ");
-        new_live.dump_all(tty);
-        tty->cr();
-      }
-#endif
-
       // If this node tracks in-liveness, update it
       if (bs_state->needs_livein_data()) {
         RegMask* const regs = bs_state->live(node);
         if (regs != nullptr) {
           regs->OR(new_live);
-#ifndef PRODUCT
-          if (TraceStubLiveness) {
-            tty->print("    updated live-in set to ");
-            regs->dump_all(tty);
-            tty->cr();
-          }
-#endif
         }
       }
     }
 
     // Now at block top, see if we have any changes
     new_live.SUBTRACT(old_live);
-#ifndef PRODUCT
-    if (TraceStubLiveness) {
-      tty->print("  new_live: ");
-      new_live.dump_all(tty);
-      tty->cr();
-    }
-#endif
     if (new_live.is_NotEmpty()) {
       // Liveness has refined, update and propagate to prior blocks
       old_live.OR(new_live);

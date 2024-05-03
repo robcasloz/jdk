@@ -801,9 +801,6 @@
   product(bool, UseStoreStoreForCtor, true, DIAGNOSTIC,                     \
           "Use StoreStore barrier instead of Release barrier at the end "   \
           "of constructors")                                                \
-                                                                            \
-          develop(bool, TraceStubLiveness, false,                           \
-          "Trace liveness computation for GC stubs")                        \
 
 // end of C2_FLAGS
 

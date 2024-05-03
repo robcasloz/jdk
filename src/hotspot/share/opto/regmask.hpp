@@ -353,7 +353,6 @@ class RegMask {
   uint Size() const;
 
 #ifndef PRODUCT
-  void dump_all(outputStream *st = tty) const;
   void print() const { dump(); }
   void dump(outputStream *st = tty) const; // Print a mask
 #endif
