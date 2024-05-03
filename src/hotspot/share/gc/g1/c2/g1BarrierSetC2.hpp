@@ -148,12 +148,6 @@ protected:
                                                 Node* new_val, const Type* value_type) const;
   virtual Node* atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node* new_val, const Type* value_type) const;
 
-#ifdef ASSERT
-  bool has_cas_in_use_chain(Node* x) const;
-  void verify_pre_load(Node* marking_check_if, Unique_Node_List& loads /*output*/) const;
-  void verify_no_safepoints(Compile* compile, Node* marking_load, const Unique_Node_List& loads) const;
-#endif
-
   static bool is_g1_pre_val_load(Node* n);
 public:
   virtual bool is_gc_pre_barrier_node(Node* node) const;
@@ -162,10 +156,6 @@ public:
   virtual void eliminate_gc_barrier_data(Node* node) const;
   virtual bool expand_barriers(Compile* C, PhaseIterGVN& igvn) const;
   virtual uint estimated_barrier_size(const Node* node) const;
-
-#ifdef ASSERT
-  virtual void verify_gc_barriers(Compile* compile, CompilePhase phase) const;
-#endif
 
   virtual bool escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseGVN* gvn, Unique_Node_List* delayed_worklist, Node* n, uint opcode) const;
 
