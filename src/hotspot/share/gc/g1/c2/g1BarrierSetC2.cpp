@@ -859,9 +859,11 @@ bool G1BarrierSetC2::escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseG
           int offs = (int) gvn->find_intptr_t_con(adr->in(AddPNode::Offset), Type::OffsetBot);
           const int buf_offset = in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset());
           if (offs == buf_offset) {
+            assert(false, "dead code in late barrier expansion model");
             return true; // G1 pre barrier previous oop value store.
           }
           if (offs == in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset())) {
+            assert(false, "dead code in late barrier expansion model");
             return true; // G1 post barrier card address store.
           }
         }
