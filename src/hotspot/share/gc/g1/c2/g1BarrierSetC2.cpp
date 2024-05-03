@@ -770,41 +770,6 @@ void G1BarrierSetC2::eliminate_gc_barrier_data(Node* node) const {
   }
 }
 
-Node* G1BarrierSetC2::step_over_gc_barrier(Node* c) const {
-  if (!use_ReduceInitialCardMarks() &&
-      c != nullptr && c->is_Region() && c->req() == 3) {
-    for (uint i = 1; i < c->req(); i++) {
-      if (c->in(i) != nullptr && c->in(i)->is_Region() &&
-          c->in(i)->req() == 3) {
-        Node* r = c->in(i);
-        for (uint j = 1; j < r->req(); j++) {
-          if (r->in(j) != nullptr && r->in(j)->is_Proj() &&
-              r->in(j)->in(0) != nullptr &&
-              r->in(j)->in(0)->Opcode() == Op_CallLeaf &&
-              r->in(j)->in(0)->as_Call()->entry_point() == CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry)) {
-            Node* call = r->in(j)->in(0);
-            c = c->in(i == 1 ? 2 : 1);
-            if (c != nullptr && c->Opcode() != Op_Parm) {
-              c = c->in(0);
-              if (c != nullptr) {
-                c = c->in(0);
-                assert(call->in(0) == nullptr ||
-                       call->in(0)->in(0) == nullptr ||
-                       call->in(0)->in(0)->in(0) == nullptr ||
-                       call->in(0)->in(0)->in(0)->in(0) == nullptr ||
-                       call->in(0)->in(0)->in(0)->in(0)->in(0) == nullptr ||
-                       c == call->in(0)->in(0)->in(0)->in(0)->in(0), "bad barrier shape");
-                return c;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return c;
-}
-
 void refine_barrier_by_new_val_type(Node* n) {
   if (n->Opcode() != Op_StoreP &&
       n->Opcode() != Op_StoreN) {
