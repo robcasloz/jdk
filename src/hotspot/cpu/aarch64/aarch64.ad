@@ -6559,7 +6559,7 @@ instruct loadRange(iRegINoSp dst, memory4 mem)
 instruct loadP(iRegPNoSp dst, memory8 mem)
 %{
   match(Set dst (LoadP mem));
-  predicate(!needs_acquiring_load(n) && n->as_Load()->barrier_data() == 0);
+  predicate(!needs_acquiring_load(n) && (n->as_Load()->barrier_data() == 0));
 
   ins_cost(4 * INSN_COST);
   format %{ "ldr  $dst, $mem\t# ptr" %}
@@ -8321,7 +8321,7 @@ instruct compareAndSwapLAcq(iRegINoSp res, indirect mem, iRegLNoSp oldval, iRegL
 
 instruct compareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
 
-  predicate(needs_acquiring_load_exclusive(n) && n->as_LoadStore()->barrier_data() == 0);
+  predicate(needs_acquiring_load_exclusive(n) && (n->as_LoadStore()->barrier_data() == 0));
   match(Set res (CompareAndSwapP mem (Binary oldval newval)));
   ins_cost(VOLATILE_REF_COST);
 
@@ -8573,7 +8573,7 @@ instruct compareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRegN
 // This pattern is generated automatically from cas.m4.
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct compareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
-  predicate(needs_acquiring_load_exclusive(n) && n->as_LoadStore()->barrier_data() == 0);
+  predicate(needs_acquiring_load_exclusive(n) && (n->as_LoadStore()->barrier_data() == 0));
   match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
   ins_cost(VOLATILE_REF_COST);
   effect(TEMP_DEF res, KILL cr);
@@ -8807,7 +8807,7 @@ instruct weakCompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN oldval, iRegN
 // This pattern is generated automatically from cas.m4.
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct weakCompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval, rFlagsReg cr) %{
-  predicate(needs_acquiring_load_exclusive(n) && n->as_LoadStore()->barrier_data() == 0);
+  predicate(needs_acquiring_load_exclusive(n) && (n->as_LoadStore()->barrier_data() == 0));
   match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
   ins_cost(VOLATILE_REF_COST);
   effect(KILL cr);
