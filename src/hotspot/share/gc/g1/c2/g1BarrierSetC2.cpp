@@ -842,8 +842,6 @@ Node* G1BarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node*
   return BarrierSetC2::atomic_xchg_at_resolved(access, new_val, value_type);
 }
 
-// == Super late barrier expansion support
-
 class G1BarrierSetC2State : public BarrierSetC2State {
 private:
   GrowableArray<G1BarrierStubC2*>* _stubs;
