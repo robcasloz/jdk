@@ -51,6 +51,7 @@
 #include CPU_HEADER(gc/g1/g1BarrierSetAssembler)
 
 const TypeFunc *G1BarrierSetC2::write_ref_field_pre_entry_Type() {
+  assert(false, "dead code in late barrier expansion model");
   const Type **fields = TypeTuple::fields(2);
   fields[TypeFunc::Parms+0] = TypeInstPtr::NOTNULL; // original field value
   fields[TypeFunc::Parms+1] = TypeRawPtr::NOTNULL; // thread
@@ -64,6 +65,7 @@ const TypeFunc *G1BarrierSetC2::write_ref_field_pre_entry_Type() {
 }
 
 const TypeFunc *G1BarrierSetC2::write_ref_field_post_entry_Type() {
+  assert(false, "dead code in late barrier expansion model");
   const Type **fields = TypeTuple::fields(2);
   fields[TypeFunc::Parms+0] = TypeRawPtr::NOTNULL;  // Card addr
   fields[TypeFunc::Parms+1] = TypeRawPtr::NOTNULL;  // thread
@@ -196,6 +198,7 @@ void G1BarrierSetC2::pre_barrier(GraphKit* kit,
                                  const TypeOopPtr* val_type,
                                  Node* pre_val,
                                  BasicType bt) const {
+  assert(false, "dead code in late barrier expansion model");
   // Some sanity checks
   // Note: val is unused in this routine.
 
@@ -355,6 +358,7 @@ void G1BarrierSetC2::g1_mark_card(GraphKit* kit,
                                   Node* index_adr,
                                   Node* buffer,
                                   const TypeFunc* tf) const {
+  assert(false, "dead code in late barrier expansion model");
   Node* zero  = __ ConI(0);
   Node* zeroX = __ ConX(0);
   Node* no_base = __ top();
@@ -387,6 +391,7 @@ void G1BarrierSetC2::post_barrier(GraphKit* kit,
                                   Node* val,
                                   BasicType bt,
                                   bool use_precise) const {
+  assert(false, "dead code in late barrier expansion model");
   // If we are writing a null then we need no post barrier
 
   if (val != nullptr && val->is_Con() && val->bottom_type() == TypePtr::NULL_PTR) {
@@ -508,6 +513,7 @@ void G1BarrierSetC2::post_barrier(GraphKit* kit,
 // Helper that guards and inserts a pre-barrier.
 void G1BarrierSetC2::insert_pre_barrier(GraphKit* kit, Node* base_oop, Node* offset,
                                         Node* pre_val, bool need_mem_bar) const {
+  assert(false, "dead code in late barrier expansion model");
   // We could be accessing the referent field of a reference object. If so, when G1
   // is enabled, we need to log the value in the referent field in an SATB buffer.
   // This routine performs some compile time filters and generates suitable
@@ -657,6 +663,7 @@ bool G1BarrierSetC2::is_g1_pre_val_load(Node* n) {
         }
       }
       if (found == 3) {
+        assert(false, "dead code in late barrier expansion model");
         return true;
       }
     }
