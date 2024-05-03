@@ -113,9 +113,6 @@
   product(bool, G1ProfileBarrierTests, false,                               \
           "Profile and print C2 barrier test statistics")                   \
                                                                             \
-  product(bool, G1AlwaysPrecise, false,                                     \
-          "Force precise card-marking in early barrier expansion model")    \
-                                                                            \
   product(bool, G1OptimizeBarrierLayout, true,                              \
           "Optimize basic block placement of post-barrier")
 #else
