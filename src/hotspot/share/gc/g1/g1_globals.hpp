@@ -111,10 +111,7 @@
           "Profile and print C2 barrier statistics")                        \
                                                                             \
   product(bool, G1ProfileBarrierTests, false,                               \
-          "Profile and print C2 barrier test statistics")                   \
-                                                                            \
-  product(bool, G1OptimizeBarrierLayout, true,                              \
-          "Optimize basic block placement of post-barrier")
+          "Profile and print C2 barrier test statistics")
 #else
 #define G1_LATE_BARRIER_MIGRATION_SUPPORT_FLAGS(product)
 #endif

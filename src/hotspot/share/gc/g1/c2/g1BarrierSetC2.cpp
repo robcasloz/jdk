@@ -1547,7 +1547,7 @@ void G1BarrierSetC2Early::pre_barrier(GraphKit* kit,
   Node* marking = __ load(__ ctrl(), marking_adr, TypeInt::INT, active_type, Compile::AliasIdxRaw);
 
   // if (!marking)
-  __ if_then(marking, BoolTest::ne, zero, G1OptimizeBarrierLayout ? unlikely : likely); {
+  __ if_then(marking, BoolTest::ne, zero, unlikely); {
     BasicType index_bt = TypeX_X->basic_type();
     assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
     Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
@@ -1558,7 +1558,7 @@ void G1BarrierSetC2Early::pre_barrier(GraphKit* kit,
     }
 
     // if (pre_val != nullptr)
-    __ if_then(pre_val, BoolTest::ne, kit->null(), G1OptimizeBarrierLayout ? PROB_FAIR : likely); {
+    __ if_then(pre_val, BoolTest::ne, kit->null()); {
       Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
 
       // is the queue for this thread full?
@@ -1662,7 +1662,7 @@ void G1BarrierSetC2Early::g1_mark_card(GraphKit* kit,
   __ storeCM(__ ctrl(), card_adr, zero, oop_store, oop_alias_idx, card_bt, Compile::AliasIdxRaw);
 
   //  Now do the queue work
-  __ if_then(index, BoolTest::ne, zeroX, G1OptimizeBarrierLayout ? PROB_FAIR : PROB_LIKELY(0.999)); {
+  __ if_then(index, BoolTest::ne, zeroX); {
 
     Node* next_index = kit->gvn().transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
     Node* log_addr = __ AddP(no_base, buffer, next_index);
@@ -1776,13 +1776,13 @@ void G1BarrierSetC2Early::post_barrier(GraphKit* kit,
         // load the original value of the card
         Node* card_val = __ load(__ ctrl(), card_adr, TypeInt::INT, T_BYTE, Compile::AliasIdxRaw);
 
-        __ if_then(card_val, BoolTest::ne, young_card, G1OptimizeBarrierLayout ? unlikely : likely); {
+        __ if_then(card_val, BoolTest::ne, young_card, unlikely); {
           kit->sync_kit(ideal);
           kit->insert_mem_bar(Op_MemBarVolatile, oop_store);
           __ sync_kit(kit);
 
           Node* card_val_reload = __ load(__ ctrl(), card_adr, TypeInt::INT, T_BYTE, Compile::AliasIdxRaw);
-          __ if_then(card_val_reload, BoolTest::ne, dirty_card, G1OptimizeBarrierLayout ? PROB_FAIR : likely); {
+          __ if_then(card_val_reload, BoolTest::ne, dirty_card, PROB_FAIR); {
             g1_mark_card(kit, ideal, card_adr, oop_store, alias_idx, index, index_adr, buffer, tf);
           } __ end_if();
         } __ end_if();
