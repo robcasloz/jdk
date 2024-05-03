@@ -240,6 +240,7 @@ static void print_bytecode_count() {}
 
 #endif // PRODUCT
 
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
 class CollectG1BarrierStatsClosure : public ThreadClosure {
 public:
   unsigned long long _total_store;
@@ -299,6 +300,7 @@ public:
     _total_post_runtime += javaThread->_total_post_runtime;
   }
 };
+#endif
 
 // General statistics printing (profiling ...)
 void print_statistics() {
@@ -324,6 +326,7 @@ void print_statistics() {
 #endif //COMPILER1
   }
 
+#if G1_LATE_BARRIER_MIGRATION_SUPPORT
   if (G1ProfileBarriers || G1ProfileBarrierTests) {
     CollectG1BarrierStatsClosure cl;
     Threads_lock->lock();
@@ -340,6 +343,7 @@ void print_statistics() {
                   cl._total_pre_entry, cl._total_pre_marking, cl._total_pre_notnull, cl._total_pre_runtime,
                   cl._total_post_entry, cl._total_post_inter, cl._total_post_notnull, cl._total_post_young, cl._total_post_clean, cl._total_post_runtime);
   }
+#endif
 
   if (PrintLockStatistics || PrintPreciseRTMLockingStatistics) {
     OptoRuntime::print_named_counters();
