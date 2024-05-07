@@ -50,16 +50,6 @@
 #include "utilities/macros.hpp"
 #include CPU_HEADER(gc/g1/g1BarrierSetAssembler)
 
-G1ImprecisePostBarrierNode::G1ImprecisePostBarrierNode(Node* ctrl, Node* obj) : Node(ctrl, obj) {}
-
-const Type* G1ImprecisePostBarrierNode::Value(PhaseGVN* phase) const {
-  return phase->type(in(1));
-}
-
-Node* G1ImprecisePostBarrierNode::Identity(PhaseGVN* phase) {
-  return this;
-}
-
 const TypeFunc *G1BarrierSetC2::write_ref_field_pre_entry_Type() {
   assert(false, "dead code in late barrier expansion model");
   const Type **fields = TypeTuple::fields(2);
@@ -636,7 +626,8 @@ Node* G1BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) c
 }
 
 bool G1BarrierSetC2::is_gc_barrier_node(Node* node) const {
-  if (CardTableBarrierSetC2::is_gc_barrier_node(node)) {
+  if (CardTableBarrierSetC2::is_gc_barrier_node(node) ||
+      node->Opcode() == Op_G1ImprecisePostBarrier) {
     return true;
   }
   if (node->Opcode() != Op_CallLeaf) {
@@ -695,8 +686,9 @@ Node* G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, boo
     // Put in store barrier for any and all oops we are sticking
     // into this object.  (We could avoid this if we could prove
     // that the object type contains no oop fields at all.)
-    G1ImprecisePostBarrierNode* post_barrier = new G1ImprecisePostBarrierNode(kit->control(), dst);
-    dst = kit->gvn().transform(post_barrier);
+    Node *barrier = new G1ImprecisePostBarrierNode(kit->control(), kit->memory(TypeRawPtr::BOTTOM), dst);
+    barrier = kit->gvn().transform(barrier);
+    kit->set_memory(barrier, TypeRawPtr::BOTTOM);
   }
   return dst;
 }
@@ -1065,6 +1057,9 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
   }
   if ((mach->barrier_data() & G1C2BarrierPost) != 0) {
     st->print("post ");
+  }
+  if ((mach->barrier_data() & G1C2BarrierPostSameRegion) != 0) {
+    st->print("sameregion ");
   }
   if ((mach->barrier_data() & G1C2BarrierPostNotNull) != 0) {
     st->print("notnull ");

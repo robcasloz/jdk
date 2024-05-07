@@ -3664,6 +3664,8 @@ int MatchNode::needs_ideal_memory_edge(FormDict &globals) const {
     return 1;
   if( strcmp(_opType,"CacheWBPostSync")==0 )
     return 1;
+  if( strcmp(_opType,"G1ImprecisePostBarrier")==0 )
+    return 1;
   if( _lChild ) {
     const char *opType = _lChild->_opType;
     for( int i=0; i<cnt; i++ )

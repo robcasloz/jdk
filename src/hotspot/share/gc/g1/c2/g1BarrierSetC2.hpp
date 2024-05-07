@@ -89,17 +89,13 @@ public:
 };
 
 class G1ImprecisePostBarrierNode : public Node {
-  // TODO: this can still float under the succeeding membar, make a multi-output
-  // node and add control precedence.
-  public:
-  G1ImprecisePostBarrierNode(Node* ctrl, Node* obj);
-  const Type* Value(PhaseGVN* phase) const;
-  Node* Identity(PhaseGVN* phase);
+public:
+  G1ImprecisePostBarrierNode(Node* ctrl, Node* mem, Node* addr) : Node(ctrl, mem, addr) {}
   int Opcode() const;
-  virtual uint ideal_reg() const { return Op_RegP; }
-  virtual bool depends_only_on_test() const { return false; }
-  const Type* bottom_type() const { return in(1)->bottom_type(); }
-
+  virtual uint ideal_reg() const { return NotAMachineReg; }
+  virtual uint match_edge(uint idx) const { return (idx == 2); }
+  virtual const TypePtr *adr_type() const { return TypePtr::BOTTOM; }
+  virtual const Type *bottom_type() const { return Type::MEMORY; }
 };
 
 class G1BarrierSetC2: public CardTableBarrierSetC2 {

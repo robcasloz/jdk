@@ -494,20 +494,20 @@ instruct g1LoadN(rRegN dst, memory mem, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
   ins_pipe(ialu_reg_mem); // XXX
 %}
 
-instruct g1ImprecisePostBarrierP(rRegP dst, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
+instruct g1ImprecisePostBarrierP(rRegP addr, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC);
-  match(Set dst (G1ImprecisePostBarrier dst));
+  match(G1ImprecisePostBarrier addr);
   effect(TEMP tmp1, TEMP tmp2, KILL cr);
-  ins_cost(42);
-  format %{ "# imprecise post-barrier for $dst" %}
+  ins_cost(100); // TODO!
+  format %{ "# imprecise post-barrier for $addr" %}
   ins_encode %{
     g1_post_write_barrier(masm /* masm */,
                           this /* node */,
-                          $dst$$Register /* store_addr */,
+                          $addr$$Register /* store_addr */,
                           noreg /* new_val */,
                           $tmp1$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */);
   %}
-  ins_pipe(empty);
+  ins_pipe(empty); // TODO!
 %}
