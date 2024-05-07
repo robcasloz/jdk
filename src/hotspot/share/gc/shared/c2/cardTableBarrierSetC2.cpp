@@ -125,7 +125,7 @@ void CardTableBarrierSetC2::post_barrier(GraphKit* kit,
   kit->final_sync(ideal);
 }
 
-void CardTableBarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
+Node* CardTableBarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
   BarrierSetC2::clone(kit, src, dst, size, is_array);
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
 
@@ -148,6 +148,7 @@ void CardTableBarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* siz
                  T_OBJECT,
                  false);
   }
+  return dst;
 }
 
 bool CardTableBarrierSetC2::use_ReduceInitialCardMarks() const {

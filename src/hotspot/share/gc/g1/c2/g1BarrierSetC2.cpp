@@ -50,6 +50,16 @@
 #include "utilities/macros.hpp"
 #include CPU_HEADER(gc/g1/g1BarrierSetAssembler)
 
+G1ImprecisePostBarrierNode::G1ImprecisePostBarrierNode(Node* ctrl, Node* obj) : Node(ctrl, obj) {}
+
+const Type* G1ImprecisePostBarrierNode::Value(PhaseGVN* phase) const {
+  return phase->type(in(1));
+}
+
+Node* G1ImprecisePostBarrierNode::Identity(PhaseGVN* phase) {
+  return this;
+}
+
 const TypeFunc *G1BarrierSetC2::write_ref_field_pre_entry_Type() {
   assert(false, "dead code in late barrier expansion model");
   const Type **fields = TypeTuple::fields(2);
@@ -673,6 +683,22 @@ bool G1BarrierSetC2::is_g1_pre_val_load(Node* n) {
 
 bool G1BarrierSetC2::is_gc_pre_barrier_node(Node *node) const {
   return is_g1_pre_val_load(node);
+}
+
+Node* G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
+  BarrierSetC2::clone(kit, src, dst, size, is_array);
+  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+
+  // If necessary, emit some card marks afterwards.  (Non-arrays only.)
+  bool card_mark = !is_array && !use_ReduceInitialCardMarks();
+  if (card_mark) {
+    // Put in store barrier for any and all oops we are sticking
+    // into this object.  (We could avoid this if we could prove
+    // that the object type contains no oop fields at all.)
+    G1ImprecisePostBarrierNode* post_barrier = new G1ImprecisePostBarrierNode(kit->control(), dst);
+    dst = kit->gvn().transform(post_barrier);
+  }
+  return dst;
 }
 
 void G1BarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const {

@@ -466,8 +466,10 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   }
 #endif
 
-  Assembler::Condition is_single_region = generate_single_region_test(masm, store_addr, new_val, tmp);
-  __ jcc(is_single_region, *stub->continuation());
+  if ((stub->barrier_data() & G1C2BarrierPostSameRegion) == 0) {
+    Assembler::Condition is_single_region = generate_single_region_test(masm, store_addr, new_val, tmp);
+    __ jcc(is_single_region, *stub->continuation());
+  }
 
 #if G1_LATE_BARRIER_MIGRATION_SUPPORT
   if (G1ProfileBarrierTests) {

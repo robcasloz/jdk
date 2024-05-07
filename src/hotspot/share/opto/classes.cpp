@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/g1/c2/g1BarrierSetC2.hpp"
 #include "opto/addnode.hpp"
 #include "opto/arraycopynode.hpp"
 #include "opto/callnode.hpp"

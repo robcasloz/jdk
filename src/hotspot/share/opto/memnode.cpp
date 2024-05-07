@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/javaClasses.hpp"
 #include "compiler/compileLog.hpp"
+#include "gc/g1/c2/g1BarrierSetC2.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "gc/shared/tlab_globals.hpp"
@@ -844,6 +845,10 @@ uint8_t MemNode::barrier_data(const Node* n) {
     return n->as_LoadStore()->barrier_data();
   } else if (n->is_Mem()) {
     return n->as_Mem()->barrier_data();
+  }
+  if (n->Opcode() == Op_G1ImprecisePostBarrier) {
+    // TODO: hide this behind the access API
+    return G1C2BarrierPost | G1C2BarrierPostSameRegion | G1C2BarrierPostNotNull;
   }
   return 0;
 }

@@ -34,10 +34,11 @@ class PhaseTransform;
 class Type;
 class TypeFunc;
 
-const int G1C2BarrierPre         = 1;
-const int G1C2BarrierPost        = 2;
-const int G1C2BarrierPostNotNull = 4;
-const int G1C2BarrierElided      = 8;
+const int G1C2BarrierPre            = 1;
+const int G1C2BarrierPost           = 2;
+const int G1C2BarrierPostSameRegion = 4;
+const int G1C2BarrierPostNotNull    = 8;
+const int G1C2BarrierElided         = 16;
 
 class G1BarrierStubC2 : public BarrierStubC2 {
 public:
@@ -85,6 +86,20 @@ public:
   Register tmp1() const;
   Register tmp2() const;
   virtual void emit_code(MacroAssembler& masm);
+};
+
+class G1ImprecisePostBarrierNode : public Node {
+  // TODO: this can still float under the succeeding membar, make a multi-output
+  // node and add control precedence.
+  public:
+  G1ImprecisePostBarrierNode(Node* ctrl, Node* obj);
+  const Type* Value(PhaseGVN* phase) const;
+  Node* Identity(PhaseGVN* phase);
+  int Opcode() const;
+  virtual uint ideal_reg() const { return Op_RegP; }
+  virtual bool depends_only_on_test() const { return false; }
+  const Type* bottom_type() const { return in(1)->bottom_type(); }
+
 };
 
 class G1BarrierSetC2: public CardTableBarrierSetC2 {
@@ -151,6 +166,7 @@ protected:
   static bool is_g1_pre_val_load(Node* n);
 public:
   virtual bool is_gc_pre_barrier_node(Node* node) const;
+  virtual Node* clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const;
   virtual bool is_gc_barrier_node(Node* node) const;
   virtual void eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const;
   virtual void eliminate_gc_barrier_data(Node* node) const;

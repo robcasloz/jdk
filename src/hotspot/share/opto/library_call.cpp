@@ -5004,7 +5004,7 @@ bool LibraryCallKit::inline_unsafe_setMemory() {
 
 //------------------------clone_coping-----------------------------------
 // Helper function for inline_native_clone.
-void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array) {
+Node* LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array) {
   assert(obj_size != nullptr, "");
   Node* raw_obj = alloc_obj->in(1);
   assert(alloc_obj->is_CheckCastPP() && raw_obj->is_Proj() && raw_obj->in(0)->is_Allocate(), "");
@@ -5023,7 +5023,7 @@ void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, b
   }
 
   Node* size = _gvn.transform(obj_size);
-  access_clone(obj, alloc_obj, size, is_array);
+  alloc_obj = access_clone(obj, alloc_obj, size, is_array);
 
   // Do not let reads from the cloned object float above the arraycopy.
   if (alloc != nullptr) {
@@ -5038,6 +5038,7 @@ void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, b
   } else {
     insert_mem_bar(Op_MemBarCPUOrder);
   }
+  return alloc_obj;
 }
 
 //------------------------inline_native_clone----------------------------
@@ -5146,7 +5147,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       //  the object.)
 
       if (!stopped()) {
-        copy_to_clone(obj, alloc_obj, array_size, true);
+        alloc_obj = copy_to_clone(obj, alloc_obj, array_size, true);
 
         // Present the results of the copy.
         result_reg->init_req(_array_path, control());
@@ -5192,7 +5193,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       // exception state between multiple Object.clone versions (reexecute=true vs reexecute=false).
       Node* alloc_obj = new_instance(obj_klass, nullptr, &obj_size, /*deoptimize_on_exception=*/true);
 
-      copy_to_clone(obj, alloc_obj, obj_size, false);
+      alloc_obj = copy_to_clone(obj, alloc_obj, obj_size, false);
 
       // Present the results of the slow call.
       result_reg->init_req(_instance_path, control());

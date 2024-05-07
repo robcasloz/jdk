@@ -741,7 +741,7 @@ int BarrierSetC2::arraycopy_payload_base_offset(bool is_array) {
   return base_off;
 }
 
-void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* size, bool is_array) const {
+Node* BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* size, bool is_array) const {
   int base_off = arraycopy_payload_base_offset(is_array);
   Node* payload_size = size;
   Node* offset = kit->MakeConX(base_off);
@@ -768,6 +768,7 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   } else {
     kit->set_all_memory(n);
   }
+  return dst_base;
 }
 
 Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes,

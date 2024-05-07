@@ -1539,6 +1539,7 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       map_ideal_node(n, phantom_obj);
       break;
     }
+    case Op_G1ImprecisePostBarrier: // TODO: double-check this, hide behind access API
     case Op_CastPP:
     case Op_CheckCastPP:
     case Op_EncodeP:
@@ -1713,6 +1714,7 @@ void ConnectionGraph::add_final_edges(Node *n) {
       add_base(n_ptn->as_Field(), ptn_base);
       break;
     }
+    case Op_G1ImprecisePostBarrier: // TODO: double-check this
     case Op_CastPP:
     case Op_CheckCastPP:
     case Op_EncodeP:
