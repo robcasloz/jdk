@@ -162,7 +162,7 @@ protected:
   static bool is_g1_pre_val_load(Node* n);
 public:
   virtual bool is_gc_pre_barrier_node(Node* node) const;
-  virtual Node* clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const;
+  virtual void clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const;
   virtual bool is_gc_barrier_node(Node* node) const;
   virtual void eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const;
   virtual void eliminate_gc_barrier_data(Node* node) const;

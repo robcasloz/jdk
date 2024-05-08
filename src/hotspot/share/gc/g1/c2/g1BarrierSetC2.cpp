@@ -676,7 +676,7 @@ bool G1BarrierSetC2::is_gc_pre_barrier_node(Node *node) const {
   return is_g1_pre_val_load(node);
 }
 
-Node* G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
+void G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
   BarrierSetC2::clone(kit, src, dst, size, is_array);
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
 
@@ -690,7 +690,6 @@ Node* G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, boo
     barrier = kit->gvn().transform(barrier);
     kit->set_memory(barrier, TypeRawPtr::BOTTOM);
   }
-  return dst;
 }
 
 void G1BarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const {
