@@ -499,7 +499,7 @@ instruct g1ImprecisePostBarrierP(rRegP addr, rRegP tmp1, rRegP tmp2, rFlagsReg c
   predicate(UseG1GC);
   match(G1ImprecisePostBarrier addr);
   effect(TEMP tmp1, TEMP tmp2, KILL cr);
-  ins_cost(100); // TODO!
+  ins_cost(125); // XXX
   format %{ "# imprecise post-barrier for $addr" %}
   ins_encode %{
     g1_post_write_barrier(masm /* masm */,
@@ -509,5 +509,5 @@ instruct g1ImprecisePostBarrierP(rRegP addr, rRegP tmp1, rRegP tmp2, rFlagsReg c
                           $tmp1$$Register /* tmp1 */,
                           $tmp2$$Register /* tmp2 */);
   %}
-  ins_pipe(empty); // TODO!
+  ins_pipe(ialu_mem_reg); // XXX
 %}

@@ -332,15 +332,16 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
                                                      Register tmp2,
                                                      G1PostBarrierStubC2* stub) {
   assert(thread == rthread, "must be");
-  assert_different_registers(store_addr, new_val, thread, tmp1, tmp2,
-                             rscratch1);
-  assert(store_addr != noreg && new_val != noreg && tmp1 != noreg
-         && tmp2 != noreg, "expecting a register");
+  assert_different_registers(store_addr, new_val, thread, tmp1, tmp2, rscratch1);
+  assert(store_addr != noreg && tmp1 != noreg && tmp2 != noreg, "expecting a register");
+  assert(((stub->barrier_data() & G1C2BarrierPostSameRegion) != 0) || new_val != noreg, "expecting a register");
 
   stub->initialize_registers(thread, tmp1, tmp2);
 
-  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
-  __ cbz(is_region_crossing, *stub->continuation());
+  if ((stub->barrier_data() & G1C2BarrierPostSameRegion) == 0) {
+    Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
+    __ cbz(is_region_crossing, *stub->continuation());
+  }
 
   // crosses regions, storing null?
   if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {

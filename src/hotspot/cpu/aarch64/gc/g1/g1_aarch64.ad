@@ -912,3 +912,21 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   %}
   ins_pipe(iload_reg_mem); // XXX
 %}
+
+instruct g1ImprecisePostBarrierP(iRegPNoSp addr, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
+%{
+  predicate(UseG1GC);
+  match(G1ImprecisePostBarrier addr);
+  effect(TEMP tmp1, TEMP tmp2, KILL cr);
+  ins_cost(125); // XXX
+  format %{ "# imprecise post-barrier for $addr" %}
+  ins_encode %{
+    g1_post_write_barrier(masm /* masm */,
+                          this /* node */,
+                          $addr$$Register /* store_addr */,
+                          noreg /* new_val */,
+                          $tmp1$$Register /* tmp1 */,
+                          $tmp2$$Register /* tmp2 */);
+  %}
+  ins_pipe(pipe_serial);
+%}
