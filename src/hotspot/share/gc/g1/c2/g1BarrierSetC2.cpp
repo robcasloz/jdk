@@ -671,6 +671,16 @@ bool G1BarrierSetC2::is_g1_pre_val_load(Node* n) {
   return false;
 }
 
+void G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
+  BarrierSetC2::clone(kit, src, dst, size, is_array);
+  // TODO: if ReduceInitialCardMarks is disabled, make sure
+  // InitializeNode::capture_store (memnode.cpp) does not remove the GC
+  // (post-)barrier. Also, if ReduceInitialCardMarks is disabled, we need to
+  // implement clone array copies with a runtime call (like ZGC does, calling
+  // ZBarrierSetRuntime::clone, see ZBarrierSetC2::clone_at_expansion()) rather
+  // than a jlong_disjoint_arraycopy stub.
+}
+
 bool G1BarrierSetC2::is_gc_pre_barrier_node(Node *node) const {
   return is_g1_pre_val_load(node);
 }
@@ -797,9 +807,13 @@ Node* G1BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) co
   bool anonymous = (decorators & ON_UNKNOWN_OOP_REF) != 0;
   bool in_heap = (decorators & IN_HEAP) != 0;
   bool tightly_coupled_alloc = (decorators & C2_TIGHTLY_COUPLED_ALLOC) != 0;
-  bool need_store_barrier = !tightly_coupled_alloc && (in_heap || anonymous);
+  bool need_store_barrier = !(tightly_coupled_alloc && use_ReduceInitialCardMarks()) && (in_heap || anonymous);
   if (access.is_oop() && need_store_barrier) {
     access.set_barrier_data(get_store_barrier(access, val));
+    if (tightly_coupled_alloc) {
+      assert(!use_ReduceInitialCardMarks(), "");
+      access.set_barrier_data(access.barrier_data() ^ G1C2BarrierPre);
+    }
   }
   return BarrierSetC2::store_at_resolved(access, val);
 }
