@@ -157,6 +157,8 @@ public:
   virtual void eliminate_gc_barrier_data(Node* node) const;
   virtual bool expand_barriers(Compile* C, PhaseIterGVN& igvn) const;
   virtual uint estimated_barrier_size(const Node* node) const;
+  virtual void clone_at_expansion(PhaseMacroExpand* phase,
+                                  ArrayCopyNode* ac) const;
 
   virtual bool escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseGVN* gvn, Unique_Node_List* delayed_worklist, Node* n, uint opcode) const;
 

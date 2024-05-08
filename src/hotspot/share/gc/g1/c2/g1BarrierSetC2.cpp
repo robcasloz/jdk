@@ -771,6 +771,57 @@ uint G1BarrierSetC2::estimated_barrier_size(const Node* node) const {
   return nodes;
 }
 
+#define XTOP LP64_ONLY(COMMA phase->top())
+
+// FIXME: This TypeFunc assumes a 64bit system
+static const TypeFunc* clone_type() {
+  // Create input type (domain)
+  const Type** const domain_fields = TypeTuple::fields(4);
+  domain_fields[TypeFunc::Parms + 0] = TypeInstPtr::NOTNULL;  // src
+  domain_fields[TypeFunc::Parms + 1] = TypeInstPtr::NOTNULL;  // dst
+  domain_fields[TypeFunc::Parms + 2] = TypeLong::LONG;        // size lower
+  domain_fields[TypeFunc::Parms + 3] = Type::HALF;            // size upper
+  const TypeTuple* const domain = TypeTuple::make(TypeFunc::Parms + 4, domain_fields);
+
+  // Create result type (range)
+  const Type** const range_fields = TypeTuple::fields(0);
+  const TypeTuple* const range = TypeTuple::make(TypeFunc::Parms + 0, range_fields);
+
+  return TypeFunc::make(domain, range);
+}
+
+void G1BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac) const {
+  if (ac->is_clone_array() || ac->is_clone_oop_array() || (ac->is_clone_inst() && use_ReduceInitialCardMarks())) {
+    return BarrierSetC2::clone_at_expansion(phase, ac);
+  }
+  assert(ac->is_clone_inst() && !use_ReduceInitialCardMarks(), "");
+    Node* const ctrl       = ac->in(TypeFunc::Control);
+  Node* const mem        = ac->in(TypeFunc::Memory);
+  Node* const src = ac->in(ArrayCopyNode::Src);
+  Node* const dst        = ac->in(ArrayCopyNode::Dest);
+  Node* const size       = ac->in(ArrayCopyNode::Length);
+
+  assert(size->bottom_type()->is_long(), "Should be long");
+
+  // The native clone we are calling here expects the instance size in words
+  // Add header/offset size to payload size to get instance size.
+  Node* const base_offset = phase->longcon(arraycopy_payload_base_offset(ac->is_clone_array()) >> LogBytesPerLong);
+  Node* const full_size = phase->transform_later(new AddLNode(size, base_offset));
+
+  Node* const call = phase->make_leaf_call(ctrl,
+                                           mem,
+                                           clone_type(),
+                                           G1BarrierSetRuntime::clone_addr(),
+                                           "G1BarrierSetRuntime::clone",
+                                           TypeRawPtr::BOTTOM,
+                                           src,
+                                           dst,
+                                           full_size,
+                                           phase->top());
+  phase->transform_later(call);
+  phase->igvn().replace_node(ac, call);
+}
+
 bool G1BarrierSetC2::escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseGVN* gvn, Unique_Node_List* delayed_worklist, Node* n, uint opcode) const {
   if (opcode == Op_StoreP) {
     Node* adr = n->in(MemNode::Address);
