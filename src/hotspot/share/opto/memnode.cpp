@@ -27,7 +27,6 @@
 #include "compiler/compileLog.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
-#include "gc/shared/c2/cardTableBarrierSetC2.hpp"
 #include "gc/shared/tlab_globals.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
@@ -3440,10 +3439,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   // Capture an unaliased, unconditional, simple store into an initializer.
   // Or, if it is independent of the allocation, hoist it above the allocation.
-  BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
-  bool use_ReduceInitialCardMarks = BarrierSet::barrier_set()->is_a(BarrierSet::CardTableBarrierSet) &&
-    static_cast<CardTableBarrierSetC2*>(bs)->use_ReduceInitialCardMarks();
-  if (ReduceFieldZeroing && use_ReduceInitialCardMarks && /*can_reshape &&*/
+  if (ReduceFieldZeroing && ReduceInitialCardMarks && /*can_reshape &&*/
       mem->is_Proj() && mem->in(0)->is_Initialize()) {
     InitializeNode* init = mem->in(0)->as_Initialize();
     intptr_t offset = init->can_capture_store(this, phase, can_reshape);
