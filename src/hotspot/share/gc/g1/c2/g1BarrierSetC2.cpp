@@ -671,16 +671,6 @@ bool G1BarrierSetC2::is_g1_pre_val_load(Node* n) {
   return false;
 }
 
-void G1BarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
-  BarrierSetC2::clone(kit, src, dst, size, is_array);
-  // TODO: if ReduceInitialCardMarks is disabled, make sure
-  // InitializeNode::capture_store (memnode.cpp) does not remove the GC
-  // (post-)barrier. Also, if ReduceInitialCardMarks is disabled, we need to
-  // implement clone array copies with a runtime call (like ZGC does, calling
-  // ZBarrierSetRuntime::clone, see ZBarrierSetC2::clone_at_expansion()) rather
-  // than a jlong_disjoint_arraycopy stub.
-}
-
 bool G1BarrierSetC2::is_gc_pre_barrier_node(Node *node) const {
   return is_g1_pre_val_load(node);
 }
@@ -1777,6 +1767,31 @@ bool G1BarrierSetC2Early::is_g1_pre_val_load(Node* n) {
     }
   }
   return false;
+}
+
+void G1BarrierSetC2Early::clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const {
+  BarrierSetC2::clone(kit, src, dst, size, is_array);
+  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+
+  // If necessary, emit some card marks afterwards.  (Non-arrays only.)
+  bool card_mark = !is_array && !use_ReduceInitialCardMarks();
+  if (card_mark) {
+    assert(!is_array, "");
+    // Put in store barrier for any and all oops we are sticking
+    // into this object.  (We could avoid this if we could prove
+    // that the object type contains no oop fields at all.)
+    Node* no_particular_value = nullptr;
+    Node* no_particular_field = nullptr;
+    int raw_adr_idx = Compile::AliasIdxRaw;
+    post_barrier(kit, kit->control(),
+                 kit->memory(raw_adr_type),
+                 dst,
+                 no_particular_field,
+                 raw_adr_idx,
+                 no_particular_value,
+                 T_OBJECT,
+                 false);
+  }
 }
 
 bool G1BarrierSetC2Early::is_gc_pre_barrier_node(Node *node) const {
