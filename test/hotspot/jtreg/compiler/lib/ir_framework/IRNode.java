@@ -358,6 +358,11 @@ public class IRNode {
         beforeMatchingNameRegex(CALL, "Call.*Java");
     }
 
+    public static final String CALL_OF = COMPOSITE_PREFIX + "CALL_OF" + POSTFIX;
+    static {
+        callOfNodes(CALL_OF, "Call.*");
+    }
+
     public static final String CALL_OF_METHOD = COMPOSITE_PREFIX + "CALL_OF_METHOD" + POSTFIX;
     static {
         callOfNodes(CALL_OF_METHOD, "Call.*Java");

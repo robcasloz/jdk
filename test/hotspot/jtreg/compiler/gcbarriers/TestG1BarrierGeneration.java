@@ -30,6 +30,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import jdk.test.lib.Asserts;
 
 /**
  * @test
@@ -41,11 +42,36 @@ import java.lang.ref.WeakReference;
 
 public class TestG1BarrierGeneration {
     static final String PRE_ONLY = "pre";
+    static final String POST_ONLY = "post";
     static final String PRE_AND_POST = "pre post";
     static final String PRE_AND_POST_NOT_NULL = "pre post notnull";
 
     static class Outer {
         Object f;
+    }
+
+    static class OuterWithFewFields implements Cloneable {
+        Object f1;
+        Object f2;
+        public Object clone() throws CloneNotSupportedException {
+            return super.clone();
+        }
+    }
+
+    static class OuterWithManyFields implements Cloneable {
+        Object f1;
+        Object f2;
+        Object f3;
+        Object f4;
+        Object f5;
+        Object f6;
+        Object f7;
+        Object f8;
+        Object f9;
+        Object f10;
+        public Object clone() throws CloneNotSupportedException {
+            return super.clone();
+        }
     }
 
     static final VarHandle fVarHandle;
@@ -273,6 +299,107 @@ public class TestG1BarrierGeneration {
             Object o1 = new Object();
             Object[] a = testStoreOnNewArray(o1);
             assert(a[4] == o1);
+        }
+    }
+
+    @Test
+    public static Object[] testCloneArrayOfObjects(Object[] a) {
+        Object[] a1 = null;
+        try {
+            a1 = a.clone();
+        } catch (Exception e) {}
+        return a1;
+    }
+
+    @Test
+    @IR(applyIf = {"ReduceInitialCardMarks", "true"},
+        failOn = {IRNode.G1_STORE_P, IRNode.G1_STORE_N, IRNode.G1_ENCODE_P_AND_STORE_N},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIfAnd = {"ReduceInitialCardMarks", "false", "UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, POST_ONLY, "2"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIfAnd = {"ReduceInitialCardMarks", "false", "UseCompressedOops", "true"},
+        counts = {IRNode.G1_STORE_N_WITH_BARRIER_FLAG, POST_ONLY, "2"},
+        phase = CompilePhase.FINAL_CODE)
+    public static OuterWithFewFields testCloneObjectWithFewFields(OuterWithFewFields o) {
+        Object o1 = null;
+        try {
+            o1 = o.clone();
+        } catch (Exception e) {}
+        return (OuterWithFewFields)o1;
+    }
+
+    @Test
+    @IR(applyIf = {"ReduceInitialCardMarks", "true"},
+        counts = {IRNode.CALL_OF, "jlong_disjoint_arraycopy", "1"})
+    @IR(applyIf = {"ReduceInitialCardMarks", "false"},
+        counts = {IRNode.CALL_OF, "G1BarrierSetRuntime::clone", "1"})
+    public static OuterWithManyFields testCloneObjectWithManyFields(OuterWithManyFields o) {
+        Object o1 = null;
+        try {
+            o1 = o.clone();
+        } catch (Exception e) {}
+        return (OuterWithManyFields)o1;
+    }
+
+    @Run(test = {"testCloneArrayOfObjects",
+                 "testCloneObjectWithFewFields",
+                 "testCloneObjectWithManyFields"})
+    public void runCloneTests() {
+        {
+            Object o1 = new Object();
+            Object[] a = new Object[4];
+            for (int i = 0; i < 4; i++) {
+                a[i] = o1;
+            }
+            Object[] a1 = testCloneArrayOfObjects(a);
+            for (int i = 0; i < 4; i++) {
+                Asserts.assertEquals(o1, a1[i]);
+            }
+        }
+        {
+            Object a = new Object();
+            Object b = new Object();
+            OuterWithFewFields o = new OuterWithFewFields();
+            o.f1 = a;
+            o.f2 = b;
+            OuterWithFewFields o1 = testCloneObjectWithFewFields(o);
+            Asserts.assertEquals(a, o1.f1);
+            Asserts.assertEquals(b, o1.f2);
+        }
+        {
+            Object a = new Object();
+            Object b = new Object();
+            Object c = new Object();
+            Object d = new Object();
+            Object e = new Object();
+            Object f = new Object();
+            Object g = new Object();
+            Object h = new Object();
+            Object i = new Object();
+            Object j = new Object();
+            OuterWithManyFields o = new OuterWithManyFields();
+            o.f1 = a;
+            o.f2 = b;
+            o.f3 = c;
+            o.f4 = d;
+            o.f5 = e;
+            o.f6 = f;
+            o.f7 = g;
+            o.f8 = h;
+            o.f9 = i;
+            o.f10 = j;
+            OuterWithManyFields o1 = testCloneObjectWithManyFields(o);
+            Asserts.assertEquals(a, o1.f1);
+            Asserts.assertEquals(b, o1.f2);
+            Asserts.assertEquals(c, o1.f3);
+            Asserts.assertEquals(d, o1.f4);
+            Asserts.assertEquals(e, o1.f5);
+            Asserts.assertEquals(f, o1.f6);
+            Asserts.assertEquals(g, o1.f7);
+            Asserts.assertEquals(h, o1.f8);
+            Asserts.assertEquals(i, o1.f9);
+            Asserts.assertEquals(j, o1.f10);
         }
     }
 
