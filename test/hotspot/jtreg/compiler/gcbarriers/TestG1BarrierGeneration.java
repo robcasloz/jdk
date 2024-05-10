@@ -60,10 +60,17 @@ public class TestG1BarrierGeneration {
 
     public static void main(String[] args) {
         TestFramework framework = new TestFramework();
-        Scenario[] scenarios = new Scenario[2];
+        Scenario[] scenarios = new Scenario[2*2];
+        int scenarioIndex = 0;
         for (int i = 0; i < 2; i++) {
-            scenarios[i] = new Scenario(i, "-XX:CompileCommand=inline,java.lang.ref.*::*",
-                                        "-XX:" + (i == 0 ? "-" : "+") + "UseCompressedOops");
+            for (int j = 0; j < 2; j++) {
+                scenarios[scenarioIndex] =
+                    new Scenario(scenarioIndex,
+                                 "-XX:CompileCommand=inline,java.lang.ref.*::*",
+                                 "-XX:" + (i == 0 ? "-" : "+") + "UseCompressedOops",
+                                 "-XX:" + (j == 0 ? "-" : "+") + "ReduceInitialCardMarks");
+                scenarioIndex++;
+            }
         }
         framework.addScenarios(scenarios);
         framework.start();
@@ -118,10 +125,10 @@ public class TestG1BarrierGeneration {
     }
 
     @Test
-    @IR(applyIf = {"UseCompressedOops", "false"},
+    @IR(applyIfAnd = {"UseCompressedOops", "false", "ReduceInitialCardMarks", "true"},
         failOn = {IRNode.G1_STORE_P},
         phase = CompilePhase.FINAL_CODE)
-    @IR(applyIf = {"UseCompressedOops", "true"},
+    @IR(applyIfAnd = {"UseCompressedOops", "true", "ReduceInitialCardMarks", "true"},
         failOn = {IRNode.G1_STORE_N, IRNode.G1_ENCODE_P_AND_STORE_N},
         phase = CompilePhase.FINAL_CODE)
     public static Outer testStoreOnNewObject(Object o1) {
@@ -217,10 +224,10 @@ public class TestG1BarrierGeneration {
     }
 
     @Test
-    @IR(applyIf = {"UseCompressedOops", "false"},
+    @IR(applyIfAnd = {"UseCompressedOops", "false", "ReduceInitialCardMarks", "true"},
         failOn = {IRNode.G1_STORE_P},
         phase = CompilePhase.FINAL_CODE)
-    @IR(applyIf = {"UseCompressedOops", "true"},
+    @IR(applyIfAnd = {"UseCompressedOops", "true", "ReduceInitialCardMarks", "true"},
         failOn = {IRNode.G1_STORE_N, IRNode.G1_ENCODE_P_AND_STORE_N},
         phase = CompilePhase.FINAL_CODE)
     public static Object[] testStoreOnNewArray(Object o1) {
