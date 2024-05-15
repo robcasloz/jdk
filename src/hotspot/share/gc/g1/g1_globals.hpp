@@ -97,6 +97,9 @@
   product(bool, G1UseLateBarrierExpansion, true,                            \
           "Expand G1 barriers late during C2 compilation")                  \
                                                                             \
+  product(bool, G1StressBarriers, false,                                    \
+          "Configure G1 to exercise cold barrier paths")                    \
+                                                                            \
   product(double, G1BarrierSizeFactor, 1.0,                                 \
           "Factor for estimated barrier size: increasing it makes C2 loop " \
           "unrolling more conservative, and vice versa")                    \
