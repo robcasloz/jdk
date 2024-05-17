@@ -115,7 +115,6 @@ size_t      JavaThread::_stack_size_at_create = 0;
 
 #if G1_LATE_BARRIER_MIGRATION_SUPPORT
 unsigned long long JavaThread::_total_store;
-unsigned long long JavaThread::_total_store_volatile;
 unsigned long long JavaThread::_total_store_encode;
 unsigned long long JavaThread::_total_store_nopost;
 unsigned long long JavaThread::_total_store_notnull;
@@ -457,7 +456,6 @@ JavaThread::JavaThread() :
   _thread_state(_thread_new),
 #if G1_LATE_BARRIER_MIGRATION_SUPPORT
   _store_counter(0),
-  _store_volatile_counter(0),
   _store_encode_counter(0),
   _store_nopost_counter(0),
   _store_notnull_counter(0),
@@ -700,7 +698,6 @@ JavaThread::~JavaThread() {
 
 #if G1_LATE_BARRIER_MIGRATION_SUPPORT
   _total_store += _store_counter;
-  _total_store_volatile += _store_volatile_counter;
   _total_store_encode += _store_encode_counter;
   _total_store_nopost += _store_nopost_counter;
   _total_store_notnull += _store_notnull_counter;

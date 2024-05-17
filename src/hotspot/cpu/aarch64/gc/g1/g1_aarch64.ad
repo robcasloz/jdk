@@ -82,17 +82,6 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "str  $src, $mem\t# ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_counter_offset()));
-      if ((barrier_data() & G1C2BarrierPost) == 0) {
-        __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
-      }
-      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
-        __ increment(Address(rthread, JavaThread::store_notnull_counter_offset()));
-      }
-    }
-#endif
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -118,17 +107,6 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
   ins_cost(125); // XXX
   format %{ "stlr  $src, $mem\t# ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_volatile_counter_offset()));
-      if ((barrier_data() & G1C2BarrierPost) == 0) {
-        __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
-      }
-      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
-        __ increment(Address(rthread, JavaThread::store_notnull_counter_offset()));
-      }
-    }
-#endif
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -153,17 +131,6 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_cost(125); // XXX
   format %{ "strw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_counter_offset()));
-      if ((barrier_data() & G1C2BarrierPost) == 0) {
-        __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
-      }
-      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
-        __ increment(Address(rthread, JavaThread::store_notnull_counter_offset()));
-      }
-    }
-#endif
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -196,17 +163,6 @@ instruct g1EncodePAndStoreN(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp t
   format %{ "encode_heap_oop $tmp1, $src\n\t"
             "strw  $tmp1, $mem\t# compressed ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_encode_counter_offset()));
-      if ((barrier_data() & G1C2BarrierPost) == 0) {
-        __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
-      }
-      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
-        __ increment(Address(rthread, JavaThread::store_notnull_counter_offset()));
-      }
-    }
-#endif
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -237,17 +193,6 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
   ins_cost(125); // XXX
   format %{ "stlrw  $src, $mem\t# compressed ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::store_volatile_counter_offset()));
-      if ((barrier_data() & G1C2BarrierPost) == 0) {
-        __ increment(Address(rthread, JavaThread::store_nopost_counter_offset()));
-      }
-      if ((barrier_data() & G1C2BarrierPostNotNull) != 0) {
-        __ increment(Address(rthread, JavaThread::store_notnull_counter_offset()));
-      }
-    }
-#endif
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -279,11 +224,6 @@ instruct g1CompareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP 
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "cmpxchg $res = $mem, $oldval, $newval\t# ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -314,11 +254,6 @@ instruct g1CompareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRe
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "cmpxchg_acq $res = $mem, $oldval, $newval\t# ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -349,11 +284,6 @@ instruct g1CompareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN 
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "cmpxchg $res = $mem, $oldval, $newval\t# narrow oop" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -385,11 +315,6 @@ instruct g1CompareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRe
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "cmpxchg_acq $res = $mem, $oldval, $newval\t# narrow oop" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -423,11 +348,6 @@ instruct g1CompareAndSwapP(iRegINoSp res, indirect mem, iRegP newval, iRegPNoSp 
   format %{ "cmpxchg $mem, $oldval, $newval\t# (ptr)\n\t"
             "cset    $res, EQ" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -461,11 +381,6 @@ instruct g1CompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP newval, iRegPNo
   format %{ "cmpxchg_acq $mem, $oldval, $newval\t# (ptr)\n\t"
             "cset        $res, EQ" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -499,11 +414,6 @@ instruct g1CompareAndSwapN(iRegINoSp res, indirect mem, iRegN newval, iRegPNoSp 
   format %{ "cmpxchg $mem, $oldval, $newval\t# (narrow oop)\n\t"
             "cset    $res, EQ" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -538,11 +448,6 @@ instruct g1CompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN newval, iRegPNo
   format %{ "cmpxchg_acq $mem, $oldval, $newval\t# (narrow oop)\n\t"
             "cset        $res, EQ" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -575,11 +480,6 @@ instruct g1XChgP(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "atomic_xchg  $preval, $newval, [$mem]" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($mem$$Register, $newval$$Register);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
@@ -605,11 +505,6 @@ instruct g1XChgPAcq(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "atomic_xchg_acq  $preval, $newval, [$mem]" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($mem$$Register, $newval$$Register);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
@@ -635,11 +530,6 @@ instruct g1XChgN(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "atomic_xchgw $preval, $newval, [$mem]" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($mem$$Register, $newval$$Register);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
@@ -666,11 +556,6 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
   ins_cost(2 * VOLATILE_REF_COST);
   format %{ "atomic_xchgw_acq $preval, $newval, [$mem]" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::atomic_counter_offset()));
-    }
-#endif
     assert_different_registers($mem$$Register, $newval$$Register);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
@@ -698,11 +583,6 @@ instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFla
   ins_cost(4 * INSN_COST);
   format %{ "ldr  $dst, $mem\t# ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::load_counter_offset()));
-    }
-#endif
     __ ldr($dst$$Register, mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp));
     g1_pre_write_barrier(masm, this,
                          noreg /* obj */,
@@ -722,11 +602,6 @@ instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_cost(VOLATILE_REF_COST);
   format %{ "ldar  $dst, $mem\t# ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::load_counter_offset()));
-    }
-#endif
     __ ldar($dst$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
                          noreg /* obj */,
@@ -746,11 +621,6 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
   ins_cost(4 * INSN_COST);
   format %{ "ldrw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::load_counter_offset()));
-    }
-#endif
     __ ldrw($dst$$Register, mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp));
     if ((barrier_data() & G1C2BarrierPre) != 0) {
       __ decode_heap_oop($tmp1$$Register, $dst$$Register);
@@ -773,11 +643,6 @@ instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_cost(VOLATILE_REF_COST);
   format %{ "ldarw  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
-#if G1_LATE_BARRIER_MIGRATION_SUPPORT
-    if (G1ProfileBarriers) {
-      __ increment(Address(rthread, JavaThread::load_counter_offset()));
-    }
-#endif
     __ ldarw($dst$$Register, $mem$$Register);
     if ((barrier_data() & G1C2BarrierPre) != 0) {
       __ decode_heap_oop($tmp1$$Register, $dst$$Register);
