@@ -73,7 +73,6 @@ static void g1_post_write_barrier(MacroAssembler* masm,
 
 %}
 
-// Store Pointer
 instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && !needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
@@ -98,7 +97,6 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
   ins_pipe(pipe_serial);
 %}
 
-// Store Pointer Volatile
 instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
@@ -574,7 +572,6 @@ instruct g1XChgNAcq(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, 
   ins_pipe(pipe_serial);
 %}
 
-// Load Pointer
 instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC && !needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0);
@@ -593,7 +590,6 @@ instruct g1LoadP(iRegPNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFla
   ins_pipe(iload_reg_mem); // XXX
 %}
 
-// Load Pointer Volatile
 instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC && needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0);
@@ -612,7 +608,6 @@ instruct g1LoadPVolatile(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp 
   ins_pipe(iload_reg_mem); // XXX
 %}
 
-// Load Compressed Pointer
 instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && !needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0);
@@ -634,7 +629,6 @@ instruct g1LoadN(iRegNNoSp dst, memory mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iReg
   ins_pipe(iload_reg_mem); // XXX
 %}
 
-// Load Compressed Pointer Volatile
 instruct g1LoadNVolatile(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0);

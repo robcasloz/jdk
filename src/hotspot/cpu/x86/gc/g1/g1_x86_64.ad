@@ -72,7 +72,6 @@ static void g1_post_write_barrier(MacroAssembler* masm,
 
 %}
 
-// Store Pointer
 instruct g1StoreP(indirect mem, any_RegP src, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_Store()->barrier_data() != 0);
@@ -390,7 +389,6 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
   ins_pipe(pipe_cmpxchg);
 %}
 
-// Load Pointer
 instruct g1LoadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_Load()->barrier_data() != 0);
@@ -413,7 +411,6 @@ instruct g1LoadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
   ins_pipe(ialu_reg_mem); // XXX
 %}
 
-// Load Compressed Pointer
 instruct g1LoadN(rRegN dst, memory mem, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC && n->as_Load()->barrier_data() != 0);
