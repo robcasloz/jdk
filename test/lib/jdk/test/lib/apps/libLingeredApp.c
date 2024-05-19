@@ -38,5 +38,5 @@ void* get_segfault_address() {
 JNIEXPORT jint JNICALL
 Java_jdk_test_lib_apps_LingeredApp_crash(JNIEnv *env, jclass clss)
 {
-    return *(jint *)get_segfault_address();
+  return *(jint *)0;
 }

@@ -1055,3 +1055,13 @@ bool G1BarrierSetC2::escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseG
   }
   return false;
 }
+
+void G1BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac) const {
+  if (ac->is_clone_inst() && !use_ReduceInitialCardMarks()) {
+    clone_instance_in_runtime(phase, ac,
+                              G1BarrierSetRuntime::clone_addr(),
+                              "G1BarrierSetRuntime::clone");
+    return;
+  }
+  BarrierSetC2::clone_at_expansion(phase, ac);
+}

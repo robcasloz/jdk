@@ -102,6 +102,8 @@ public:
 #endif
 
   virtual bool escape_add_to_con_graph(ConnectionGraph* conn_graph, PhaseGVN* gvn, Unique_Node_List* delayed_worklist, Node* n, uint opcode) const;
+  virtual void clone_at_expansion(PhaseMacroExpand* phase,
+                                  ArrayCopyNode* ac) const;
 };
 
 #endif // SHARE_GC_G1_C2_G1BARRIERSETC2_HPP
