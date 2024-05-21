@@ -268,8 +268,6 @@ void refine_barrier_by_new_val_type(Node* n) {
     // compressed OOPs logic).
     barrier_data |= G1C2BarrierPostNotNull;
   }
-  // TODO: should we also exploit TypePtr::Constant? See e.g. "instruct
-  // decodeHeapOop" in x86_64.ad.
   store->set_barrier_data(barrier_data);
   return;
 }
