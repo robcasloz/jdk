@@ -359,8 +359,8 @@ final class MethodHandleAccessorFactory {
         if (!VM.isJavaLangInvokeInited())
             return true;
 
-        if (Modifier.isNative(member.getModifiers()))
-            return true;
+        //        if (Modifier.isNative(member.getModifiers()))
+        //    return true;
 
         if (ReflectionFactory.useNativeAccessorOnly())  // for testing only
             return true;
