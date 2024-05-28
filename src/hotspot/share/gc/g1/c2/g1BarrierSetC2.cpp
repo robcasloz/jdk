@@ -576,6 +576,20 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
     st->print("notnull ");
   }
 }
+
+void G1BarrierSetC2::dump_node_info(const MachNode* mach) {
+    if (!UseNewCode) {
+      return;
+    }
+    ciMethod* m = Compile::current()->method();
+    if (m == nullptr) {
+      tty->print("(no method)");
+    } else {
+      m->print_short_name();
+    }
+    tty->print_cr(": %s", mach->Name());
+}
+
 #endif // !PRODUCT
 
 #if G1_LATE_BARRIER_MIGRATION_SUPPORT
