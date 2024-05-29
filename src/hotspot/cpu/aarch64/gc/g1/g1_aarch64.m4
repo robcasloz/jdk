@@ -355,7 +355,7 @@ define(`LOADP_INSN',
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct g1LoadP$1(iRegPNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
 %{
-  predicate(UseG1GC && ifelse($1,Volatile,'needs_acquiring_load(n)`,'!needs_acquiring_load(n)`) && n->as_Load()->barrier_data() != 0);
+  predicate(UseG1GC && ifelse($1,Volatile,'needs_acquiring_load(n)`,'!needs_acquiring_load(n)`) && n->as_Load()->barrier_data() != 0 ifelse($1,Volatile,'`,'&& !UseIndirectMemInLoads`));
   match(Set dst (LoadP mem));
   effect(TEMP dst, TEMP tmp1, TEMP tmp2, KILL cr);
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,4 * INSN_COST));
@@ -374,13 +374,37 @@ instruct g1LoadP$1(iRegPNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, i
 LOADP_INSN(,ldr)
 LOADP_INSN(Volatile,ldar)
 dnl
+define(`LOADP_INDIRECT_INSN',
+`
+// This pattern is generated automatically from g1_aarch64.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct g1LoadPIndirect$1(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
+%{
+  predicate(UseG1GC && !needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0 && UseIndirectMemInLoads);
+  match(Set dst (LoadP mem));
+  effect(TEMP dst, TEMP tmp1, TEMP tmp2, KILL cr);
+  ins_cost(4 * INSN_COST);
+  format %{ "$2  $dst, $mem\t# ptr" %}
+  ins_encode %{
+    G1BarrierSetC2::dump_node_info(this, false, true);
+    __ $2($dst$$Register, $mem$$Register);
+    g1_pre_write_barrier(masm, this,
+                         noreg /* obj */,
+                         $dst$$Register /* pre_val */,
+                         $tmp1$$Register /* tmp1 */,
+                         $tmp2$$Register /* tmp2 */);
+  %}
+  ins_pipe(iload_reg_mem);
+%}')dnl
+LOADP_INDIRECT_INSN(,ldr)
+dnl
 define(`LOADN_INSN',
 `
 // This pattern is generated automatically from g1_aarch64.m4.
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
 instruct g1LoadN$1(iRegNNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && ifelse($1,Volatile,'needs_acquiring_load(n)`,'!needs_acquiring_load(n)`) && n->as_Load()->barrier_data() != 0);
+  predicate(UseG1GC && ifelse($1,Volatile,'needs_acquiring_load(n)`,'!needs_acquiring_load(n)`) && n->as_Load()->barrier_data() != 0 ifelse($1,Volatile,'`,'&& !UseIndirectMemInLoads`));
   match(Set dst (LoadN mem));
   effect(TEMP dst, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,4 * INSN_COST));
@@ -401,5 +425,32 @@ instruct g1LoadN$1(iRegNNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, i
 %}')dnl
 LOADN_INSN(,ldrw)
 LOADN_INSN(Volatile,ldarw)
+dnl
+define(`LOADN_INDIRECT_INSN',
+`
+// This pattern is generated automatically from g1_aarch64.m4.
+// DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
+instruct g1LoadNIndirect$1(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
+%{
+  predicate(UseG1GC && !needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0 && UseIndirectMemInLoads);
+  match(Set dst (LoadN mem));
+  effect(TEMP dst, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+  ins_cost(4 * INSN_COST);
+  format %{ "$2  $dst, $mem\t# compressed ptr" %}
+  ins_encode %{
+    G1BarrierSetC2::dump_node_info(this, false, true);
+    __ $2($dst$$Register, $mem$$Register);
+    if ((barrier_data() & G1C2BarrierPre) != 0) {
+      __ decode_heap_oop($tmp1$$Register, $dst$$Register);
+      g1_pre_write_barrier(masm, this,
+                           noreg /* obj */,
+                           $tmp1$$Register /* pre_val */,
+                           $tmp2$$Register /* tmp1 */,
+                           $tmp3$$Register /* tmp2 */);
+    }
+  %}
+  ins_pipe(iload_reg_mem);
+%}')dnl
+LOADN_INDIRECT_INSN(,ldrw)
 
 // END This section of the file is automatically generated. Do not edit --------------
