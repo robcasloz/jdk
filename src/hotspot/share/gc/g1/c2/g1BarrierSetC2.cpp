@@ -577,8 +577,11 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
   }
 }
 
-void G1BarrierSetC2::dump_node_info(const MachNode* mach) {
+void G1BarrierSetC2::dump_node_info(const MachNode* mach, bool is_atomic) {
     if (!UseNewCode) {
+      return;
+    }
+    if (!is_atomic && !UseNewCode2) {
       return;
     }
     ciMethod* m = Compile::current()->method();

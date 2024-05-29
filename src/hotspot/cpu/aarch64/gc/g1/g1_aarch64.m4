@@ -35,7 +35,7 @@ instruct g1StoreP$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,INSN_COST));
   format %{ "$2  $src, $mem\t# ptr" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, false);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -66,7 +66,7 @@ instruct g1StoreN$1(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,INSN_COST));
   format %{ "$2  $src, $mem\t# compressed ptr" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, false);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -102,7 +102,7 @@ instruct g1EncodePAndStoreN(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp t
   format %{ "encode_heap_oop $tmp1, $src\n\t"
             "strw  $tmp1, $mem\t# compressed ptr" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, false);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
                          $tmp1$$Register /* pre_val */,
@@ -140,7 +140,7 @@ instruct g1CompareAndExchangeP$1(iRegPNoSp res, indirect mem, iRegP oldval, iReg
   ins_cost(ifelse($1,Acq,VOLATILE_REF_COST,2 * VOLATILE_REF_COST));
   format %{ "cmpxchg$2 $res = $mem, $oldval, $newval\t# ptr" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, true);
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -177,7 +177,7 @@ instruct g1CompareAndExchangeN$1(iRegNNoSp res, indirect mem, iRegN oldval, iReg
   ins_cost(ifelse($1,Acq,VOLATILE_REF_COST,2 * VOLATILE_REF_COST));
   format %{ "cmpxchg$2 $res = $mem, $oldval, $newval\t# narrow oop" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, true);
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -217,7 +217,7 @@ instruct g1CompareAndSwapP$1(iRegINoSp res, indirect mem, iRegP newval, iRegPNoS
   format %{ "cmpxchg$2 $mem, $oldval, $newval\t# (ptr)\n\t"
             "cset $res, EQ" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, true);
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -257,7 +257,7 @@ instruct g1CompareAndSwapN$1(iRegINoSp res, indirect mem, iRegN newval, iRegPNoS
   format %{ "cmpxchg$2 $mem, $oldval, $newval\t# (narrow oop)\n\t"
             "cset $res, EQ" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, true);
     assert_different_registers($oldval$$Register, $mem$$Register);
     assert_different_registers($newval$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
@@ -296,7 +296,7 @@ instruct g1XChgP$1(indirect mem, iRegP newval, iRegPNoSp tmp1, iRegPNoSp tmp2, i
   ins_cost(ifelse($1,Acq,VOLATILE_REF_COST,2 * VOLATILE_REF_COST));
   format %{ "atomic_xchg$2  $preval, $newval, [$mem]" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, true);
     assert_different_registers($mem$$Register, $newval$$Register);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
@@ -328,7 +328,7 @@ instruct g1XChgN$1(indirect mem, iRegN newval, iRegPNoSp tmp1, iRegPNoSp tmp2, i
   ins_cost(ifelse($1,Acq,VOLATILE_REF_COST,2 * VOLATILE_REF_COST));
   format %{ "$2 $preval, $newval, [$mem]" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, true);
     assert_different_registers($mem$$Register, $newval$$Register);
     g1_pre_write_barrier(masm, this,
                          $mem$$Register /* obj */,
@@ -361,7 +361,7 @@ instruct g1LoadP$1(iRegPNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, i
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,4 * INSN_COST));
   format %{ "$2  $dst, $mem\t# ptr" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, false);
     __ $2($dst$$Register, ifelse($1,Volatile,$mem$$Register,mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp)));
     g1_pre_write_barrier(masm, this,
                          noreg /* obj */,
@@ -386,7 +386,7 @@ instruct g1LoadN$1(iRegNNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, i
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,4 * INSN_COST));
   format %{ "$2  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
-    G1BarrierSetC2::dump_node_info(this);
+    G1BarrierSetC2::dump_node_info(this, false);
     __ $2($dst$$Register, ifelse($1,Volatile,$mem$$Register,mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp)));
     if ((barrier_data() & G1C2BarrierPre) != 0) {
       __ decode_heap_oop($tmp1$$Register, $dst$$Register);
