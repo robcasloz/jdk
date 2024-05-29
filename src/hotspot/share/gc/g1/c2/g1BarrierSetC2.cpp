@@ -577,14 +577,22 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
   }
 }
 
-void G1BarrierSetC2::dump_node_info(const MachNode* mach, bool is_atomic) {
-    if (UseNewCode3) {
+void G1BarrierSetC2::dump_node_info(const MachNode* mach, bool is_atomic, bool is_reference) {
+    if (FailOnG1Atomics) {
       assert(!is_atomic, "C2-compiled G1 barrier for atomic access");
     }
-    if (!UseNewCode) {
+    if (FailOnG1References) {
+      assert(!is_reference, "C2-compiled G1 barrier for reference access");
+    }
+    if (!is_atomic && !is_reference && !TraceG1Stores) {
       return;
     }
-    if (!is_atomic && !UseNewCode2) {
+    if (is_atomic && !TraceG1Atomics) {
+      assert(!is_reference, "");
+      return;
+    }
+    if (is_reference && !TraceG1References) {
+      assert(!is_atomic, "");
       return;
     }
     ciMethod* m = Compile::current()->method();

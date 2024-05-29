@@ -98,7 +98,17 @@
           "Expand G1 barriers late during C2 compilation")                  \
                                                                             \
   product(bool, G1StressBarriers, false,                                    \
-          "Configure G1 to exercise cold barrier paths")
+          "Configure G1 to exercise cold barrier paths")                    \
+                                                                            \
+  product(bool, FailOnG1Atomics, false, "")                                 \
+                                                                            \
+  product(bool, FailOnG1References, false, "")                              \
+                                                                            \
+  product(bool, TraceG1Stores, false, "")                                   \
+                                                                            \
+  product(bool, TraceG1Atomics, false, "")                                  \
+                                                                            \
+  product(bool, TraceG1References, false, "")
 #else
 #define G1_LATE_BARRIER_MIGRATION_SUPPORT_FLAGS(product)
 #endif

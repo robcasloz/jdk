@@ -122,7 +122,7 @@ public:
 
 #ifndef PRODUCT
   virtual void dump_barrier_data(const MachNode* mach, outputStream* st) const;
-  static void dump_node_info(const MachNode* mach, bool is_atomic);
+  static void dump_node_info(const MachNode* mach, bool is_atomic, bool is_reference);
 #endif
 };
 
