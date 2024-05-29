@@ -578,8 +578,8 @@ void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) c
 }
 
 void G1BarrierSetC2::dump_node_info(const MachNode* mach, bool is_atomic) {
-    if (UseNewCode3 && is_atomic && !Compile::current()->output()->in_scratch_emit_size()) {
-      Compile::current()->record_failure("Compiling GC barrier for atomic instruction");
+    if (UseNewCode3) {
+      assert(!is_atomic, "C2-compiled G1 barrier for atomic access");
     }
     if (!UseNewCode) {
       return;
