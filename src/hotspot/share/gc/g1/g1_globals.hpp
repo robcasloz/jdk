@@ -100,6 +100,8 @@
   product(bool, G1StressBarriers, false,                                    \
           "Configure G1 to exercise cold barrier paths")                    \
                                                                             \
+  product(bool, UseEncodeAndStore, true, "")                                \
+                                                                            \
   product(bool, UseIndirectMemInLoads, false, "")                           \
                                                                             \
   product(bool, FailOnG1Atomics, false, "")                                 \

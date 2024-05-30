@@ -1581,7 +1581,7 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
     // the same register.  See find_shared_node.
     return false;
   } else {                      // Not a constant
-    if (Matcher::is_encode_and_store_pattern(n, m)) {
+    if (UseEncodeAndStore && Matcher::is_encode_and_store_pattern(n, m)) {
       // Make it possible to match "encode and store" patterns, regardless of
       // whether the encode operation is pinned to a control node (e.g. by
       // CastPP node removal in final graph reshaping).
@@ -1810,6 +1810,8 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   NOT_PRODUCT(record_new2old(mach, leaf);)
   // Check for instruction or instruction chain rule
   if( rule >= _END_INST_CHAIN_RULE || rule < _BEGIN_INST_CHAIN_RULE ) {
+    assert(UseEncodeAndStore || (C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf)),
+           "duplicating node that's already been matched");
     // Instruction
     mach->add_req( leaf->in(0) ); // Set initial control
     // Reduce interior of complex instruction
