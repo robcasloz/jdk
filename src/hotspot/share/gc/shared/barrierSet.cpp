@@ -23,6 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "opto/node.hpp"
+#include "opto/compile.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "gc/shared/barrierSetNMethod.hpp"
@@ -33,6 +35,20 @@
 #include "utilities/macros.hpp"
 
 BarrierSet* BarrierSet::_barrier_set = nullptr;
+
+BarrierSetC2* BarrierSet::barrier_set_c2() {
+  Compile* current = Compile::current();
+  if (current == nullptr ||
+      current->directive() == nullptr ||
+      current->directive()->G1UseLateBarrierExpansionOption) {
+    assert(_barrier_set_c2 != nullptr, "should be set");
+    return _barrier_set_c2;
+  } else { // Legacy barrier set
+    assert(_barrier_set_c2_legacy != nullptr, "should be set");
+    return _barrier_set_c2_legacy;
+  }
+  return _barrier_set_c2;
+}
 
 void BarrierSet::set_barrier_set(BarrierSet* barrier_set) {
   assert(_barrier_set == nullptr, "Already initialized");
@@ -81,6 +97,23 @@ BarrierSet::BarrierSet(BarrierSetAssembler* barrier_set_assembler,
     _barrier_set_assembler(barrier_set_assembler),
     _barrier_set_c1(barrier_set_c1),
     _barrier_set_c2(barrier_set_c2),
+    _barrier_set_c2_legacy(barrier_set_c2),
+    _barrier_set_nmethod(select_barrier_set_nmethod(barrier_set_nmethod)),
+    _barrier_set_stack_chunk(select_barrier_set_stack_chunk(barrier_set_stack_chunk)) {
+}
+
+BarrierSet::BarrierSet(BarrierSetAssembler* barrier_set_assembler,
+                       BarrierSetC1* barrier_set_c1,
+                       BarrierSetC2* barrier_set_c2,
+                       BarrierSetC2* barrier_set_c2_legacy,
+                       BarrierSetNMethod* barrier_set_nmethod,
+                       BarrierSetStackChunk* barrier_set_stack_chunk,
+                       const FakeRtti& fake_rtti) :
+    _fake_rtti(fake_rtti),
+    _barrier_set_assembler(barrier_set_assembler),
+    _barrier_set_c1(barrier_set_c1),
+    _barrier_set_c2(barrier_set_c2),
+    _barrier_set_c2_legacy(barrier_set_c2_legacy),
     _barrier_set_nmethod(select_barrier_set_nmethod(barrier_set_nmethod)),
     _barrier_set_stack_chunk(select_barrier_set_stack_chunk(barrier_set_stack_chunk)) {
 }

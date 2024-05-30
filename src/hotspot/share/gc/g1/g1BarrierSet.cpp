@@ -57,10 +57,10 @@ G1BarrierSet::G1BarrierSet(G1CardTable* card_table) :
   CardTableBarrierSet(make_barrier_set_assembler<G1BarrierSetAssembler>(),
                       make_barrier_set_c1<G1BarrierSetC1>(),
 #if G1_LATE_BARRIER_MIGRATION_SUPPORT
-                      G1UseLateBarrierExpansion ?
-                      make_barrier_set_c2<G1BarrierSetC2>() :
+                      make_barrier_set_c2<G1BarrierSetC2>(),
                       make_barrier_set_c2<G1BarrierSetC2Early>(),
 #else
+                      make_barrier_set_c2<G1BarrierSetC2>(),
                       make_barrier_set_c2<G1BarrierSetC2>(),
 #endif
                       card_table,
