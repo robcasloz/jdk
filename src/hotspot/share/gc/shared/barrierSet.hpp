@@ -74,6 +74,7 @@ private:
   BarrierSetAssembler* _barrier_set_assembler;
   BarrierSetC1* _barrier_set_c1;
   BarrierSetC2* _barrier_set_c2;
+  BarrierSetC2* _barrier_set_c2_legacy;
   BarrierSetNMethod* _barrier_set_nmethod;
   BarrierSetStackChunk* _barrier_set_stack_chunk;
 
@@ -99,6 +100,13 @@ protected:
   BarrierSet(BarrierSetAssembler* barrier_set_assembler,
              BarrierSetC1* barrier_set_c1,
              BarrierSetC2* barrier_set_c2,
+             BarrierSetNMethod* barrier_set_nmethod,
+             BarrierSetStackChunk* barrier_set_stack_chunk,
+             const FakeRtti& fake_rtti);
+  BarrierSet(BarrierSetAssembler* barrier_set_assembler,
+             BarrierSetC1* barrier_set_c1,
+             BarrierSetC2* barrier_set_c2,
+             BarrierSetC2* barrier_set_c2_legacy,
              BarrierSetNMethod* barrier_set_nmethod,
              BarrierSetStackChunk* barrier_set_stack_chunk,
              const FakeRtti& fake_rtti);
@@ -158,10 +166,7 @@ public:
     return _barrier_set_c1;
   }
 
-  BarrierSetC2* barrier_set_c2() {
-    assert(_barrier_set_c2 != nullptr, "should be set");
-    return _barrier_set_c2;
-  }
+  BarrierSetC2* barrier_set_c2();
 
   BarrierSetNMethod* barrier_set_nmethod() {
     return _barrier_set_nmethod;
