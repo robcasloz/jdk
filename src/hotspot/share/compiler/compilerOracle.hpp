@@ -92,6 +92,7 @@ NOT_PRODUCT(option(TraceAutoVectorization, "TraceAutoVectorization", Ccstrlist))
   option(IncrementalInlineForceCleanup, "IncrementalInlineForceCleanup", Bool) \
   option(MaxNodeLimit, "MaxNodeLimit", Intx)  \
   option(G1UseLateBarrierExpansion, "G1UseLateBarrierExpansion", Bool) \
+  option(G1SaveFPRegister, "G1SaveFPRegister", Bool) \
 NOT_PRODUCT(option(TestOptionInt,    "TestOptionInt",    Intx)) \
 NOT_PRODUCT(option(TestOptionUint,   "TestOptionUint",   Uintx)) \
 NOT_PRODUCT(option(TestOptionBool,   "TestOptionBool",   Bool)) \

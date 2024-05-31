@@ -533,7 +533,11 @@ void SaveLiveRegisters::initialize(BarrierStubC2* stub) {
   }
 
   // Remove C-ABI SOE registers and scratch regs
-  _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
+  if (Compile::current()->directive()->G1SaveFPRegisterOption) {
+    _gp_regs -= RegSet::range(r19, r28) + RegSet::of(r8, r9);
+  } else {
+    _gp_regs -= RegSet::range(r19, r30) + RegSet::of(r8, r9);
+  }
 
   // Remove C-ABI SOE fp registers
   _fp_regs -= FloatRegSet::range(v8, v15);

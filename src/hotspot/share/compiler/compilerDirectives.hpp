@@ -88,7 +88,8 @@ NOT_PRODUCT(cflags(PrintIdeal,          bool, PrintIdeal, PrintIdeal)) \
 NOT_PRODUCT(cflags(IGVPrintLevel,       intx, PrintIdealGraphLevel, IGVPrintLevel)) \
     cflags(IncrementalInlineForceCleanup, bool, IncrementalInlineForceCleanup, IncrementalInlineForceCleanup) \
     cflags(MaxNodeLimit,            intx, MaxNodeLimit, MaxNodeLimit) \
-    cflags(G1UseLateBarrierExpansion,   bool, G1UseLateBarrierExpansion, G1UseLateBarrierExpansion)
+    cflags(G1UseLateBarrierExpansion,   bool, G1UseLateBarrierExpansion, G1UseLateBarrierExpansion) \
+    cflags(G1SaveFPRegister,   bool, false, G1SaveFPRegister)
 #define compilerdirectives_c2_string_flags(cflags) \
 NOT_PRODUCT(cflags(TraceAutoVectorization, ccstrlist, "", TraceAutoVectorization)) \
 NOT_PRODUCT(cflags(PrintIdealPhase,     ccstrlist, "", PrintIdealPhase))
