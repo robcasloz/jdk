@@ -6595,7 +6595,22 @@ instruct loadP(iRegPNoSp dst, memory8 mem)
 instruct loadN(iRegNNoSp dst, memory4 mem)
 %{
   match(Set dst (LoadN mem));
-  predicate(!needs_acquiring_load(n) && n->as_Load()->barrier_data() == 0);
+  predicate(!needs_acquiring_load(n) && n->as_Load()->barrier_data() == 0 && !Compile::current()->directive()->G1UseLoadWithTempsOption);
+
+  ins_cost(4 * INSN_COST);
+  format %{ "ldrw  $dst, $mem\t# compressed ptr" %}
+
+  ins_encode(aarch64_enc_ldrw(dst, mem));
+
+  ins_pipe(iload_reg_mem);
+%}
+
+// Load Compressed Pointer
+instruct loadNWithTemps(iRegNNoSp dst, memory4 mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
+%{
+  match(Set dst (LoadN mem));
+  predicate(!needs_acquiring_load(n) && n->as_Load()->barrier_data() == 0 && Compile::current()->directive()->G1UseLoadWithTempsOption);
+  effect(TEMP dst, TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
 
   ins_cost(4 * INSN_COST);
   format %{ "ldrw  $dst, $mem\t# compressed ptr" %}
