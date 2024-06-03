@@ -112,7 +112,9 @@
                                                                             \
   product(bool, TraceG1Atomics, false, "")                                  \
                                                                             \
-  product(bool, TraceG1References, false, "")
+  product(bool, TraceG1References, false, "")                               \
+                                                                            \
+  product(bool, ExcludeMachTemps, true, "")
 #else
 #define G1_LATE_BARRIER_MIGRATION_SUPPORT_FLAGS(product)
 #endif

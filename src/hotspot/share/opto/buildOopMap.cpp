@@ -235,22 +235,14 @@ OopMap *OopFlow::build_oop_map( Node *n, int max_reg, PhaseRegAlloc *regalloc, i
     Node *def = _defs[reg];     // Get reaching def
     assert( def, "since live better have reaching def" );
 
-    if (def->is_MachTemp()) {
-      if (UseNewCode &&
-          (def->bottom_type()->isa_oop_ptr() ||
-           def->bottom_type()->isa_narrowoop())) {
-        tty->print("oop/narrowoop ptr: ");
-        def->dump();
-        tty->print("at ");
-        n->dump();
-        tty->print_cr("excluding from oopmap!");
-      }
+    if (ExcludeMachTemps && def->is_MachTemp()) {
       continue;
     }
 
     // Classify the reaching def as oop, derived, callee-save, dead, or other
     const Type *t = def->bottom_type();
     if( t->isa_oop_ptr() ) {    // Oop or derived?
+      assert(!def->is_MachTemp(), "not a real OOP");
       assert( !OptoReg::is_valid(_callees[reg]), "oop can't be callee save" );
 #ifdef _LP64
       // 64-bit pointers record oop-ishness on 2 aligned adjacent registers.
@@ -332,6 +324,7 @@ OopMap *OopFlow::build_oop_map( Node *n, int max_reg, PhaseRegAlloc *regalloc, i
       }
 
     } else if( t->isa_narrowoop() ) {
+      assert(!def->is_MachTemp(), "not a real OOP");
       assert( !OptoReg::is_valid(_callees[reg]), "oop can't be callee save" );
       // Check for a legal reg name in the oopMap and bailout if it is not.
       if (!omap->legal_vm_reg_name(r)) {
