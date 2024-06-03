@@ -235,6 +235,19 @@ OopMap *OopFlow::build_oop_map( Node *n, int max_reg, PhaseRegAlloc *regalloc, i
     Node *def = _defs[reg];     // Get reaching def
     assert( def, "since live better have reaching def" );
 
+    if (def->is_MachTemp()) {
+      if (UseNewCode &&
+          (def->bottom_type()->isa_oop_ptr() ||
+           def->bottom_type()->isa_narrowoop())) {
+        tty->print("oop/narrowoop ptr: ");
+        def->dump();
+        tty->print("at ");
+        n->dump();
+        tty->print_cr("excluding from oopmap!");
+      }
+      continue;
+    }
+
     // Classify the reaching def as oop, derived, callee-save, dead, or other
     const Type *t = def->bottom_type();
     if( t->isa_oop_ptr() ) {    // Oop or derived?
