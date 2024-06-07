@@ -401,6 +401,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 
 void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
                                                          G1PreBarrierStubC2* stub) const {
+  Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;
   Register obj = stub->obj();
   Register pre_val = stub->pre_val();
@@ -456,6 +457,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
 
 void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
                                                           G1PostBarrierStubC2* stub) const {
+  Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;
   Register thread = stub->thread();
   Register tmp = stub->tmp1(); // tmp holds the card address.
