@@ -344,7 +344,7 @@ define(`LOADP_INSN',
 `
 // This pattern is generated automatically from g1_aarch64.m4.
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
-instruct g1LoadP$1(iRegPNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
+instruct g1LoadP$1(iRegPNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp tmp2, rFlagsReg cr)
 %{
   predicate(UseG1GC && ifelse($1,Volatile,'needs_acquiring_load(n)`,'!needs_acquiring_load(n)`) && n->as_Load()->barrier_data() != 0);
   match(Set dst (LoadP mem));
@@ -352,7 +352,7 @@ instruct g1LoadP$1(iRegPNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, i
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,4 * INSN_COST));
   format %{ "$2  $dst, $mem\t# ptr" %}
   ins_encode %{
-    __ $2($dst$$Register, ifelse($1,Volatile,$mem$$Register,mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp)));
+    __ $2($dst$$Register, $mem$$Register);
     g1_pre_write_barrier(masm, this,
                          noreg /* obj */,
                          $dst$$Register /* pre_val */,
@@ -368,7 +368,7 @@ define(`LOADN_INSN',
 `
 // This pattern is generated automatically from g1_aarch64.m4.
 // DO NOT EDIT ANYTHING IN THIS SECTION OF THE FILE
-instruct g1LoadN$1(iRegNNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
+instruct g1LoadN$1(iRegNNoSp dst, indirect mem, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegPNoSp tmp3, rFlagsReg cr)
 %{
   predicate(UseG1GC && ifelse($1,Volatile,'needs_acquiring_load(n)`,'!needs_acquiring_load(n)`) && n->as_Load()->barrier_data() != 0);
   match(Set dst (LoadN mem));
@@ -376,7 +376,7 @@ instruct g1LoadN$1(iRegNNoSp dst, ifelse($1,Volatile,'indirect`,'memory`) mem, i
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,4 * INSN_COST));
   format %{ "$2  $dst, $mem\t# compressed ptr" %}
   ins_encode %{
-    __ $2($dst$$Register, ifelse($1,Volatile,$mem$$Register,mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp)));
+    __ $2($dst$$Register, $mem$$Register);
     if ((barrier_data() & G1C2BarrierPre) != 0) {
       __ decode_heap_oop($tmp1$$Register, $dst$$Register);
       g1_pre_write_barrier(masm, this,
