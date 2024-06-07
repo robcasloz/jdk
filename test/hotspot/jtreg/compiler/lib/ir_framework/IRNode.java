@@ -598,6 +598,11 @@ public class IRNode {
         machOnly(G1_GET_AND_SET_P_WITH_BARRIER_FLAG, regex);
     }
 
+    public static final String G1_LOAD_N = PREFIX + "G1_LOAD_N" + POSTFIX;
+    static {
+        machOnlyNameRegex(G1_LOAD_N, "g1LoadN");
+    }
+
     public static final String G1_LOAD_N_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "G1_LOAD_N_WITH_BARRIER_FLAG" + POSTFIX;
     static {
         String regex = START + "g1LoadN\\S*" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
@@ -903,6 +908,11 @@ public class IRNode {
         vectorNode(LSHIFT_VL, "LShiftVL", TYPE_LONG);
     }
 
+    public static final String MACH_TEMP = PREFIX + "MACH_TEMP" + POSTFIX;
+    static {
+        machOnlyNameRegex(MACH_TEMP, "MachTemp");
+    }
+
     public static final String MACRO_LOGIC_V = PREFIX + "MACRO_LOGIC_V" + POSTFIX;
     static {
         afterBarrierExpansionToBeforeMatching(MACRO_LOGIC_V, "MacroLogicV");
@@ -1187,6 +1197,12 @@ public class IRNode {
     public static final String NULL_CHECK_TRAP = PREFIX + "NULL_CHECK_TRAP" + POSTFIX;
     static {
         trapNodes(NULL_CHECK_TRAP, "null_check");
+    }
+
+    public static final String OOPMAP_WITH = COMPOSITE_PREFIX + "OOPMAP_WITH" + POSTFIX;
+    static {
+        String regex = "(#\\s*OopMap\\s*\\{.*" + IS_REPLACED + ".*\\})";
+        optoOnly(OOPMAP_WITH, regex);
     }
 
     public static final String OR_VB = VECTOR_PREFIX + "OR_VB" + POSTFIX;
