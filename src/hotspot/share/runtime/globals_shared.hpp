@@ -36,7 +36,7 @@
 #ifdef G1_LATE_BARRIER_MIGRATION_SUPPORT
 #error "G1_LATE_BARRIER_MIGRATION_SUPPORT already defined"
 #endif
-#define G1_LATE_BARRIER_MIGRATION_SUPPORT 0
+#define G1_LATE_BARRIER_MIGRATION_SUPPORT 1
 
 // The larger HeapWordSize for 64bit requires larger heaps
 // for the same application running in 64bit.  See bug 4967770.
