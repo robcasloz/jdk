@@ -117,7 +117,6 @@ public:
                                   ArrayCopyNode* ac) const;
   virtual void* create_barrier_state(Arena* comp_arena) const;
   virtual void emit_stubs(CodeBuffer& cb) const;
-  virtual int estimate_stub_size() const;
   virtual void late_barrier_analysis() const;
 
 #ifndef PRODUCT

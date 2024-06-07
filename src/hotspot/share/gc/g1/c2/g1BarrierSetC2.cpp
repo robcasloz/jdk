@@ -557,11 +557,6 @@ void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
   masm.flush();
 }
 
-int G1BarrierSetC2::estimate_stub_size() const {
-  // TODO: Do something clever
-  return 0;
-}
-
 #ifndef PRODUCT
 void G1BarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) const {
   if ((mach->barrier_data() & G1C2BarrierPre) != 0) {
