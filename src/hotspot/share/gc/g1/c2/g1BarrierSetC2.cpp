@@ -542,7 +542,6 @@ void G1BarrierSetC2::late_barrier_analysis() const {
 void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
   MacroAssembler masm(&cb);
   GrowableArray<G1BarrierStubC2*>* const stubs = barrier_set_state()->stubs();
-  G1BarrierSetAssembler* bs = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
 
   for (int i = 0; i < stubs->length(); i++) {
     // Make sure there is enough space in the code buffer
