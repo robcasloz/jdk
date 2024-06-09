@@ -1,0 +1,118 @@
+
+source_hpp %{
+
+#include "gc/g1/c2/g1BarrierSetC2.hpp"
+#include "gc/shared/gc_globals.hpp"
+
+%}
+
+source %{
+
+#include "gc/g1/g1BarrierSetAssembler_x86.hpp"
+#include "gc/g1/g1BarrierSetRuntime.hpp"
+
+__attribute__((unused))
+static void g1_pre_write_barrier(MacroAssembler* masm,
+                                 const MachNode* node,
+                                 Register obj,
+                                 Register pre_val,
+                                 Register thread,
+                                 Register tmp,
+                                 RegSet preserve = RegSet(),
+                                 RegSet no_preserve = RegSet()) {
+  if (!G1PreBarrierStubC2::needs_barrier(node)) {
+    return;
+  }
+  Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
+  G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
+  G1PreBarrierStubC2* const stub = G1PreBarrierStubC2::create(node);
+  for (RegSetIterator<Register> reg = preserve.begin(); *reg != noreg; ++reg) {
+    stub->preserve(*reg);
+  }
+  for (RegSetIterator<Register> reg = no_preserve.begin(); *reg != noreg; ++reg) {
+    stub->dont_preserve(*reg);
+  }
+  g1_asm->g1_write_barrier_pre_c2(masm, obj, pre_val, thread, tmp, stub);
+}
+
+__attribute__((unused))
+static void g1_post_write_barrier(MacroAssembler* masm,
+                                  const MachNode* node,
+                                  Register store_addr,
+                                  Register new_val,
+                                  Register thread,
+                                  Register tmp1,
+                                  Register tmp2) {
+  if (!G1PostBarrierStubC2::needs_barrier(node)) {
+    return;
+  }
+  Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
+  G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
+  G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node);
+  g1_asm->g1_write_barrier_post_c2(masm, store_addr, new_val, thread, tmp1, tmp2, stub);
+}
+
+%}
+
+instruct g1StoreP(memory mem, anyRegP src) %{
+  predicate(UseG1GC && n->as_Store()->barrier_data() != 0);
+  match(Set mem (StoreP mem src));
+
+  ins_cost(125);
+  format %{ "MOV    $mem,$src" %}
+  opcode(0x89);
+  ins_encode %{
+    Unimplemented();
+  %}
+  ins_pipe( ialu_mem_reg );
+%}
+
+instruct g1CompareAndExchangeP( pRegP mem_ptr, eAXRegP oldval, eCXRegP newval, eFlagsReg cr) %{
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
+  match(Set oldval (CompareAndExchangeP mem_ptr (Binary oldval newval)));
+  effect(KILL cr);
+  format %{ "CMPXCHG [$mem_ptr],$newval\t# If EAX==[$mem_ptr] Then store $newval into [$mem_ptr]\n\t" %}
+  ins_encode %{
+    Unimplemented();
+  %}
+  ins_pipe( pipe_cmpxchg );
+%}
+
+instruct g1CompareAndSwapP( rRegI res,  pRegP mem_ptr, eAXRegP oldval, eCXRegP newval, eFlagsReg cr) %{
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
+  match(Set res (CompareAndSwapP mem_ptr (Binary oldval newval)));
+  match(Set res (WeakCompareAndSwapP mem_ptr (Binary oldval newval)));
+  effect(KILL cr, KILL oldval);
+  format %{ "CMPXCHG [$mem_ptr],$newval\t# If EAX==[$mem_ptr] Then store $newval into [$mem_ptr]\n\t"
+            "MOV    $res,0\n\t"
+            "JNE,s  fail\n\t"
+            "MOV    $res,1\n"
+          "fail:" %}
+  ins_encode %{
+    Unimplemented();
+  %}
+  ins_pipe( pipe_cmpxchg );
+%}
+
+instruct g1XchgP( memory mem, pRegP newval) %{
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
+  match(Set newval (GetAndSetP mem newval));
+  format %{ "XCHGL  $newval,[$mem]" %}
+  ins_encode %{
+    Unimplemented();
+  %}
+  ins_pipe( pipe_cmpxchg );
+%}
+
+instruct g1LoadP(eRegP dst, memory mem) %{
+  predicate(UseG1GC && n->as_Load()->barrier_data() != 0);
+  match(Set dst (LoadP mem));
+
+  ins_cost(125);
+  format %{ "MOV    $dst,$mem" %}
+  opcode(0x8B);
+  ins_encode %{
+    Unimplemented();
+  %}
+  ins_pipe( ialu_reg_mem );
+%}

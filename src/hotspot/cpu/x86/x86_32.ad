@@ -5721,6 +5721,7 @@ instruct loadRange(rRegI dst, memory mem) %{
 
 // Load Pointer
 instruct loadP(eRegP dst, memory mem) %{
+  predicate(n->as_Load()->barrier_data() == 0);
   match(Set dst (LoadP mem));
 
   ins_cost(125);
@@ -6267,6 +6268,7 @@ instruct storeLX_reg_volatile(memory mem, eRegL src, regD tmp2, regD tmp, eFlags
 
 // Store Pointer; for storing unknown oops and raw pointers
 instruct storeP(memory mem, anyRegP src) %{
+  predicate(n->as_Store()->barrier_data() == 0);
   match(Set mem (StoreP mem src));
 
   ins_cost(125);
@@ -6302,6 +6304,7 @@ instruct storeImmI16(memory mem, immI16 src) %{
 // Store Pointer Immediate; null pointers or constant oops that do not
 // need card-mark barriers.
 instruct storeImmP(memory mem, immP src) %{
+  predicate(n->as_Store()->barrier_data() == 0);
   match(Set mem (StoreP mem src));
 
   ins_cost(150);
@@ -7148,6 +7151,7 @@ instruct compareAndSwapL( rRegI res, eSIRegP mem_ptr, eADXRegL oldval, eBCXRegL 
 %}
 
 instruct compareAndSwapP( rRegI res,  pRegP mem_ptr, eAXRegP oldval, eCXRegP newval, eFlagsReg cr) %{
+  predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set res (CompareAndSwapP mem_ptr (Binary oldval newval)));
   match(Set res (WeakCompareAndSwapP mem_ptr (Binary oldval newval)));
   effect(KILL cr, KILL oldval);
@@ -7210,6 +7214,7 @@ instruct compareAndExchangeL( eSIRegP mem_ptr, eADXRegL oldval, eBCXRegL newval,
 %}
 
 instruct compareAndExchangeP( pRegP mem_ptr, eAXRegP oldval, eCXRegP newval, eFlagsReg cr) %{
+  predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set oldval (CompareAndExchangeP mem_ptr (Binary oldval newval)));
   effect(KILL cr);
   format %{ "CMPXCHG [$mem_ptr],$newval\t# If EAX==[$mem_ptr] Then store $newval into [$mem_ptr]\n\t" %}
@@ -7340,6 +7345,7 @@ instruct xchgI( memory mem, rRegI newval) %{
 %}
 
 instruct xchgP( memory mem, pRegP newval) %{
+  predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set newval (GetAndSetP mem newval));
   format %{ "XCHGL  $newval,[$mem]" %}
   ins_encode %{
