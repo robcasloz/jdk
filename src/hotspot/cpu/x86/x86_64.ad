@@ -4232,15 +4232,15 @@ instruct loadP(rRegP dst, memory mem)
 // Load Compressed Pointer
 instruct loadN(rRegN dst, memory mem)
 %{
-  match(Set dst (LoadN mem));
-  predicate(n->as_Load()->barrier_data() == 0);
+   predicate(n->as_Load()->barrier_data() == 0);
+   match(Set dst (LoadN mem));
 
-  ins_cost(125); // XXX
-  format %{ "movl    $dst, $mem\t# compressed ptr" %}
-  ins_encode %{
-    __ movl($dst$$Register, $mem$$Address);
-  %}
-  ins_pipe(ialu_reg_mem); // XXX
+   ins_cost(125); // XXX
+   format %{ "movl    $dst, $mem\t# compressed ptr" %}
+   ins_encode %{
+     __ movl($dst$$Register, $mem$$Address);
+   %}
+   ins_pipe(ialu_reg_mem); // XXX
 %}
 
 
