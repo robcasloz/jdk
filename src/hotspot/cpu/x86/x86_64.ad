@@ -11570,6 +11570,7 @@ instruct compN_rReg(rFlagsRegU cr, rRegN op1, rRegN op2)
 
 instruct compN_rReg_mem(rFlagsRegU cr, rRegN src, memory mem)
 %{
+  predicate(n->in(2)->as_Load()->barrier_data() == 0);
   match(Set cr (CmpN src (LoadN mem)));
 
   format %{ "cmpl    $src, $mem\t# compressed ptr" %}
@@ -11591,6 +11592,7 @@ instruct compN_rReg_imm(rFlagsRegU cr, rRegN op1, immN op2) %{
 
 instruct compN_mem_imm(rFlagsRegU cr, memory mem, immN src)
 %{
+  predicate(n->in(2)->as_Load()->barrier_data() == 0);
   match(Set cr (CmpN src (LoadN mem)));
 
   format %{ "cmpl    $mem, $src\t# compressed ptr" %}
@@ -11631,7 +11633,8 @@ instruct testN_reg(rFlagsReg cr, rRegN src, immN0 zero) %{
 
 instruct testN_mem(rFlagsReg cr, memory mem, immN0 zero)
 %{
-  predicate(CompressedOops::base() != nullptr);
+  predicate(CompressedOops::base() != nullptr &&
+            n->in(1)->as_Load()->barrier_data() == 0);
   match(Set cr (CmpN (LoadN mem) zero));
 
   ins_cost(500); // XXX
@@ -11644,9 +11647,9 @@ instruct testN_mem(rFlagsReg cr, memory mem, immN0 zero)
 
 instruct testN_mem_reg0(rFlagsReg cr, memory mem, immN0 zero)
 %{
-  predicate(CompressedOops::base() == nullptr);
+  predicate(CompressedOops::base() == nullptr &&
+            n->in(1)->as_Load()->barrier_data() == 0);
   match(Set cr (CmpN (LoadN mem) zero));
-
   format %{ "cmpl    R12, $mem\t# compressed ptr (R12_heapbase==0)" %}
   ins_encode %{
     __ cmpl(r12, $mem$$Address);
