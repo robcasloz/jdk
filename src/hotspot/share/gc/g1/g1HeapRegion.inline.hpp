@@ -356,7 +356,7 @@ inline HeapWord* G1HeapRegion::oops_on_memregion_iterate_in_unparsable(MemRegion
     if (cur == end) {
       return end;
     }
-    assert(bitmap->is_marked(cur), "inv");
+    assert(bitmap->is_marked(cur), "cur " PTR_FORMAT " start " PTR_FORMAT " end " PTR_FORMAT " block-start " PTR_FORMAT, p2i(cur), p2i(start), p2i(end), p2i(block_start));
 
     oop obj = cast_to_oop(cur);
     assert(oopDesc::is_oop(obj, true), "Not an oop at " PTR_FORMAT, p2i(cur));
