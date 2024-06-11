@@ -344,7 +344,12 @@ HeapWord* G1HeapRegion::do_oops_on_memregion_in_humongous(MemRegion mr,
 template <class Closure>
 inline HeapWord* G1HeapRegion::oops_on_memregion_iterate_in_unparsable(MemRegion mr, HeapWord* block_start, Closure* cl) {
   HeapWord* const start = mr.start();
-  HeapWord* const end = mr.end();
+  HeapWord* end;
+  if (UseNewCode) {
+    end = align_up(mr.end(), ObjectAlignmentInBytes);
+  } else {
+    end = mr.end();
+  }
 
   G1CMBitMap* bitmap = G1CollectedHeap::heap()->concurrent_mark()->mark_bitmap();
 
