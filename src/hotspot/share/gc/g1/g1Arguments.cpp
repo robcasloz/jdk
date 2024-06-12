@@ -267,7 +267,7 @@ void G1Arguments::initialize() {
     // Increase the frequency with which the post-barrier sees a clean card and
     // has to dirty it.
     if (FLAG_IS_DEFAULT(GCCardSizeInBytes)) {
-      FLAG_SET_ERGO(GCCardSizeInBytes, 128);
+      FLAG_SET_ERGO(GCCardSizeInBytes, MAX2(ObjectAlignmentInBytes, 128));
     }
     if (FLAG_IS_DEFAULT(G1RSetUpdatingPauseTimePercent)) {
       FLAG_SET_ERGO(G1RSetUpdatingPauseTimePercent, 0);
