@@ -36,8 +36,6 @@ class LIR_Assembler;
 class StubAssembler;
 class G1PreBarrierStub;
 class G1PostBarrierStub;
-class G1PreBarrierStubC2;
-class G1PostBarrierStubC2;
 
 class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
 protected:
@@ -72,13 +70,6 @@ public:
 
   void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm);
   void generate_c1_post_barrier_runtime_stub(StubAssembler* sasm);
-#endif
-
-#ifdef COMPILER2
-  void generate_c2_pre_barrier_stub(MacroAssembler* masm,
-                                    G1PreBarrierStubC2* stub) const;
-  void generate_c2_post_barrier_stub(MacroAssembler* masm,
-                                     G1PostBarrierStubC2* stub) const;
 #endif
 
   void load_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
