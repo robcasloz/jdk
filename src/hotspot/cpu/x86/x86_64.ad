@@ -11650,6 +11650,7 @@ instruct testN_mem_reg0(rFlagsReg cr, memory mem, immN0 zero)
   predicate(CompressedOops::base() == nullptr &&
             n->in(1)->as_Load()->barrier_data() == 0);
   match(Set cr (CmpN (LoadN mem) zero));
+
   format %{ "cmpl    R12, $mem\t# compressed ptr (R12_heapbase==0)" %}
   ins_encode %{
     __ cmpl(r12, $mem$$Address);
