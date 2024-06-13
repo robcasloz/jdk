@@ -78,34 +78,28 @@ bool G1BarrierSetC2::g1_can_remove_pre_barrier(GraphKit* kit,
   AllocateNode* alloc = AllocateNode::Ideal_allocation(base);
 
   if (offset == Type::OffsetBot) {
-    return false; // cannot unalias unless there are precise offsets
+    return false; // Cannot unalias unless there are precise offsets.
   }
-
   if (alloc == nullptr) {
-    return false; // No allocation found
+    return false; // No allocation found.
   }
 
   intptr_t size_in_bytes = type2aelembytes(bt);
-
-  Node* mem = kit->memory(adr_idx); // start searching here...
+  Node* mem = kit->memory(adr_idx); // Start searching here.
 
   for (int cnt = 0; cnt < 50; cnt++) {
-
     if (mem->is_Store()) {
-
       Node* st_adr = mem->in(MemNode::Address);
       intptr_t st_offset = 0;
       Node* st_base = AddPNode::Ideal_base_and_offset(st_adr, phase, st_offset);
 
       if (st_base == nullptr) {
-        break; // inscrutable pointer
+        break; // Inscrutable pointer.
       }
-
-      // Break we have found a store with same base and offset as ours so break
       if (st_base == base && st_offset == offset) {
+        // We have found a store with same base and offset as ours.
         break;
       }
-
       if (st_offset != offset && st_offset != Type::OffsetBot) {
         const int MAX_STORE = BytesPerLong;
         if (st_offset >= offset + size_in_bytes ||
@@ -117,20 +111,18 @@ bool G1BarrierSetC2::g1_can_remove_pre_barrier(GraphKit* kit,
           // in the same sequence of RawMem effects.  We sometimes initialize
           // a whole 'tile' of array elements with a single jint or jlong.)
           mem = mem->in(MemNode::Memory);
-          continue; // advance through independent store memory
+          continue; // Advance through independent store memory.
         }
       }
-
       if (st_base != base
           && MemNode::detect_ptr_independence(base, alloc, st_base,
                                               AllocateNode::Ideal_allocation(st_base),
                                               phase)) {
-        // Success:  The bases are provably independent.
+        // Success: the bases are provably independent.
         mem = mem->in(MemNode::Memory);
-        continue; // advance through independent store memory
+        continue; // Advance through independent store memory.
       }
     } else if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
-
       InitializeNode* st_init = mem->in(0)->as_Initialize();
       AllocateNode* st_alloc = st_init->allocation();
 
@@ -138,7 +130,7 @@ bool G1BarrierSetC2::g1_can_remove_pre_barrier(GraphKit* kit,
       // The alloc variable is guaranteed to not be null here from earlier check.
       if (alloc == st_alloc) {
         // Check that the initialization is storing null so that no previous store
-        // has been moved up and directly write a reference
+        // has been moved up and directly write a reference.
         Node* captured_store = st_init->find_captured_store(offset,
                                                             type2aelembytes(T_OBJECT),
                                                             phase);
@@ -147,39 +139,35 @@ bool G1BarrierSetC2::g1_can_remove_pre_barrier(GraphKit* kit,
         }
       }
     }
-
     // Unless there is an explicit 'continue', we must bail out here,
     // because 'mem' is an inscrutable memory state (e.g., a call).
     break;
   }
-
   return false;
 }
 
 /*
- * G1 similar to any GC with a Young Generation requires a way to keep track of
- * references from Old Generation to Young Generation to make sure all live
+ * G1, similar to any GC with a Young Generation, requires a way to keep track
+ * of references from Old Generation to Young Generation to make sure all live
  * objects are found. G1 also requires to keep track of object references
  * between different regions to enable evacuation of old regions, which is done
- * as part of mixed collections. References are tracked in remembered sets and
- * is continuously updated as reference are written to with the help of the
- * post-barrier.
+ * as part of mixed collections. References are tracked in remembered sets,
+ * which are continuously updated as references are written to with the help of
+ * the post-barrier.
  *
- * To reduce the number of updates to the remembered set the post-barrier
- * filters updates to fields in objects located in the Young Generation,
- * the same region as the reference, when the null is being written or
- * if the card is already marked as dirty by an earlier write.
+ * To reduce the number of updates to the remembered set, the post-barrier
+ * filters out updates to fields in objects located in the Young Generation, the
+ * same region as the reference, when the null is being written, or if the card
+ * is already marked as dirty by an earlier write.
  *
  * Under certain circumstances it is possible to avoid generating the
- * post-barrier completely if it is possible during compile time to prove
- * the object is newly allocated and that no safepoint exists between the
- * allocation and the store.
+ * post-barrier completely, if it is possible during compile time to prove the
+ * object is newly allocated and that no safepoint exists between the allocation
+ * and the store.
  *
- * In the case of slow allocation the allocation code must handle the barrier
- * as part of the allocation in the case the allocated object is not located
- * in the nursery; this would happen for humongous objects.
- *
- * Returns true if the post barrier can be removed
+ * In the case of a slow allocation, the allocation code must handle the barrier
+ * as part of the allocation if the allocated object is not located in the
+ * nursery; this would happen for humongous objects.
  */
 bool G1BarrierSetC2::g1_can_remove_post_barrier(GraphKit* kit,
                                                 PhaseValues* phase, Node* store_ctrl,
@@ -189,20 +177,16 @@ bool G1BarrierSetC2::g1_can_remove_post_barrier(GraphKit* kit,
   AllocateNode* alloc  = AllocateNode::Ideal_allocation(base);
 
   if (offset == Type::OffsetBot) {
-    return false; // cannot unalias unless there are precise offsets
+    return false; // Cannot unalias unless there are precise offsets.
   }
-
   if (alloc == nullptr) {
-     return false; // No allocation found
+     return false; // No allocation found.
   }
 
-  // Start search from Store node
-  Node* mem = store_ctrl;
+  Node* mem = store_ctrl;   // Start search from Store node.
   if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
-
     InitializeNode* st_init = mem->in(0)->as_Initialize();
     AllocateNode*  st_alloc = st_init->allocation();
-
     // Make sure we are looking at the same allocation
     if (alloc == st_alloc) {
       return true;
@@ -217,11 +201,10 @@ Node* G1BarrierSetC2::load_at_resolved(C2Access& access, const Type* val_type) c
   bool on_weak = (decorators & ON_WEAK_OOP_REF) != 0;
   bool on_phantom = (decorators & ON_PHANTOM_OOP_REF) != 0;
   bool no_keepalive = (decorators & AS_NO_KEEPALIVE) != 0;
-  // If we are reading the value of the referent field of a Reference
-  // object then, if G1 is enabled, we need to record the referent in
-  // an SATB log buffer using the pre-barrier mechanism.
-  // Also we need to add memory barrier to prevent commoning reads
-  // from this field across safepoint since GC can change its value.
+  // If we are reading the value of the referent field of a Reference object, we
+  // need to record the referent in an SATB log buffer using the pre-barrier
+  // mechanism. Also we need to add a memory barrier to prevent commoning reads
+  // from this field across safepoints, since GC can change its value.
   bool need_read_barrier = ((on_weak || on_phantom) && !no_keepalive);
   if (access.is_oop() && need_read_barrier) {
     access.set_barrier_data(G1C2BarrierPre);
@@ -338,38 +321,29 @@ Node* G1BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) co
 Node* G1BarrierSetC2::atomic_cmpxchg_val_at_resolved(C2AtomicParseAccess& access, Node* expected_val,
                                                          Node* new_val, const Type* value_type) const {
   GraphKit* kit = access.kit();
-
   if (!access.is_oop()) {
     return BarrierSetC2::atomic_cmpxchg_val_at_resolved(access, expected_val, new_val, value_type);
   }
-
   access.set_barrier_data(G1C2BarrierPre | G1C2BarrierPost);
-
   return BarrierSetC2::atomic_cmpxchg_val_at_resolved(access, expected_val, new_val, value_type);
 }
 
 Node* G1BarrierSetC2::atomic_cmpxchg_bool_at_resolved(C2AtomicParseAccess& access, Node* expected_val,
                                                           Node* new_val, const Type* value_type) const {
   GraphKit* kit = access.kit();
-
   if (!access.is_oop()) {
     return BarrierSetC2::atomic_cmpxchg_bool_at_resolved(access, expected_val, new_val, value_type);
   }
-
   access.set_barrier_data(G1C2BarrierPre | G1C2BarrierPost);
-
   return BarrierSetC2::atomic_cmpxchg_bool_at_resolved(access, expected_val, new_val, value_type);
 }
 
 Node* G1BarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node* new_val, const Type* value_type) const {
   GraphKit* kit = access.kit();
-
   if (!access.is_oop()) {
     return BarrierSetC2::atomic_xchg_at_resolved(access, new_val, value_type);
   }
-
   access.set_barrier_data(G1C2BarrierPre | G1C2BarrierPost);
-
   return BarrierSetC2::atomic_xchg_at_resolved(access, new_val, value_type);
 }
 
@@ -492,20 +466,13 @@ void* G1BarrierSetC2::create_barrier_state(Arena* comp_arena) const {
 
 int G1BarrierSetC2::get_store_barrier(C2Access& access, C2AccessValue& val) const {
   int barriers = G1C2BarrierPre | G1C2BarrierPost;
-  DecoratorSet decorators = access.decorators();
-
   if (!access.is_parse_access()) {
     // Only support for eliding barriers at parse time for now.
     return barriers;
   }
-
-  C2ParseAccess& parse_access = static_cast<C2ParseAccess&>(access);
-  GraphKit* kit = parse_access.kit();
-
-  const TypePtr* adr_type = access.addr().type();
+  GraphKit* kit = (static_cast<C2ParseAccess&>(access)).kit();
   Node* adr = access.addr().node();
-
-  uint adr_idx = kit->C->get_alias_index(adr_type);
+  uint adr_idx = kit->C->get_alias_index(access.addr().type());
   assert(adr_idx != Compile::AliasIdxTop, "use other store_to_memory factory" );
 
   if (g1_can_remove_pre_barrier(kit, &kit->gvn(), adr, access.type(), adr_idx)) {
@@ -513,17 +480,16 @@ int G1BarrierSetC2::get_store_barrier(C2Access& access, C2AccessValue& val) cons
   }
 
   if (val.node() != nullptr && val.node()->is_Con() && val.node()->bottom_type() == TypePtr::NULL_PTR) {
-    // Must be NULL
+    // Must be null.
     const Type* t = val.node()->bottom_type();
     assert(t == Type::TOP || t == TypePtr::NULL_PTR, "must be NULL");
-    // No post barrier if writing NULLx
+    // No post barrier if writing null.
     barriers ^= G1C2BarrierPost;
   } else if (use_ReduceInitialCardMarks() && access.base() == kit->just_allocated_object(kit->control())) {
-    // We can skip marks on a freshly-allocated object in Eden.
-    // Keep this code in sync with CardTableBarrierSet::on_slowpath_allocation_exit.
-    // That routine informs GC to take appropriate compensating steps,
-    // upon a slow-path allocation, so as to make this card-mark
-    // elision safe.
+    // We can skip marks on a freshly-allocated object in Eden. Keep this code
+    // in sync with CardTableBarrierSet::on_slowpath_allocation_exit. That
+    // routine informs GC to take appropriate compensating steps, upon a
+    // slow-path allocation, so as to make this card-mark elision safe.
     barriers ^= G1C2BarrierPost;
   } else if (use_ReduceInitialCardMarks()
              && g1_can_remove_post_barrier(kit, &kit->gvn(), kit->control(), adr)) {
@@ -540,17 +506,14 @@ void G1BarrierSetC2::late_barrier_analysis() const {
 void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
   MacroAssembler masm(&cb);
   GrowableArray<G1BarrierStubC2*>* const stubs = barrier_set_state()->stubs();
-
   for (int i = 0; i < stubs->length(); i++) {
     // Make sure there is enough space in the code buffer
     if (cb.insts()->maybe_expand_to_ensure_remaining(PhaseOutput::MAX_inst_size) && cb.blob() == nullptr) {
       ciEnv::current()->record_failure("CodeCache is full");
       return;
     }
-
     stubs->at(i)->emit_code(masm);
   }
-
   masm.flush();
 }
 
