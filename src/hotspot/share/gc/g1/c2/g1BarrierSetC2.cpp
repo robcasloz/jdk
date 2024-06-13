@@ -67,8 +67,6 @@
  * The compiler needs to determine that the object in which a field is about
  * to be written is newly allocated, and that no prior store to the same field
  * has happened since the allocation.
- *
- * Returns true if the pre-barrier can be removed
  */
 bool G1BarrierSetC2::g1_can_remove_pre_barrier(GraphKit* kit,
                                                PhaseValues* phase,
