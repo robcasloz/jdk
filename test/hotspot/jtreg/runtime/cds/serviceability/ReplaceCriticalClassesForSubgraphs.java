@@ -28,7 +28,6 @@
  * @library /test/lib
  * @requires vm.cds.write.archived.java.heap
  * @requires !vm.jvmci.enabled
- * @requires vm.opt.final.UseCompressedOops == true
  * @build jdk.test.whitebox.WhiteBox
  * @run driver jdk.test.lib.helpers.ClassFileInstaller -jar whitebox.jar jdk.test.whitebox.WhiteBox
  * @run main/othervm/native ReplaceCriticalClassesForSubgraphs

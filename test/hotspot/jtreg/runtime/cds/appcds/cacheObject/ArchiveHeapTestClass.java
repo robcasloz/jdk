@@ -26,7 +26,7 @@
  * @test
  * @bug 8214781 8293187
  * @summary Test for the -XX:ArchiveHeapTestClass flag
- * @requires vm.debug == true & vm.cds.write.archived.java.heap & vm.opt.final.UseCompressedOops == true
+ * @requires vm.debug == true & vm.cds.write.archived.java.heap
  * @modules java.base/sun.invoke.util java.logging
  * @library /test/jdk/lib/testlibrary /test/lib
  *          /test/hotspot/jtreg/runtime/cds/appcds
