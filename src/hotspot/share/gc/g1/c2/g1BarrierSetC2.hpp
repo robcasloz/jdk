@@ -26,9 +26,6 @@
 #define SHARE_GC_G1_C2_G1BARRIERSETC2_HPP
 
 #include "gc/shared/c2/cardTableBarrierSetC2.hpp"
-#include "memory/allocation.hpp"
-#include "opto/node.hpp"
-#include "utilities/growableArray.hpp"
 
 class PhaseTransform;
 class Type;
