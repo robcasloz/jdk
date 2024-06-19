@@ -474,27 +474,35 @@ int G1BarrierSetC2::get_store_barrier(C2Access& access, C2AccessValue& val) cons
   uint adr_idx = kit->C->get_alias_index(access.addr().type());
   assert(adr_idx != Compile::AliasIdxTop, "use other store_to_memory factory" );
 
-  bool remove_pre_barrier = g1_can_remove_pre_barrier(kit, &kit->gvn(), adr, access.type(), adr_idx);
+  bool can_remove_pre_barrier = g1_can_remove_pre_barrier(kit, &kit->gvn(), adr, access.type(), adr_idx);
 
-  bool remove_post_barrier = false;
+  bool can_remove_post_barrier = false;
   if (val.node() != nullptr && val.node()->is_Con() && val.node()->bottom_type() == TypePtr::NULL_PTR) {
     // Must be null.
     const Type* t = val.node()->bottom_type();
     assert(t == Type::TOP || t == TypePtr::NULL_PTR, "must be NULL");
     // No post barrier if writing null.
-    remove_post_barrier = true;
+    can_remove_post_barrier = true;
   } else if (use_ReduceInitialCardMarks() && access.base() == kit->just_allocated_object(kit->control())) {
     // We can skip marks on a freshly-allocated object in Eden. Keep this code
     // in sync with CardTableBarrierSet::on_slowpath_allocation_exit. That
     // routine informs GC to take appropriate compensating steps, upon a
     // slow-path allocation, so as to make this card-mark elision safe.
-    remove_post_barrier = true;
+    can_remove_post_barrier = true;
   } else if (use_ReduceInitialCardMarks()
              && g1_can_remove_post_barrier(kit, &kit->gvn(), kit->control(), adr)) {
-    remove_post_barrier = true;
+    can_remove_post_barrier = true;
   }
 
-  return (remove_pre_barrier ? 0 : G1C2BarrierPre) | (remove_post_barrier ? 0 : G1C2BarrierPost);
+  int barriers = 0;
+  if (!can_remove_pre_barrier) {
+    barriers |= G1C2BarrierPre;
+  }
+  if (!can_remove_post_barrier) {
+    barriers |= G1C2BarrierPost;
+  }
+
+  return barriers;
 }
 
 void G1BarrierSetC2::late_barrier_analysis() const {
