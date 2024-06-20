@@ -286,20 +286,22 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   __ bind(done);
 }
 
-static Assembler::Condition generate_single_region_test(MacroAssembler* masm, const Register store_addr, const Register new_val, const Register tmp) {
-  __ movptr(tmp, store_addr);                     // tmp := store address
-  __ xorptr(tmp, new_val);                        // tmp := store address ^ new value
-  __ shrptr(tmp, G1HeapRegion::LogOfHRGrainBytes);  // ((store address ^ new value) >> LogOfHRGrainBytes) == 0?
-  return Assembler::equal;
-}
-
-static Assembler::Condition generate_new_val_null_test(MacroAssembler* masm, const Register new_val) {
-  __ cmpptr(new_val, NULL_WORD);  // new value == null?
-  return Assembler::equal;
-}
-
-static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp, const Register tmp2) {
+static void generate_post_barrier_fast_path(MacroAssembler* masm,
+                                            Register store_addr,
+                                            Register new_val,
+                                            Register tmp,
+                                            Register tmp2,
+                                            Label& continuation,
+                                            bool test_null) {
   CardTableBarrierSet* ct = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
+  __ movptr(tmp, store_addr);                                    // tmp := store address
+  __ xorptr(tmp, new_val);                                       // tmp := store address ^ new value
+  __ shrptr(tmp, G1HeapRegion::LogOfHRGrainBytes);               // ((store address ^ new value) >> LogOfHRGrainBytes) == 0?
+  __ jcc(Assembler::equal, continuation);
+  if (test_null) {
+    __ cmpptr(new_val, NULL_WORD);  // new value == null?
+    __ jcc(Assembler::equal, continuation);
+  }
   __ movptr(tmp, store_addr);                                    // tmp := store address
   __ shrptr(tmp, CardTable::card_shift());                       // tmp := card address relative to card table base
   // Do not use ExternalAddress to load 'byte_map_base', since 'byte_map_base' is NOT
@@ -307,17 +309,24 @@ static Assembler::Condition generate_card_young_test(MacroAssembler* masm, const
   __ movptr(tmp2, (intptr_t)ct->card_table()->byte_map_base());  // tmp2 := card table base address
   __ addptr(tmp, tmp2);                                          // tmp := card address
   __ cmpb(Address(tmp, 0), G1CardTable::g1_young_card_val());    // *(card address) == young_card_val?
-  return Assembler::equal;
 }
 
-static Assembler::Condition generate_card_dirty_test(MacroAssembler* masm, const Register tmp /* card address */) {
+static void generate_post_barrier_slow_path(MacroAssembler* masm,
+                                            Register thread,
+                                            Register tmp,
+                                            Register tmp2,
+                                            Label& continuation,
+                                            Label& runtime) {
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));  // StoreLoad membar
   __ cmpb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) == dirty_card_val?
-  return Assembler::equal;
-}
-
-static void generate_dirty_card(MacroAssembler* masm, const Register tmp /* card address */) {
-  __ movb(Address(tmp, 0), G1CardTable::dirty_card_val());  // *(card address) := dirty_card_val
+  __ jcc(Assembler::equal, continuation);
+  __ movb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) := dirty_card_val
+  generate_queue_insertion(masm,
+                           G1ThreadLocalData::dirty_card_queue_index_offset(),
+                           G1ThreadLocalData::dirty_card_queue_buffer_offset(),
+                           runtime,
+                           thread, tmp, tmp2);
+  __ jmp(continuation);
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
@@ -332,27 +341,10 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   Label done, runtime;
 
-  Assembler::Condition is_single_region = generate_single_region_test(masm, store_addr, new_val, tmp);
-  __ jcc(is_single_region, done);
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, false /* test_null */);
+  __ jcc(Assembler::equal, done);
 
-  Assembler::Condition is_new_val_null = generate_new_val_null_test(masm, new_val);
-  __ jcc(is_new_val_null, done);
-
-  Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp, tmp2);
-  // From here on, tmp holds the card address.
-  __ jcc(is_card_young, done);
-
-  Assembler::Condition is_card_dirty = generate_card_dirty_test(masm, tmp);
-  __ jcc(is_card_dirty, done);
-
-  generate_dirty_card(masm, tmp);
-
-  generate_queue_insertion(masm,
-                           G1ThreadLocalData::dirty_card_queue_index_offset(),
-                           G1ThreadLocalData::dirty_card_queue_buffer_offset(),
-                           runtime,
-                           thread, tmp, tmp2);
-  __ jmp(done);
+  generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime);
 
   __ bind(runtime);
   // save the live input values
@@ -441,17 +433,9 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   assert(stub != nullptr, "");
   stub->initialize_registers(thread, tmp, tmp2);
 
-  Assembler::Condition is_single_region = generate_single_region_test(masm, store_addr, new_val, tmp);
-  __ jcc(is_single_region, *stub->continuation());
-
-  if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
-    Assembler::Condition is_new_val_null = generate_new_val_null_test(masm, new_val);
-    __ jcc(is_new_val_null, *stub->continuation());
-  }
-
-  Assembler::Condition is_card_young = generate_card_young_test(masm, store_addr, tmp, tmp2);
-  // From here on, tmp holds the card address.
-  __ jcc(MacroAssembler::negate_condition(is_card_young), *stub->entry());
+  bool test_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), test_null);
+  __ jcc(Assembler::notEqual, *stub->entry());
 
   __ bind(*stub->continuation());
 }
@@ -466,17 +450,7 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
 
   __ bind(*stub->entry());
 
-  Assembler::Condition is_card_dirty = generate_card_dirty_test(masm, tmp);
-  __ jcc(is_card_dirty, *stub->continuation());
-
-  generate_dirty_card(masm, tmp);
-
-  generate_queue_insertion(masm,
-                           G1ThreadLocalData::dirty_card_queue_index_offset(),
-                           G1ThreadLocalData::dirty_card_queue_buffer_offset(),
-                           runtime,
-                           thread, tmp, tmp2);
-  __ jmp(*stub->continuation());
+  generate_post_barrier_slow_path(masm, thread, tmp, tmp2, *stub->continuation(), runtime);
 
   __ bind(runtime);
 
