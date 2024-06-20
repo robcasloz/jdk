@@ -179,7 +179,18 @@ static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset
   __ movptr(Address(temp, 0), value);                         // *(buffer address + next index) := value
 }
 
-static Assembler::Condition generate_marking_active_test(MacroAssembler* masm, const Register thread) {
+static Assembler::Condition generate_pre_val_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
+  if (obj != noreg) {
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
+  }
+  __ cmpptr(pre_val, NULL_WORD);                                       // previous value == null?
+  return Assembler::equal;
+}
+
+static void generate_pre_barrier_fast_path(MacroAssembler* masm,
+                                           Register thread,
+                                           Label& continuation,
+                                           bool jump_if_active) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
     __ cmpl(in_progress, 0);  // *(mark queue active address) == 0?
@@ -187,15 +198,11 @@ static Assembler::Condition generate_marking_active_test(MacroAssembler* masm, c
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
     __ cmpb(in_progress, 0);  // *(mark queue active address) == 0?
   }
-  return Assembler::notEqual;
-}
-
-static Assembler::Condition generate_pre_val_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
-  if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
+  if (jump_if_active) {
+    __ jcc(Assembler::notEqual, continuation);
+  } else {
+    __ jcc(Assembler::equal, continuation);
   }
-  __ cmpptr(pre_val, NULL_WORD);                                       // previous value == null?
-  return Assembler::equal;
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
@@ -223,8 +230,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
     assert(pre_val != rax, "check this code");
   }
 
-  Assembler::Condition is_marking_active = generate_marking_active_test(masm, thread);
-  __ jcc(MacroAssembler::negate_condition(is_marking_active), done);
+  generate_pre_barrier_fast_path(masm, thread, done, false);
 
   Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
   __ jcc(is_pre_val_null, done);
@@ -393,8 +399,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 
   stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
-  Assembler::Condition is_marking_active = generate_marking_active_test(masm, thread);
-  __ jcc(is_marking_active, *stub->entry());
+  generate_pre_barrier_fast_path(masm, thread, *stub->entry(), true);
 
   __ bind(*stub->continuation());
 }
