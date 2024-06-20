@@ -179,14 +179,6 @@ static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset
   __ movptr(Address(temp, 0), value);                         // *(buffer address + next index) := value
 }
 
-static Assembler::Condition generate_pre_val_null_test(MacroAssembler* masm, const Register obj, const Register pre_val) {
-  if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
-  }
-  __ cmpptr(pre_val, NULL_WORD);                                       // previous value == null?
-  return Assembler::equal;
-}
-
 static void generate_pre_barrier_fast_path(MacroAssembler* masm,
                                            Register thread,
                                            Label& continuation,
@@ -203,6 +195,26 @@ static void generate_pre_barrier_fast_path(MacroAssembler* masm,
   } else {
     __ jcc(Assembler::equal, continuation);
   }
+}
+
+static void generate_pre_barrier_slow_path(MacroAssembler* masm,
+                                           Register obj,
+                                           Register pre_val,
+                                           Register thread,
+                                           Register tmp,
+                                           Label& continuation,
+                                           Label& runtime) {
+  if (obj != noreg) {
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
+  }
+  __ cmpptr(pre_val, NULL_WORD);                                       // previous value == null?
+  __ jcc(Assembler::equal, continuation);
+  generate_queue_insertion(masm,
+                           G1ThreadLocalData::satb_mark_queue_index_offset(),
+                           G1ThreadLocalData::satb_mark_queue_buffer_offset(),
+                           runtime,
+                           thread, pre_val, tmp);
+  __ jmp(continuation);
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
@@ -232,15 +244,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
 
   generate_pre_barrier_fast_path(masm, thread, done, false);
 
-  Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
-  __ jcc(is_pre_val_null, done);
-
-  generate_queue_insertion(masm,
-                           G1ThreadLocalData::satb_mark_queue_index_offset(),
-                           G1ThreadLocalData::satb_mark_queue_buffer_offset(),
-                           runtime,
-                           thread, pre_val, tmp);
-  __ jmp(done);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime);
 
   __ bind(runtime);
 
@@ -415,15 +419,7 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
 
   __ bind(*stub->entry());
 
-  Assembler::Condition is_pre_val_null = generate_pre_val_null_test(masm, obj, pre_val);
-  __ jcc(is_pre_val_null, *stub->continuation());
-
-  generate_queue_insertion(masm,
-                           G1ThreadLocalData::satb_mark_queue_index_offset(),
-                           G1ThreadLocalData::satb_mark_queue_buffer_offset(),
-                           runtime,
-                           thread, pre_val, tmp);
-  __ jmp(*stub->continuation());
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime);
 
   __ bind(runtime);
 
