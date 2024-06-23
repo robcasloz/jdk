@@ -195,19 +195,19 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            Register pre_val,
                                            Register thread,
                                            Register tmp,
-                                           Label& continuation,
+                                           Label& done,
                                            Label& runtime) {
   if (obj != noreg) {
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
   }
   __ cmpptr(pre_val, NULL_WORD);                                       // previous value == null?
-  __ jcc(Assembler::equal, continuation);
+  __ jcc(Assembler::equal, done);
   generate_queue_insertion(masm,
                            G1ThreadLocalData::satb_mark_queue_index_offset(),
                            G1ThreadLocalData::satb_mark_queue_buffer_offset(),
                            runtime,
                            thread, pre_val, tmp);
-  __ jmp(continuation);
+  __ jmp(done);
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
@@ -284,16 +284,16 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
                                             Register new_val,
                                             Register tmp,
                                             Register tmp2,
-                                            Label& continuation,
-                                            bool test_null) {
+                                            Label& done,
+                                            bool new_val_may_be_null) {
   CardTableBarrierSet* ct = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
   __ movptr(tmp, store_addr);                                    // tmp := store address
   __ xorptr(tmp, new_val);                                       // tmp := store address ^ new value
   __ shrptr(tmp, G1HeapRegion::LogOfHRGrainBytes);               // ((store address ^ new value) >> LogOfHRGrainBytes) == 0?
-  __ jcc(Assembler::equal, continuation);
-  if (test_null) {
+  __ jcc(Assembler::equal, done);
+  if (new_val_may_be_null) {
     __ cmpptr(new_val, NULL_WORD);                               // new value == null?
-    __ jcc(Assembler::equal, continuation);
+    __ jcc(Assembler::equal, done);
   }
   __ movptr(tmp, store_addr);                                    // tmp := store address
   __ shrptr(tmp, CardTable::card_shift());                       // tmp := card address relative to card table base
@@ -308,18 +308,18 @@ static void generate_post_barrier_slow_path(MacroAssembler* masm,
                                             Register thread,
                                             Register tmp,
                                             Register tmp2,
-                                            Label& continuation,
+                                            Label& done,
                                             Label& runtime) {
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));  // StoreLoad membar
   __ cmpb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) == dirty_card_val?
-  __ jcc(Assembler::equal, continuation);
+  __ jcc(Assembler::equal, done);
   __ movb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) := dirty_card_val
   generate_queue_insertion(masm,
                            G1ThreadLocalData::dirty_card_queue_index_offset(),
                            G1ThreadLocalData::dirty_card_queue_buffer_offset(),
                            runtime,
                            thread, tmp, tmp2);
-  __ jmp(continuation);
+  __ jmp(done);
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
@@ -334,7 +334,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   Label done, runtime;
 
-  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, false /* test_null */);
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, true /* new_val_may_be_null */);
   __ jcc(Assembler::equal, done);
   generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime);
 
@@ -426,8 +426,8 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   assert(stub != nullptr, "");
   stub->initialize_registers(thread, tmp, tmp2);
 
-  bool test_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
-  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), test_null);
+  bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), new_val_may_be_null);
   __ jcc(Assembler::notEqual, *stub->entry());
 
   __ bind(*stub->continuation());
