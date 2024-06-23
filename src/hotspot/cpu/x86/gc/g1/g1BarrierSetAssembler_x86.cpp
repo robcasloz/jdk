@@ -335,7 +335,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   Label done, runtime;
 
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, true /* new_val_may_be_null */);
-  __ jcc(Assembler::equal, done);
+  __ jcc(Assembler::equal, done);  // jump to done if *(card address) == young_card_val
   generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime);
 
   __ bind(runtime);
@@ -388,7 +388,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
   generate_pre_barrier_fast_path(masm, thread);
-  __ jcc(Assembler::notEqual, *stub->entry());  // jump to stub entry (slow path) if *(mark queue active address) != 0
+  __ jcc(Assembler::notEqual, *stub->entry());  // jump to stub (slow path) if *(mark queue active address) != 0
 
   __ bind(*stub->continuation());
 }
@@ -403,11 +403,9 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
   Register tmp = stub->tmp1();
 
   __ bind(*stub->entry());
-
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime);
 
   __ bind(runtime);
-
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
   __ jmp(*stub->continuation());
 }
@@ -423,12 +421,11 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   assert(thread == r15_thread, "must be");
 #endif // _LP64
 
-  assert(stub != nullptr, "");
   stub->initialize_registers(thread, tmp, tmp2);
 
   bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), new_val_may_be_null);
-  __ jcc(Assembler::notEqual, *stub->entry());
+  __ jcc(Assembler::notEqual, *stub->entry());  // jump to stub (slow path) if *(card address) != young_card_val
 
   __ bind(*stub->continuation());
 }
@@ -442,11 +439,9 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
   Register tmp2 = stub->tmp2();
 
   __ bind(*stub->entry());
-
   generate_post_barrier_slow_path(masm, thread, tmp, tmp2, *stub->continuation(), runtime);
 
   __ bind(runtime);
-
   generate_c2_barrier_runtime_call(masm, stub, tmp, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
   __ jmp(*stub->continuation());
 }
