@@ -180,20 +180,13 @@ static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset
 }
 
 static void generate_pre_barrier_fast_path(MacroAssembler* masm,
-                                           Register thread,
-                                           Label& continuation,
-                                           bool jump_if_active) {
+                                           Register thread) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
     __ cmpl(in_progress, 0);  // *(mark queue active address) == 0?
   } else {
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
     __ cmpb(in_progress, 0);  // *(mark queue active address) == 0?
-  }
-  if (jump_if_active) {
-    __ jcc(Assembler::notEqual, continuation);
-  } else {
-    __ jcc(Assembler::equal, continuation);
   }
 }
 
@@ -242,8 +235,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
     assert(pre_val != rax, "check this code");
   }
 
-  generate_pre_barrier_fast_path(masm, thread, done, false);
-
+  generate_pre_barrier_fast_path(masm, thread);
+  __ jcc(Assembler::equal, done);  // jump to done if *(mark queue active address) == 0
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime);
 
   __ bind(runtime);
@@ -299,7 +292,7 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
   __ shrptr(tmp, G1HeapRegion::LogOfHRGrainBytes);               // ((store address ^ new value) >> LogOfHRGrainBytes) == 0?
   __ jcc(Assembler::equal, continuation);
   if (test_null) {
-    __ cmpptr(new_val, NULL_WORD);  // new value == null?
+    __ cmpptr(new_val, NULL_WORD);                               // new value == null?
     __ jcc(Assembler::equal, continuation);
   }
   __ movptr(tmp, store_addr);                                    // tmp := store address
@@ -343,7 +336,6 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, false /* test_null */);
   __ jcc(Assembler::equal, done);
-
   generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime);
 
   __ bind(runtime);
@@ -395,7 +387,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
 
   stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
-  generate_pre_barrier_fast_path(masm, thread, *stub->entry(), true);
+  generate_pre_barrier_fast_path(masm, thread);
+  __ jcc(Assembler::notEqual, *stub->entry());  // jump to stub entry (slow path) if *(mark queue active address) != 0
 
   __ bind(*stub->continuation());
 }
