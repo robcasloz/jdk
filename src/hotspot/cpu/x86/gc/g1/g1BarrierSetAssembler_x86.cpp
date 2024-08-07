@@ -180,7 +180,7 @@ static void generate_queue_insertion(MacroAssembler* masm, ByteSize index_offset
 }
 
 static void generate_pre_barrier_fast_path(MacroAssembler* masm,
-                                           Register thread) {
+                                           const Register thread) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   // Is marking active?
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
@@ -192,10 +192,10 @@ static void generate_pre_barrier_fast_path(MacroAssembler* masm,
 }
 
 static void generate_pre_barrier_slow_path(MacroAssembler* masm,
-                                           Register obj,
-                                           Register pre_val,
-                                           Register thread,
-                                           Register tmp,
+                                           const Register obj,
+                                           const Register pre_val,
+                                           const Register thread,
+                                           const Register tmp,
                                            Label& done,
                                            Label& runtime) {
   // Do we need to load the previous value?
@@ -285,10 +285,10 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
 }
 
 static void generate_post_barrier_fast_path(MacroAssembler* masm,
-                                            Register store_addr,
-                                            Register new_val,
-                                            Register tmp,
-                                            Register tmp2,
+                                            const Register store_addr,
+                                            const Register new_val,
+                                            const Register tmp,
+                                            const Register tmp2,
                                             Label& done,
                                             bool new_val_may_be_null) {
   CardTableBarrierSet* ct = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
@@ -319,9 +319,9 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
 }
 
 static void generate_post_barrier_slow_path(MacroAssembler* masm,
-                                            Register thread,
-                                            Register tmp,
-                                            Register tmp2,
+                                            const Register thread,
+                                            const Register tmp,
+                                            const Register tmp2,
                                             Label& done,
                                             Label& runtime) {
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));  // StoreLoad membar
