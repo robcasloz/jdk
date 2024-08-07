@@ -184,10 +184,10 @@ static void generate_pre_barrier_fast_path(MacroAssembler* masm,
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   // Is marking active?
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    __ cmpl(in_progress, 0);  // *(mark queue active address) == 0?
+    __ cmpl(in_progress, 0);
   } else {
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    __ cmpb(in_progress, 0);  // *(mark queue active address) == 0?
+    __ cmpb(in_progress, 0);
   }
 }
 
@@ -200,11 +200,11 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            Label& runtime) {
   // Do we need to load the previous value?
   if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
 
   // Is the previous value null?
-  __ cmpptr(pre_val, NULL_WORD);                                       // previous value == null?
+  __ cmpptr(pre_val, NULL_WORD);
   __ jcc(Assembler::equal, done);
 
   generate_queue_insertion(masm,
@@ -241,7 +241,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   }
 
   generate_pre_barrier_fast_path(masm, thread);
-  __ jcc(Assembler::equal, done);  // jump to done if *(mark queue active address) == 0
+  // If marking is not active (*(mark queue active address) == 0), jump to done
+  __ jcc(Assembler::equal, done);
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime);
 
   __ bind(runtime);
@@ -354,7 +355,8 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   Label runtime;
 
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, true /* new_val_may_be_null */);
-  __ jcc(Assembler::equal, done);  // jump to done if *(card address) == young_card_val
+  // If card is young, jump to done
+  __ jcc(Assembler::equal, done);
   generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime);
 
   __ bind(runtime);
@@ -407,7 +409,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   stub->initialize_registers(obj, pre_val, thread, tmp, noreg);
 
   generate_pre_barrier_fast_path(masm, thread);
-  __ jcc(Assembler::notEqual, *stub->entry());  // jump to stub (slow path) if *(mark queue active address) != 0
+  // If marking is active (*(mark queue active address) != 0), jump to stub (slow path)
+  __ jcc(Assembler::notEqual, *stub->entry());
 
   __ bind(*stub->continuation());
 }
@@ -444,7 +447,8 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
 
   bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), new_val_may_be_null);
-  __ jcc(Assembler::notEqual, *stub->entry());  // jump to stub (slow path) if *(card address) != young_card_val
+  // If card is not young, jump to stub (slow path)
+  __ jcc(Assembler::notEqual, *stub->entry());
 
   __ bind(*stub->continuation());
 }
