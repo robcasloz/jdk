@@ -197,20 +197,6 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
 
 }
 
-static Register generate_region_crossing_test(MacroAssembler* masm, const Register store_addr, const Register new_val, const Register tmp1) {
-  __ eor(tmp1, store_addr, new_val);                  // tmp1 := store address ^ new value
-  __ lsr(tmp1, tmp1, G1HeapRegion::LogOfHRGrainBytes);  // tmp1 := ((store address ^ new value) >> LogOfHRGrainBytes)
-  return tmp1;
-}
-
-static void generate_card_young_test(MacroAssembler* masm, const Register store_addr, const Register tmp1, const Register tmp2) {
-  __ lsr(tmp1, store_addr, CardTable::card_shift());     // tmp1 := card address relative to card table base
-  __ load_byte_map_base(tmp2);                           // tmp2 := card table base address
-  __ add(tmp1, tmp1, tmp2);                              // tmp1 := card address
-  __ ldrb(tmp2, Address(tmp1));                          // tmp2 := card
-  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());  // tmp2 := card == young_card_val?
-}
-
 static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1 /* card address */, const Register tmp2) {
   __ membar(Assembler::StoreLoad);  // StoreLoad membar
   __ ldrb(tmp2, Address(tmp1));     // tmp2 := card
@@ -229,17 +215,20 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
                                             const Register tmp2,
                                             Label& done,
                                             bool new_val_may_be_null) {
-  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
-  __ cbz(is_region_crossing, done);
+  __ eor(tmp1, store_addr, new_val);                     // tmp1 := store address ^ new value
+  __ lsr(tmp1, tmp1, G1HeapRegion::LogOfHRGrainBytes);   // tmp1 := ((store address ^ new value) >> LogOfHRGrainBytes)
+  __ cbz(tmp1, done);
 
   // crosses regions, storing null?
   if (new_val_may_be_null) {
     __ cbz(new_val, done);
   }
 
-  generate_card_young_test(masm, store_addr, tmp1, tmp2);
-  // From here on, tmp1 holds the card address.
-
+  __ lsr(tmp1, store_addr, CardTable::card_shift());     // tmp1 := card address relative to card table base
+  __ load_byte_map_base(tmp2);                           // tmp2 := card table base address
+  __ add(tmp1, tmp1, tmp2);                              // tmp1 := card address
+  __ ldrb(tmp2, Address(tmp1));                          // tmp2 := card
+  __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());  // tmp2 := card == young_card_val?
 }
 
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
