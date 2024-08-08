@@ -231,6 +231,25 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
   __ cmpw(tmp2, (int)G1CardTable::g1_young_card_val());  // tmp2 := card == young_card_val?
 }
 
+static void generate_post_barrier_slow_path(MacroAssembler* masm,
+                                            const Register thread,
+                                            const Register tmp1,
+                                            const Register tmp2,
+                                            Label& done,
+                                            Label& runtime) {
+  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
+  __ cbzw(is_card_clean, done);
+
+  generate_dirty_card(masm, tmp1);
+
+  generate_queue_test_and_insertion(masm,
+                                    G1ThreadLocalData::dirty_card_queue_index_offset(),
+                                    G1ThreadLocalData::dirty_card_queue_buffer_offset(),
+                                    runtime,
+                                    thread, tmp1, tmp2, rscratch1);
+  __ b(done);
+}
+
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
                                                   Register store_addr,
                                                   Register new_val,
@@ -249,18 +268,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp1, tmp2, done, true /* new_val_may_be_null */);
   // If card is young, jump to done
   __ br(Assembler::EQ, done);
-
-  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
-  __ cbzw(is_card_clean, done);
-
-  generate_dirty_card(masm, tmp1);
-
-  generate_queue_test_and_insertion(masm,
-                                    G1ThreadLocalData::dirty_card_queue_index_offset(),
-                                    G1ThreadLocalData::dirty_card_queue_buffer_offset(),
-                                    runtime,
-                                    thread, tmp1, tmp2, rscratch1);
-  __ b(done);
+  generate_post_barrier_slow_path(masm, thread, tmp1, tmp2, done, runtime);
 
   __ bind(runtime);
   // save the live input values
@@ -356,18 +364,7 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
   Register tmp2 = stub->tmp2();
 
   __ bind(*stub->entry());
-
-  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
-  __ cbzw(is_card_clean, *stub->continuation());
-
-  generate_dirty_card(masm, tmp1);
-
-  generate_queue_test_and_insertion(masm,
-                                    G1ThreadLocalData::dirty_card_queue_index_offset(),
-                                    G1ThreadLocalData::dirty_card_queue_buffer_offset(),
-                                    runtime,
-                                    thread, tmp1, tmp2, rscratch1);
-  __ b(*stub->continuation());
+  generate_post_barrier_slow_path(masm, thread, tmp1, tmp2, *stub->continuation(), runtime);
 
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, tmp1, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_post_entry));
