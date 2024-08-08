@@ -202,11 +202,9 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
   if (obj != noreg) {
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
-
   // Is the previous value null?
   __ cmpptr(pre_val, NULL_WORD);
   __ jcc(Assembler::equal, done);
-
   generate_queue_insertion(masm,
                            G1ThreadLocalData::satb_mark_queue_index_offset(),
                            G1ThreadLocalData::satb_mark_queue_buffer_offset(),
@@ -293,23 +291,17 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
                                             Label& done,
                                             bool new_val_may_be_null) {
   CardTableBarrierSet* ct = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
-
     // Does store cross heap regions?
-
   __ movptr(tmp, store_addr);                                    // tmp := store address
   __ xorptr(tmp, new_val);                                       // tmp := store address ^ new value
   __ shrptr(tmp, G1HeapRegion::LogOfHRGrainBytes);               // ((store address ^ new value) >> LogOfHRGrainBytes) == 0?
   __ jcc(Assembler::equal, done);
-
   // Crosses regions, storing null?
-
   if (new_val_may_be_null) {
     __ cmpptr(new_val, NULL_WORD);                               // new value == null?
     __ jcc(Assembler::equal, done);
   }
-
   // Storing region crossing non-null, is card already dirty?
-
   __ movptr(tmp, store_addr);                                    // tmp := store address
   __ shrptr(tmp, CardTable::card_shift());                       // tmp := card address relative to card table base
   // Do not use ExternalAddress to load 'byte_map_base', since 'byte_map_base' is NOT
@@ -328,10 +320,8 @@ static void generate_post_barrier_slow_path(MacroAssembler* masm,
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));  // StoreLoad membar
   __ cmpb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) == dirty_card_val?
   __ jcc(Assembler::equal, done);
-
   // Storing a region crossing, non-null oop, card is clean.
   // Dirty card and log.
-
   __ movb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) := dirty_card_val
   generate_queue_insertion(masm,
                            G1ThreadLocalData::dirty_card_queue_index_offset(),
