@@ -222,6 +222,26 @@ static void generate_dirty_card(MacroAssembler* masm, const Register tmp1 /* car
   __ strb(zr, Address(tmp1));  // *(card address) := dirty_card_val
 }
 
+static void generate_post_barrier_fast_path(MacroAssembler* masm,
+                                            const Register store_addr,
+                                            const Register new_val,
+                                            const Register tmp1,
+                                            const Register tmp2,
+                                            Label& done,
+                                            bool new_val_may_be_null) {
+  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
+  __ cbz(is_region_crossing, done);
+
+  // crosses regions, storing null?
+  if (new_val_may_be_null) {
+    __ cbz(new_val, done);
+  }
+
+  generate_card_young_test(masm, store_addr, tmp1, tmp2);
+  // From here on, tmp1 holds the card address.
+
+}
+
 void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
                                                   Register store_addr,
                                                   Register new_val,
@@ -237,14 +257,8 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   Label done;
   Label runtime;
 
-  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
-  __ cbz(is_region_crossing, done);
-
-  // crosses regions, storing null?
-  __ cbz(new_val, done);
-
-  generate_card_young_test(masm, store_addr, tmp1, tmp2);
-  // From here on, tmp1 holds the card address.
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp1, tmp2, done, true /* new_val_may_be_null */);
+  // If card is young, jump to done
   __ br(Assembler::EQ, done);
 
   Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
@@ -336,16 +350,9 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
 
   stub->initialize_registers(thread, tmp1, tmp2);
 
-  Register is_region_crossing = generate_region_crossing_test(masm, store_addr, new_val, tmp1);
-  __ cbz(is_region_crossing, *stub->continuation());
-
-  // crosses regions, storing null?
-  if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
-    __ cbz(new_val, *stub->continuation());
-  }
-
-  generate_card_young_test(masm, store_addr, tmp1, tmp2);
-  // From here on, tmp1 holds the card address.
+  bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp1, tmp2, *stub->continuation(), new_val_may_be_null);
+  // If card is not young, jump to stub (slow path)
   __ br(Assembler::NE, *stub->entry());
 
   __ bind(*stub->continuation());
