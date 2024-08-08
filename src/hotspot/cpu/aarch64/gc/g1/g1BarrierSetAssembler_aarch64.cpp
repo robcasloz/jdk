@@ -116,10 +116,10 @@ static void generate_pre_barrier_fast_path(MacroAssembler* masm,
                                            const Register tmp1) {
   Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    __ ldrw(tmp1, in_progress);  // tmp1 := *(mark queue active address)
+    __ ldrw(tmp1, in_progress);
   } else {
     assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    __ ldrb(tmp1, in_progress);  // tmp1 := *(mark queue active address)
+    __ ldrb(tmp1, in_progress);
   }
 }
 
@@ -132,7 +132,7 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            Label& done,
                                            Label& runtime) {
   if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);  // pre_val := previous value
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
   __ cbz(pre_val, done);
   generate_queue_test_and_insertion(masm,
@@ -164,7 +164,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   assert(pre_val != noreg && tmp1 != noreg && tmp2 != noreg, "expecting a register");
 
   generate_pre_barrier_fast_path(masm, thread, tmp1);
-  __ cbzw(tmp1, done);  // jump to done if *(mark queue active address) == 0
+  // If marking is not active (*(mark queue active address) == 0), jump to done
+  __ cbzw(tmp1, done);
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp1, tmp2, done, runtime);
 
   __ bind(runtime);
