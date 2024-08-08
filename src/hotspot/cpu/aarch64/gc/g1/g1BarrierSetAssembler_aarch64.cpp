@@ -197,17 +197,6 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
 
 }
 
-static Register generate_card_clean_test(MacroAssembler* masm, const Register tmp1 /* card address */, const Register tmp2) {
-  __ membar(Assembler::StoreLoad);  // StoreLoad membar
-  __ ldrb(tmp2, Address(tmp1));     // tmp2 := card
-  return tmp2;
-}
-
-static void generate_dirty_card(MacroAssembler* masm, const Register tmp1 /* card address */) {
-  STATIC_ASSERT(CardTable::dirty_card_val() == 0);
-  __ strb(zr, Address(tmp1));  // *(card address) := dirty_card_val
-}
-
 static void generate_post_barrier_fast_path(MacroAssembler* masm,
                                             const Register store_addr,
                                             const Register new_val,
@@ -237,10 +226,12 @@ static void generate_post_barrier_slow_path(MacroAssembler* masm,
                                             const Register tmp2,
                                             Label& done,
                                             Label& runtime) {
-  Register is_card_clean = generate_card_clean_test(masm, tmp1, tmp2);
-  __ cbzw(is_card_clean, done);
+  __ membar(Assembler::StoreLoad);  // StoreLoad membar
+  __ ldrb(tmp2, Address(tmp1));     // tmp2 := card
+  __ cbzw(tmp2, done);
 
-  generate_dirty_card(masm, tmp1);
+  STATIC_ASSERT(CardTable::dirty_card_val() == 0);
+  __ strb(zr, Address(tmp1));       // *(card address) := dirty_card_val
 
   generate_queue_test_and_insertion(masm,
                                     G1ThreadLocalData::dirty_card_queue_index_offset(),
