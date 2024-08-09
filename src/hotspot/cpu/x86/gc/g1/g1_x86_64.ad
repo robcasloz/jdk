@@ -74,7 +74,7 @@ static void g1_post_write_barrier(MacroAssembler* masm,
 
 instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_Store()->barrier_data() != 0);
+  predicate(UseG1GC && n->as_Store()->barrier_data() != 0 && !UseIndirectMemoryOperands);
   match(Set mem (StoreP mem src));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   ins_cost(125); // XXX
@@ -100,9 +100,32 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
   ins_pipe(ialu_mem_reg);
 %}
 
+instruct g1StorePIndirect(indirect mem, any_RegP src, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
+%{
+  predicate(UseG1GC && n->as_Store()->barrier_data() != 0 && UseIndirectMemoryOperands);
+  match(Set mem (StoreP mem src));
+  effect(TEMP tmp1, TEMP tmp2, KILL cr);
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $src\t# ptr" %}
+  ins_encode %{
+    g1_pre_write_barrier(masm, this,
+                         $mem$$Register /* obj */,
+                         $tmp1$$Register /* pre_val */,
+                         $tmp2$$Register /* tmp */,
+                         RegSet::of($mem$$Register, $src$$Register) /* preserve */);
+    __ movq(Address($mem$$Register, 0), $src$$Register);
+    g1_post_write_barrier(masm, this,
+                          $mem$$Register /* store_addr */,
+                          $src$$Register /* new_val */,
+                          $tmp2$$Register /* tmp1 */,
+                          $tmp1$$Register /* tmp2 */);
+  %}
+  ins_pipe(ialu_mem_reg);
+%}
+
 instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_Store()->barrier_data() != 0);
+  predicate(UseG1GC && n->as_Store()->barrier_data() != 0 && !UseIndirectMemoryOperands);
   match(Set mem (StoreN mem src));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   ins_cost(125); // XXX
@@ -137,7 +160,7 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
 
 instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_Store()->barrier_data() != 0);
+  predicate(UseG1GC && n->as_Store()->barrier_data() != 0 && !UseIndirectMemoryOperands);
   match(Set mem (StoreN mem (EncodeP src)));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   ins_cost(125); // XXX

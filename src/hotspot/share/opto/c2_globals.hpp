@@ -798,6 +798,10 @@
   product(bool, UseStoreStoreForCtor, true, DIAGNOSTIC,                     \
           "Use StoreStore barrier instead of Release barrier at the end "   \
           "of constructors")                                                \
+                                                                            \
+  product(bool, UseIndirectMemoryOperands, false,                           \
+          "Use indirect memory operands in G1-specific memory access "      \
+          "instructions")                                                   \
 
 // end of C2_FLAGS
 
