@@ -795,6 +795,15 @@
   product(bool, UseStoreStoreForCtor, true, DIAGNOSTIC,                     \
           "Use StoreStore barrier instead of Release barrier at the end "   \
           "of constructors")                                                \
+                                                                            \
+  product(bool, RemoveRedundantNullChecks, false,                           \
+          "Remove redundant decoding-barrier null checks in g1StoreN")      \
+                                                                            \
+  product(bool, RemoveUnnecessaryLoads, false,                              \
+          "Remove unnecessary loads in g1CompareAndExchangeP")              \
+                                                                            \
+  product(bool, RemoveRedundantLoads, false,                                \
+          "Remove redundant loads in g1XChgP")                              \
 
 // end of C2_FLAGS
 
