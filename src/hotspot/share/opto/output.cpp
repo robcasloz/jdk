@@ -2022,6 +2022,14 @@ void PhaseOutput::FillExceptionTables(uint cnt, uint *call_returns, uint *inct_s
 
     // Handle implicit null exception table updates
     if (n->is_MachNullCheck()) {
+#ifndef PRODUCT
+      if (n->in(1)->as_Mach()->barrier_data() != 0) {
+        tty->print("Memory access instruction with barrier: ");
+        n->in(1)->dump();
+      }
+#endif
+      assert(n->in(1)->as_Mach()->barrier_data() == 0,
+             "Memory access instructions with barriers cannot perform implicit null checks");
       uint block_num = block->non_connector_successor(0)->_pre_order;
       _inc_table.append(inct_starts[inct_cnt++], blk_labels[block_num].loc_pos());
       continue;

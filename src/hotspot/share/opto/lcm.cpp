@@ -315,6 +315,12 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
         // Ignore DecodeN val which could be hoisted to where needed.
         if( is_decoden ) continue;
       }
+      if (UseNewCode && mach->in(j)->is_MachTemp()) {
+        // MachTemp nodes (for example, in stores with GC barriers) can be
+        // hoisted if necessary.
+        assert(mach->in(j)->outcnt() == 1, "MachTemp nodes are never shared");
+        continue;
+      }
       // Block of memory-op input
       Block *inb = get_block_for_node(mach->in(j));
       Block *b = block;          // Start from nul check
@@ -408,6 +414,21 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
         }
       }
     }
+  }
+  // Hoist any MachTemp nodes of the memory candidate to the test block.
+  for (uint i = 1; i < best->req(); i++) {
+    if (!UseNewCode) {
+      continue;
+    }
+    Node* n = best->in(i);
+    if (!n->is_MachTemp()) {
+      continue;
+    }
+    // TODO: factor out the following lines.
+    Block* old_block = get_block_for_node(n);
+    old_block->find_remove(n);
+    block->add_inst(n);
+    map_node_to_block(n, block);
   }
   // Hoist the memory candidate up to the end of the test block.
   Block *old_block = get_block_for_node(best);
