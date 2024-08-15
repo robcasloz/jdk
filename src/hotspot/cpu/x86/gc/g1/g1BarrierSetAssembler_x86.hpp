@@ -84,7 +84,8 @@ class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
                                 Register thread,
                                 Register tmp,
                                 Register tmp2,
-                                G1PostBarrierStubC2* c2_stub);
+                                G1PostBarrierStubC2* c2_stub,
+                                bool new_val_may_be_null);
   void generate_c2_post_barrier_stub(MacroAssembler* masm,
                                      G1PostBarrierStubC2* stub) const;
 #endif // COMPILER2

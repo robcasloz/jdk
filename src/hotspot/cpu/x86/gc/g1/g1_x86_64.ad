@@ -60,14 +60,15 @@ static void write_barrier_post(MacroAssembler* masm,
                                Register store_addr,
                                Register new_val,
                                Register tmp1,
-                               Register tmp2) {
+                               Register tmp2,
+                               bool new_val_may_be_null) {
   if (!G1PostBarrierStubC2::needs_barrier(node)) {
     return;
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
   G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node);
-  g1_asm->g1_write_barrier_post_c2(masm, store_addr, new_val, r15_thread, tmp1, tmp2, stub);
+  g1_asm->g1_write_barrier_post_c2(masm, store_addr, new_val, r15_thread, tmp1, tmp2, stub, new_val_may_be_null);
 }
 
 %}
@@ -96,7 +97,8 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
                        $tmp1$$Register /* store_addr */,
                        $src$$Register /* new_val */,
                        $tmp3$$Register /* tmp1 */,
-                       $tmp2$$Register /* tmp2 */);
+                       $tmp2$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -109,6 +111,8 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# ptr" %}
   ins_encode %{
+    Label done;
+    bool new_val_may_be_null = (barrier_data() & G1C2BarrierPostNotNull) == 0;
     assert(!in(operand_index(2))->is_Mach() ||
            (in(operand_index(2))->as_Mach()->ideal_Opcode() != Op_EncodeP),
            "EncodeP src nodes should be matched with their corresponding StoreN nodes");
@@ -121,7 +125,15 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
     if ((barrier_data() & G1C2BarrierPost) != 0) {
       __ movl($tmp2$$Register, $src$$Register);
-      if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
+      if (RemoveRedundantNullChecks && new_val_may_be_null && (CompressedOops::base() != nullptr)) {
+            if (UseNewCode) {
+              tty->print_cr("Applying RemoveRedundantNullChecks optimization");
+            }
+            __ cmpptr($tmp2$$Register, NULL_WORD);
+            __ jcc(Assembler::equal, done);
+            new_val_may_be_null = false;
+            __ decode_heap_oop_not_null($tmp2$$Register);
+      } else if (new_val_may_be_null) {
         __ decode_heap_oop($tmp2$$Register);
       } else {
         __ decode_heap_oop_not_null($tmp2$$Register);
@@ -131,7 +143,9 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
                        $tmp1$$Register /* store_addr */,
                        $tmp2$$Register /* new_val */,
                        $tmp3$$Register /* tmp1 */,
-                       $tmp2$$Register /* tmp2 */);
+                       $tmp2$$Register /* tmp2 */,
+                       new_val_may_be_null);
+    __ bind(done);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -162,7 +176,8 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
                        $tmp1$$Register /* store_addr */,
                        $src$$Register /* new_val */,
                        $tmp3$$Register /* tmp1 */,
-                       $tmp2$$Register /* tmp2 */);
+                       $tmp2$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -188,7 +203,8 @@ instruct g1CompareAndExchangeP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -215,7 +231,8 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -247,7 +264,8 @@ instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rR
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -280,7 +298,8 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -304,7 +323,8 @@ instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -329,7 +349,8 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
