@@ -799,11 +799,13 @@
   product(bool, RemoveRedundantNullChecks, false,                           \
           "Remove redundant decoding-barrier null checks in g1StoreN")      \
                                                                             \
-  product(bool, RemoveUnnecessaryLoads, false,                              \
-          "Remove unnecessary loads in g1CompareAndExchangeP")              \
+  product(bool, UseOldValInPreBarriers, false,                              \
+          "Use input old value in atomic compare and swap/exchange "        \
+          "instructions")                                                   \
                                                                             \
-  product(bool, RemoveRedundantLoads, false,                                \
-          "Remove redundant loads in g1XChgP")                              \
+  product(bool, UseExchangedValueinPreBarriers, false,                      \
+          "Postpone pre-barrier to use exchanged value in atomic exchange " \
+          "instructions")                                                   \
 
 // end of C2_FLAGS
 

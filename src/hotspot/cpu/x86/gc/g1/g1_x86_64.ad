@@ -191,11 +191,19 @@ instruct g1CompareAndExchangeP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp
             "cmpxchgq $newval, $mem" %}
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    write_barrier_pre(masm, this,
-                      $mem$$Register /* obj */,
-                      $tmp2$$Register /* pre_val */,
-                      $tmp3$$Register /* tmp */,
-                      RegSet::of($mem$$Register, $newval$$Register, $oldval$$Register) /* preserve */);
+    if (UseOldValInPreBarriers) {
+      write_barrier_pre(masm, this,
+                        noreg /* obj */,
+                        $oldval$$Register /* pre_val */,
+                        $tmp3$$Register /* tmp */,
+                        RegSet::of($mem$$Register, $newval$$Register, $oldval$$Register) /* preserve */);
+    } else {
+      write_barrier_pre(masm, this,
+                        $mem$$Register /* obj */,
+                        $tmp2$$Register /* pre_val */,
+                        $tmp3$$Register /* tmp */,
+                        RegSet::of($mem$$Register, $newval$$Register, $oldval$$Register) /* preserve */);
+    }
     __ movq($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgq($tmp1$$Register, Address($mem$$Register, 0));
@@ -249,12 +257,21 @@ instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rR
             "movzbl   $res, $res" %}
   ins_encode %{
     assert_different_registers($oldval$$Register, $mem$$Register);
-    write_barrier_pre(masm, this,
-                      $mem$$Register /* obj */,
-                      $tmp2$$Register /* pre_val */,
-                      $tmp3$$Register /* tmp */,
-                      RegSet::of($mem$$Register, $newval$$Register, $oldval$$Register) /* preserve */,
-                      RegSet::of($res$$Register) /* no_preserve */);
+    if (UseOldValInPreBarriers) {
+      write_barrier_pre(masm, this,
+                        noreg /* obj */,
+                        $oldval$$Register /* pre_val */,
+                        $tmp3$$Register /* tmp */,
+                        RegSet::of($mem$$Register, $newval$$Register, $oldval$$Register) /* preserve */,
+                        RegSet::of($res$$Register) /* no_preserve */);
+    } else {
+      write_barrier_pre(masm, this,
+                        $mem$$Register /* obj */,
+                        $tmp2$$Register /* pre_val */,
+                        $tmp3$$Register /* tmp */,
+                        RegSet::of($mem$$Register, $newval$$Register, $oldval$$Register) /* preserve */,
+                        RegSet::of($res$$Register) /* no_preserve */);
+    }
     __ movq($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgq($tmp1$$Register, Address($mem$$Register, 0));
@@ -306,7 +323,7 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
 
 instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && !RemoveRedundantLoads);
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && !UseExchangedValueinPreBarriers);
   match(Set newval (GetAndSetP mem newval));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
@@ -331,7 +348,7 @@ instruct g1XChgP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
 
 instruct g1XChgPOptimized(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && RemoveRedundantLoads);
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && UseExchangedValueinPreBarriers);
   match(Set newval (GetAndSetP mem newval));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
@@ -356,7 +373,7 @@ instruct g1XChgPOptimized(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rR
 
 instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && !RemoveRedundantLoads);
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && !UseExchangedValueinPreBarriers);
   match(Set newval (GetAndSetN mem newval));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
@@ -382,7 +399,7 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
 
 instruct g1XChgNOptimized(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && RemoveRedundantLoads);
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && UseExchangedValueinPreBarriers);
   match(Set newval (GetAndSetN mem newval));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
