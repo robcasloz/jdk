@@ -126,9 +126,6 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
     if ((barrier_data() & G1C2BarrierPost) != 0) {
       __ movl($tmp2$$Register, $src$$Register);
       if (RemoveRedundantNullChecks && new_val_may_be_null && (CompressedOops::base() != nullptr)) {
-            if (UseNewCode) {
-              tty->print_cr("Applying RemoveRedundantNullChecks optimization");
-            }
             __ cmpptr($tmp2$$Register, NULL_WORD);
             __ jcc(Assembler::equal, done);
             new_val_may_be_null = false;
