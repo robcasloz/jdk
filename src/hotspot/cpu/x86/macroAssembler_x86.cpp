@@ -5856,6 +5856,24 @@ void  MacroAssembler::decode_heap_oop(Register r) {
   verify_oop_msg(r, "broken oop in decode_heap_oop");
 }
 
+void MacroAssembler::decode_heap_oop_with_early_exit(Register r, Label& exit) {
+#ifdef ASSERT
+  verify_heapbase("MacroAssembler::decode_heap_oop: heap base corrupted?");
+#endif
+  if (CompressedOops::base() == nullptr) {
+    if (CompressedOops::shift() != 0) {
+      assert (LogMinObjAlignmentInBytes == CompressedOops::shift(), "decode alg wrong");
+      shlq(r, LogMinObjAlignmentInBytes);
+      jccb(Assembler::equal, exit);
+    }
+  } else {
+    shlq(r, LogMinObjAlignmentInBytes);
+    jccb(Assembler::equal, exit);
+    addq(r, r12_heapbase);
+  }
+  verify_oop_msg(r, "broken oop in decode_heap_oop");
+}
+
 void  MacroAssembler::decode_heap_oop_not_null(Register r) {
   // Note: it will change flags
   assert (UseCompressedOops, "should only be used for compressed headers");

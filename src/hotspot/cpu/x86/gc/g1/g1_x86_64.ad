@@ -125,11 +125,9 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
     if ((barrier_data() & G1C2BarrierPost) != 0) {
       __ movl($tmp2$$Register, $src$$Register);
-      if (RemoveRedundantNullChecks && new_val_may_be_null && (CompressedOops::base() != nullptr)) {
-            __ cmpptr($tmp2$$Register, NULL_WORD);
-            __ jcc(Assembler::equal, done);
+      if (RemoveRedundantNullChecks && new_val_may_be_null) {
+            __ decode_heap_oop_with_early_exit($tmp2$$Register, done);
             new_val_may_be_null = false;
-            __ decode_heap_oop_not_null($tmp2$$Register);
       } else if (new_val_may_be_null) {
         __ decode_heap_oop($tmp2$$Register);
       } else {

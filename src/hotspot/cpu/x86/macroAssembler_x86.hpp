@@ -393,6 +393,7 @@ class MacroAssembler: public Assembler {
 
   void encode_heap_oop(Register r);
   void decode_heap_oop(Register r);
+  void decode_heap_oop_with_early_exit(Register r, Label& exit);
   void encode_heap_oop_not_null(Register r);
   void decode_heap_oop_not_null(Register r);
   void encode_heap_oop_not_null(Register dst, Register src);
