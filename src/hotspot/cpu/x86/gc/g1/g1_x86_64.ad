@@ -354,7 +354,7 @@ instruct g1XChgPOptimized(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rR
 
 instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
 %{
-  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && !UseExchangedValueinPreBarriers);
+  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0);
   match(Set newval (GetAndSetN mem newval));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
@@ -368,32 +368,6 @@ instruct g1XChgN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3,
     __ movl($tmp1$$Register, $newval$$Register);
     __ decode_heap_oop($tmp1$$Register);
     __ xchgl($newval$$Register, Address($mem$$Register, 0));
-    write_barrier_post(masm, this,
-                       $mem$$Register /* store_addr */,
-                       $tmp1$$Register /* new_val */,
-                       $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */,
-                       (barrier_data() & G1C2BarrierPostNotNull) == 0);
-  %}
-  ins_pipe(pipe_cmpxchg);
-%}
-
-instruct g1XChgNOptimized(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFlagsReg cr)
-%{
-  predicate(UseG1GC && n->as_LoadStore()->barrier_data() != 0 && UseExchangedValueinPreBarriers);
-  match(Set newval (GetAndSetN mem newval));
-  effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
-  format %{ "xchgq    $newval, $mem" %}
-  ins_encode %{
-    assert_different_registers($mem$$Register, $newval$$Register);
-    __ movl($tmp1$$Register, $newval$$Register);
-    __ decode_heap_oop($tmp1$$Register);
-    __ xchgl($newval$$Register, Address($mem$$Register, 0));
-    write_barrier_pre(masm, this,
-                      noreg /* obj */,
-                      $newval$$Register /* pre_val */,
-                      $tmp3$$Register /* tmp */,
-                      RegSet::of($mem$$Register, $newval$$Register, $tmp1$$Register) /* preserve */);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
