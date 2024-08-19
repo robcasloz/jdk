@@ -259,7 +259,7 @@ class RegMask {
 #   define BODY(I) int a##I,
     FORALL_BODY
 #   undef BODY
-    int dummy = 0): _rm_size(_RM_SIZE), _offset(0) {
+    bool all_stack): _rm_size(_RM_SIZE), _offset(0), _all_stack(all_stack) {
 #if defined(VM_LITTLE_ENDIAN) || !defined(_LP64)
 #   define BODY(I) _RM_I[I] = a##I;
 #else
@@ -272,10 +272,6 @@ class RegMask {
     _hwm = _RM_MAX;
     while (_hwm > 0      && _RM_UP[_hwm] == 0) _hwm--;
     while ((_lwm < _hwm) && _RM_UP[_lwm] == 0) _lwm++;
-    // For historical reasons, this constructor uses the last bit of the mask
-    // itself as the _all_stack flag. We need to record this fact using the now
-    // separate _all_stack flag.
-    set_AllStack(_RM_UP[_RM_MAX] & (uintptr_t(1) << _WordBitMask));
     assert(valid_watermarks(), "post-condition");
   }
 
