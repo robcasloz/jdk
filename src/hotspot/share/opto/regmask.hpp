@@ -174,12 +174,12 @@ class RegMask {
   unsigned int _rm_max() const { return _rm_size - 1U; }
 
   // Return a suitable arena for (extended) register mask allocation.
-  static Arena* _get_arena();
+  PRODUCT_ONLY(static) Arena* _get_arena();
 
   // Grow the register mask to ensure it can fit at least min_size words.
   void _grow(unsigned int min_size, bool init = true) {
     if (min_size > _rm_size) {
-      Arena* _arena = _get_arena();
+      Arena* arena = _get_arena();
       min_size = round_up_power_of_2(min_size);
       unsigned int old_size = _rm_size;
       unsigned int old_ext_size = old_size - _RM_SIZE;
@@ -187,10 +187,10 @@ class RegMask {
       _rm_size = min_size;
       if (_RM_UP_EXT == nullptr) {
         assert(old_ext_size == 0, "sanity");
-        _RM_UP_EXT = NEW_ARENA_ARRAY(_arena, uintptr_t, new_ext_size);
+        _RM_UP_EXT = NEW_ARENA_ARRAY(arena, uintptr_t, new_ext_size);
       } else {
         assert(orig_ext_adr == &_RM_UP_EXT, "clone sanity check");
-        _RM_UP_EXT = REALLOC_ARENA_ARRAY(_arena, uintptr_t, _RM_UP_EXT,
+        _RM_UP_EXT = REALLOC_ARENA_ARRAY(arena, uintptr_t, _RM_UP_EXT,
                                          old_ext_size, new_ext_size);
       }
       if (init) {
@@ -646,6 +646,18 @@ class RegMask {
   uint Size() const;
 
 #ifndef PRODUCT
+  // Arena used to allocate _RM_UP_EXT. If null (or PRODUCT build), the
+  // compilation arena is used.
+  Arena* _arena = nullptr;
+
+  // Construct a mask that uses a non-compilation arena for dynamic allocation.
+  // This is useful for unit testing where a compilation arena is not available.
+  RegMask(Arena* arena): RegMask() {
+    _arena = arena;
+  }
+
+  unsigned int static basic_rm_size() { return _RM_SIZE; }
+
   void print() const { dump(); }
   void dump(outputStream *st = tty) const; // Print a mask
 #endif

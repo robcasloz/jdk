@@ -60,6 +60,11 @@ const RegMask RegMask::All(
 
 //=============================================================================
 Arena* RegMask::_get_arena() {
+#ifndef PRODUCT
+  if (_arena) {
+    return _arena;
+  }
+#endif
   return Compile::current()->comp_arena();
 }
 
