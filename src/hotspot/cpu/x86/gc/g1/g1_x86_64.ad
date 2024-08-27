@@ -60,14 +60,15 @@ static void write_barrier_post(MacroAssembler* masm,
                                Register store_addr,
                                Register new_val,
                                Register tmp1,
-                               Register tmp2) {
+                               Register tmp2,
+                               bool decode_new_val = false) {
   if (!G1PostBarrierStubC2::needs_barrier(node)) {
     return;
   }
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   G1BarrierSetAssembler* g1_asm = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
   G1PostBarrierStubC2* const stub = G1PostBarrierStubC2::create(node);
-  g1_asm->g1_write_barrier_post_c2(masm, store_addr, new_val, r15_thread, tmp1, tmp2, stub);
+  g1_asm->g1_write_barrier_post_c2(masm, store_addr, new_val, r15_thread, tmp1, tmp2, stub, decode_new_val);
 }
 
 %}
@@ -121,17 +122,13 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
     if ((barrier_data() & G1C2BarrierPost) != 0) {
       __ movl($tmp2$$Register, $src$$Register);
-      if ((barrier_data() & G1C2BarrierPostNotNull) == 0) {
-        __ decode_heap_oop($tmp2$$Register);
-      } else {
-        __ decode_heap_oop_not_null($tmp2$$Register);
-      }
     }
     write_barrier_post(masm, this,
                        $tmp1$$Register /* store_addr */,
                        $tmp2$$Register /* new_val */,
                        $tmp3$$Register /* tmp1 */,
-                       $tmp2$$Register /* tmp2 */);
+                       $tmp2$$Register /* tmp2 */,
+                       true /* decode_new_val */);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -213,12 +210,12 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
     __ movl($tmp1$$Register, $newval$$Register);
     __ lock();
     __ cmpxchgl($tmp1$$Register, Address($mem$$Register, 0));
-    __ decode_heap_oop($tmp1$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       true /* decode_new_val */);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -278,12 +275,12 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
     __ cmpxchgl($tmp1$$Register, Address($mem$$Register, 0));
     __ setb(Assembler::equal, $res$$Register);
     __ movzbl($res$$Register, $res$$Register);
-    __ decode_heap_oop($tmp1$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       true /* decode_new_val */);
   %}
   ins_pipe(pipe_cmpxchg);
 %}
@@ -326,13 +323,13 @@ instruct g1GetAndSetN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP 
                       $tmp3$$Register /* tmp */,
                       RegSet::of($mem$$Register, $newval$$Register) /* preserve */);
     __ movl($tmp1$$Register, $newval$$Register);
-    __ decode_heap_oop($tmp1$$Register);
     __ xchgl($newval$$Register, Address($mem$$Register, 0));
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
                        $tmp2$$Register /* tmp1 */,
-                       $tmp3$$Register /* tmp2 */);
+                       $tmp3$$Register /* tmp2 */,
+                       true /* decode_new_val */);
   %}
   ins_pipe(pipe_cmpxchg);
 %}

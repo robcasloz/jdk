@@ -87,7 +87,8 @@ public:
                                 Register thread,
                                 Register tmp1,
                                 Register tmp2,
-                                G1PostBarrierStubC2* c2_stub);
+                                G1PostBarrierStubC2* c2_stub,
+                                Register new_val_encoded);
   void generate_c2_post_barrier_stub(MacroAssembler* masm,
                                      G1PostBarrierStubC2* stub) const;
 #endif
