@@ -91,6 +91,9 @@ class IdealGraphPrinter : public CHeapObj<mtCompiler> {
   static const char *METHOD_BCI_PROPERTY;
   static const char *METHOD_SHORT_NAME_PROPERTY;
   static const char *ASSEMBLY_ELEMENT;
+  static const char *LIVEOUT_ELEMENT;
+  static const char *LIVE_RANGE_ELEMENT;
+  static const char *LIVE_RANGE_ID_PROPERTY;
 
   static int _file_count;
   networkStream *_network_stream;

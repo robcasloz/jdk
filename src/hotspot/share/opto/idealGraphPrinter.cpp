@@ -81,6 +81,9 @@ const char *IdealGraphPrinter::BLOCK_ELEMENT = "block";
 const char *IdealGraphPrinter::SUCCESSORS_ELEMENT = "successors";
 const char *IdealGraphPrinter::SUCCESSOR_ELEMENT = "successor";
 const char *IdealGraphPrinter::ASSEMBLY_ELEMENT = "assembly";
+const char *IdealGraphPrinter::LIVEOUT_ELEMENT = "liveOut";
+const char *IdealGraphPrinter::LIVE_RANGE_ELEMENT = "lrg";
+const char *IdealGraphPrinter::LIVE_RANGE_ID_PROPERTY = "id";
 
 int IdealGraphPrinter::_file_count = 0;
 
@@ -877,6 +880,21 @@ void IdealGraphPrinter::print(const char* name, Node* node, GrowableArray<const 
         end_elem();
       }
       tail(NODES_ELEMENT);
+
+      if (_chaitin &&
+          _chaitin != (PhaseChaitin *)((intptr_t)0xdeadbeef) &&
+          _chaitin->get_live() != nullptr) {
+        head(LIVEOUT_ELEMENT);
+        const IndexSet* liveout = _chaitin->get_live()->live(block);
+        IndexSetIterator lrgs(liveout);
+        uint lrg;
+        while ((lrg = lrgs.next()) != 0) {
+          begin_elem(LIVE_RANGE_ELEMENT);
+          print_attr(LIVE_RANGE_ID_PROPERTY, lrg);
+          end_elem();
+        }
+        tail(LIVEOUT_ELEMENT);
+      }
 
       tail(BLOCK_ELEMENT);
     }
