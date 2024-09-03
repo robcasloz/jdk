@@ -1,0 +1,34 @@
+// TODO: comment
+
+function liveRangeSet(integerList) {
+ return "{" + (integerList.split(",").map(function(lrg) {return "L" + lrg.trim();})).join(", ") + "}";
+}
+
+// Replace extra label with liveness info.
+function addLivenessInfo(lrg, liveout, uses, joins, kills) {
+  if (lrg == null || liveout == null) {
+    return "";
+  }
+  elements = [];
+  if (uses != null) {
+    elements.push("use: " + liveRangeSet(uses));
+  }
+  if (joins != null) {
+    elements.push("join: " + liveRangeSet(joins));
+  }
+  if (kills != null) {
+    elements.push("kill: " + liveRangeSet(kills));
+  }
+  if (Number(lrg) > 0) {
+    elements.push("def: L" + lrg);
+  }
+  if (liveout.length > 0) {
+    elements.push("liveout: " + liveRangeSet(liveout));
+  }
+  return elements.join(", ");
+}
+
+editProperty(matches("name", ".*"),
+             ["lrg", "liveout", "uses", "joins", "kills"],
+             "extra_label",
+             function(propertyValues) {return addLivenessInfo(propertyValues[0], propertyValues[1], propertyValues[2], propertyValues[3], propertyValues[4]);});

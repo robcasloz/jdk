@@ -31,11 +31,20 @@ import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.data.services.PreProcessor;
 import org.openide.util.lookup.ServiceProvider;
 import java.util.*;
+import java.util.stream.*;
 
 @ServiceProvider(service = PreProcessor.class)
 public class ServerCompilerPreProcessor implements PreProcessor {
 
-    private int liveRangeId(InputNode node) {
+    private static boolean isPhi(InputNode node) {
+        String nodeName = node.getProperties().get("name");
+        if (nodeName == null) {
+            return false;
+        }
+        return nodeName.equals("Phi");
+    }
+
+    private static int liveRangeId(InputNode node) {
         int liveRangeId = 0;
         try {
             liveRangeId = Integer.parseInt(node.getProperties().get("lrg"));
@@ -44,8 +53,12 @@ public class ServerCompilerPreProcessor implements PreProcessor {
         return liveRangeId;
     }
 
-    private boolean isAllocatableLiveRange(int liveRangeId) {
+    private static boolean isAllocatableLiveRange(int liveRangeId) {
         return liveRangeId > 0;
+    }
+
+    private String liveRangeList(Stream<Integer> s) {
+        return s.sorted().map(String::valueOf).collect(Collectors.joining(", "));
     }
 
     @Override
@@ -80,7 +93,8 @@ public class ServerCompilerPreProcessor implements PreProcessor {
             Set<Integer> liveOut = new HashSet<>(b.getLiveOut());
             for (int i = b.getNodes().size() - 1; i >= 0; i--) {
                 InputNode n = b.getNodes().get(i);
-                n.getProperties().setProperty("liveout", liveOut.toString());
+                String liveOutList = liveRangeList(liveOut.stream());
+                n.getProperties().setProperty("liveout", liveOutList);
                 int defLiveRange = liveRangeId(n);
                 if (isAllocatableLiveRange(defLiveRange)) {
                     // Otherwise it is missing or a non-allocatable live range.
@@ -88,8 +102,28 @@ public class ServerCompilerPreProcessor implements PreProcessor {
                 }
                 List<Integer> uses = usedLiveRanges.get(n.getId());
                 if (uses != null) {
-                    for (int useLiveRange : usedLiveRanges.get(n.getId())) {
-                        liveOut.add(useLiveRange);
+                    String useList = liveRangeList(uses.stream());
+                    if (isPhi(n)) {
+                        // A phi's uses are not live simultaneously.
+                        // Conceptually, they die at the block's incoming egdes.
+                        n.getProperties().setProperty("joins", useList);
+                    } else {
+                        n.getProperties().setProperty("uses", useList);
+                        // Compute kill set: all uses that are not in the
+                        // live-out set of the node.
+                        Set<Integer> kills = new HashSet<>();
+                        for (int useLiveRange : uses) {
+                            if (!liveOut.contains(useLiveRange)) {
+                                kills.add(useLiveRange);
+                            }
+                        }
+                        if (!kills.isEmpty()) {
+                            String killList = liveRangeList(kills.stream());
+                            n.getProperties().setProperty("kills", killList);
+                        }
+                        for (int useLiveRange : uses) {
+                            liveOut.add(useLiveRange);
+                        }
                     }
                 }
             }
