@@ -88,7 +88,7 @@ public class InputBlock {
         this.name = name;
         nodes = new ArrayList<>();
         successors = new LinkedHashSet<>(2);
-        liveOut = new TreeSet<Integer>();
+        liveOut = new HashSet<Integer>(0);
         artificial = false;
     }
 
@@ -112,6 +112,10 @@ public class InputBlock {
 
     public void addLiveOut(int liveRangeId) {
         liveOut.add(liveRangeId);
+    }
+
+    public Set<Integer> getLiveOut() {
+        return Collections.unmodifiableSet(liveOut);
     }
 
     public Set<InputBlock> getSuccessors() {
