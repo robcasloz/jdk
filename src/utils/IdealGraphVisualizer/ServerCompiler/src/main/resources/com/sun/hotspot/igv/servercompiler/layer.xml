@@ -85,5 +85,9 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Hide uncommon trap blocks"/>
         </file>
+        <file name="Show liveness.js" url="filters/showLiveness.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Hide exception blocks"/>
+        </file>
     </folder>
 </filesystem>
