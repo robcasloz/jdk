@@ -89,6 +89,9 @@ public class Parser implements GraphParser {
     public static final String BLOCK_ELEMENT = "block";
     public static final String SUCCESSORS_ELEMENT = "successors";
     public static final String SUCCESSOR_ELEMENT = "successor";
+    public static final String LIVEOUT_ELEMENT = "liveOut";
+    public static final String LIVE_RANGE_ELEMENT = "lrg";
+    public static final String LIVE_RANGE_ID_PROPERTY = "id";
     public static final String DIFFERENCE_PROPERTY = "difference";
     private final TopElementHandler<GraphDocument> xmlData = new TopElementHandler<>();
     private final Map<Group, Boolean> differenceEncoding = new HashMap<>();
@@ -219,6 +222,24 @@ public class Parser implements GraphParser {
         protected InputBlock start() throws SAXException {
             String name = readRequiredAttribute(BLOCK_NAME_PROPERTY);
             blockConnections.add(new Pair<>(getParentObject().getName(), name));
+            return getParentObject();
+        }
+    };
+    // <liveOut>
+    private final HandoverElementHandler<InputBlock> liveOutHandler = new HandoverElementHandler<>(LIVEOUT_ELEMENT);
+    // <lrg>
+    private final ElementHandler<InputBlock, InputBlock> liveRangeHandler = new ElementHandler<>(LIVE_RANGE_ELEMENT) {
+
+        @Override
+        protected InputBlock start() throws SAXException {
+            String s = readRequiredAttribute(LIVE_RANGE_ID_PROPERTY);
+            int liveRangeId;
+            try {
+                liveRangeId = Integer.parseInt(s);
+            } catch (Exception e) {
+                throw new SAXException(e);
+            }
+            getParentObject().addLiveOut(liveRangeId);
             return getParentObject();
         }
     };
@@ -495,6 +516,8 @@ public class Parser implements GraphParser {
         successorsHandler.addChild(successorHandler);
         blockHandler.addChild(blockNodesHandler);
         blockNodesHandler.addChild(blockNodeHandler);
+        blockHandler.addChild(liveOutHandler);
+        liveOutHandler.addChild(liveRangeHandler);
 
         nodesHandler.addChild(nodeHandler);
         nodesHandler.addChild(removeNodeHandler);
