@@ -24,10 +24,7 @@
  */
 package com.sun.hotspot.igv.servercompiler;
 
-import com.sun.hotspot.igv.data.InputBlock;
-import com.sun.hotspot.igv.data.InputEdge;
-import com.sun.hotspot.igv.data.InputGraph;
-import com.sun.hotspot.igv.data.InputNode;
+import com.sun.hotspot.igv.data.*;
 import com.sun.hotspot.igv.data.services.PreProcessor;
 import org.openide.util.lookup.ServiceProvider;
 import java.util.*;
@@ -114,11 +111,14 @@ public class ServerCompilerPreProcessor implements PreProcessor {
                 liveOut.add(liveRangeIdentifier(lrg));
             }
             for (int i = b.getNodes().size() - 1; i >= 0; i--) {
+                LivenessInfo livenessInfo = new LivenessInfo();
                 InputNode n = b.getNodes().get(i);
                 String liveOutList = liveRangeList(liveOut.stream());
                 n.getProperties().setProperty("liveout", liveOutList);
+                livenessInfo.liveout = new HashSet<>(liveOut);
                 int defLiveRange = getNumericPropertyOrZero(n, "lrg");
                 if (isAllocatableLiveRange(defLiveRange)) {
+                    livenessInfo.def = defLiveRange;
                     // Otherwise it is missing or a non-allocatable live range.
                     liveOut.remove(liveRangeIdentifier(defLiveRange));
                 }
@@ -129,8 +129,10 @@ public class ServerCompilerPreProcessor implements PreProcessor {
                         // A phi's uses are not live simultaneously.
                         // Conceptually, they die at the block's incoming egdes.
                         n.getProperties().setProperty("joins", useList);
+                        livenessInfo.join = new HashSet<>(uses);
                     } else {
                         n.getProperties().setProperty("uses", useList);
+                        livenessInfo.use = new HashSet<>(uses);
                         // Compute kill set: all uses that are not in the
                         // live-out set of the node.
                         Set<Integer> kills = new HashSet<>();
@@ -142,12 +144,14 @@ public class ServerCompilerPreProcessor implements PreProcessor {
                         if (!kills.isEmpty()) {
                             String killList = liveRangeList(kills.stream());
                             n.getProperties().setProperty("kills", killList);
+                            livenessInfo.kill = new HashSet<>(kills);
                         }
                         for (int useLiveRange : uses) {
                             liveOut.add(useLiveRange);
                         }
                     }
                 }
+                graph.addLivenessInfo(n, livenessInfo);
             }
         }
     }

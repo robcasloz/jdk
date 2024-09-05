@@ -77,6 +77,7 @@ const char *IdealGraphPrinter::ASSEMBLY_ELEMENT = "assembly";
 const char *IdealGraphPrinter::LIVEOUT_ELEMENT = "liveOut";
 const char *IdealGraphPrinter::LIVE_RANGE_ELEMENT = "lrg";
 const char *IdealGraphPrinter::LIVE_RANGE_ID_PROPERTY = "id";
+const char *IdealGraphPrinter::LIVE_RANGES_ELEMENT = "liveRanges";
 
 int IdealGraphPrinter::_file_count = 0;
 
@@ -760,6 +761,12 @@ Node* IdealGraphPrinter::get_load_node(const Node* node) {
   return load;
 }
 
+bool IdealGraphPrinter::has_liveness_info() const {
+  return _chaitin &&
+    _chaitin != (PhaseChaitin *)((intptr_t)0xdeadbeef) &&
+    _chaitin->get_live() != nullptr;
+}
+
 void IdealGraphPrinter::walk_nodes(Node* start, bool edges, VectorSet* temp_set) {
   VectorSet visited;
   GrowableArray<Node *> nodeStack(Thread::current()->resource_area(), 0, 0, nullptr);
@@ -834,6 +841,7 @@ void IdealGraphPrinter::print(const char *name, Node *node) {
   head(EDGES_ELEMENT);
   walk_nodes(node, true, &temp_set);
   tail(EDGES_ELEMENT);
+
   if (C->cfg() != nullptr) {
     head(CONTROL_FLOW_ELEMENT);
     for (uint i = 0; i < C->cfg()->number_of_blocks(); i++) {
@@ -858,9 +866,7 @@ void IdealGraphPrinter::print(const char *name, Node *node) {
       }
       tail(NODES_ELEMENT);
 
-      if (_chaitin &&
-          _chaitin != (PhaseChaitin *)((intptr_t)0xdeadbeef) &&
-          _chaitin->get_live() != nullptr) {
+      if (has_liveness_info()) {
         head(LIVEOUT_ELEMENT);
         const IndexSet* liveout = _chaitin->get_live()->live(block);
         IndexSetIterator lrgs(liveout);
@@ -877,6 +883,17 @@ void IdealGraphPrinter::print(const char *name, Node *node) {
     }
     tail(CONTROL_FLOW_ELEMENT);
   }
+
+  if (has_liveness_info()) {
+    head(LIVE_RANGES_ELEMENT);
+    for (uint i = 1; i < _chaitin->_lrg_map.max_lrg_id(); i++) {
+      begin_elem(LIVE_RANGE_ELEMENT);
+      print_attr(LIVE_RANGE_ID_PROPERTY, i);
+      end_elem();
+    }
+    tail(LIVE_RANGES_ELEMENT);
+  }
+
   tail(GRAPH_ELEMENT);
   _xml->flush();
 }
