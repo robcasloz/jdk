@@ -727,7 +727,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         m.doLayout(new LayoutGraph(edges));
     }
 
-    private void doCFGLayout(HashSet<Figure> figures, HashSet<Connection> edges) {
+    private void doCFGLayout(HashSet<Figure> figures, HashSet<Connection> edges, HashSet<LiveRangeSegment> segments) {
         Diagram diagram = getModel().getDiagram();
         HierarchicalCFGLayoutManager m = new HierarchicalCFGLayoutManager();
         HierarchicalLayoutManager manager = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
@@ -773,6 +773,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
             }
         }
         m.setClusters(new HashSet<>(visibleBlocks));
+        m.setSegments(new HashSet<>(segments));
         m.doLayout(new LayoutGraph(edges, figures));
     }
 
@@ -1139,6 +1140,12 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return visibleConnections;
     }
 
+    private HashSet<LiveRangeSegment> getVisibleLiveRangeSegments() {
+        HashSet<LiveRangeSegment> visibleLiveRangeSegments = new HashSet<>();
+        // TODO: populate
+        return visibleLiveRangeSegments;
+    }
+
     private void updateFigureWidgetLocations(Set<FigureWidget> oldVisibleFigureWidgets) {
         boolean doAnimation = shouldAnimate();
         for (Figure figure : getModel().getDiagram().getFigures()) {
@@ -1212,6 +1219,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
         HashSet<Figure> visibleFigures = getVisibleFigures();
         HashSet<Connection> visibleConnections = getVisibleConnections();
+        HashSet<LiveRangeSegment> visibleLiveRangeSegments = getVisibleLiveRangeSegments();
         if (getModel().getShowStableSea()) {
             doStableSeaLayout(visibleFigures, visibleConnections);
         } else if (getModel().getShowSea()) {
@@ -1219,7 +1227,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         } else if (getModel().getShowBlocks()) {
             doClusteredLayout(visibleConnections);
         } else if (getModel().getShowCFG()) {
-            doCFGLayout(visibleFigures, visibleConnections);
+            doCFGLayout(visibleFigures, visibleConnections, visibleLiveRangeSegments);
         }
         rebuildConnectionLayer();
 

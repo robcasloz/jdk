@@ -37,6 +37,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
     // Lays out clusters in the CFG.
     private LayoutManager manager;
     private Set<Cluster> clusters;
+    private Set<Segment> segments;
 
     public HierarchicalCFGLayoutManager() {
         // Anticipate block label sizes to dimension blocks appropriately.
@@ -61,6 +62,10 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
 
     public void setClusters(Set<Cluster> clusters) {
         this.clusters = clusters;
+    }
+
+    public void setSegments(Set<Segment> segments) {
+        this.segments = segments;
     }
 
     public void doLayout(LayoutGraph graph, Set<? extends Link> importantLinks) {
