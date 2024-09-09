@@ -137,7 +137,7 @@ public class ServerCompilerPreProcessor implements PreProcessor {
                         // live-out set of the node.
                         Set<Integer> kills = new HashSet<>();
                         for (int useLiveRange : uses) {
-                            if (!liveOut.contains(useLiveRange)) {
+                            if (!liveOut.contains(useLiveRange) && useLiveRange != defLiveRange) {
                                 kills.add(useLiveRange);
                             }
                         }
