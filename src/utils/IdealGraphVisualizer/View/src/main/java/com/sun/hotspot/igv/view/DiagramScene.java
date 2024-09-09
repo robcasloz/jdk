@@ -81,6 +81,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private final LayerWidget mainLayer;
     private final LayerWidget blockLayer;
     private final LayerWidget connectionLayer;
+    private final LayerWidget segmentLayer;
     private final DiagramViewModel model;
     private ModelState modelState;
     private boolean rebuilding;
@@ -319,6 +320,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
         connectionLayer = new LayerWidget(this);
         addChild(connectionLayer);
+
+        segmentLayer = new LayerWidget(this);
+        addChild(segmentLayer);
 
         mainLayer = new LayerWidget(this);
         addChild(mainLayer);
@@ -746,6 +750,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                 edges.add(c);
             }
         }
+        m.setSegments(new HashSet<>(segments));
         m.setSubManager(new LinearLayoutManager(figureRank));
         Set<Block> visibleBlocks = new HashSet<>();
         for (Block b : diagram.getBlocks()) {
@@ -755,7 +760,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
             }
         }
         m.setClusters(new HashSet<>(visibleBlocks));
-        m.setSegments(new HashSet<>(segments));
         m.doLayout(new LayoutGraph(edges, figures));
     }
 
@@ -1004,6 +1008,17 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
+    private void rebuildSegmentLayer() {
+        System.out.println("rebuildSegmentLayer");
+        segmentLayer.removeChildren();
+        for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
+            System.out.println("segment: " + segment + ", (" + segment.getStart() + ", " + segment.getEnd());
+            LiveRangeWidget segmentWidget = new LiveRangeWidget(this, segment.getStart(), segment.getEnd());
+            System.out.println("isVisible: " + segmentWidget.isVisible());
+            segmentLayer.addChild(segmentWidget);
+        }
+    }
+
     private Set<FigureWidget> getVisibleFigureWidgets() {
         Set<FigureWidget> visibleFigureWidgets = new HashSet<>();
         for (Figure figure : getModel().getDiagram().getFigures()) {
@@ -1123,8 +1138,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private HashSet<LiveRangeSegment> getVisibleLiveRangeSegments() {
-        HashSet<LiveRangeSegment> visibleLiveRangeSegments = new HashSet<>();
-        // TODO: populate
+        HashSet<LiveRangeSegment> visibleLiveRangeSegments = new HashSet<>(getModel().getDiagram().getLiveRangeSegments());
         return visibleLiveRangeSegments;
     }
 
@@ -1212,6 +1226,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
             doCFGLayout(visibleFigures, visibleConnections, visibleLiveRangeSegments);
         }
         rebuildConnectionLayer();
+        if (getModel().getShowCFG()) {
+            rebuildSegmentLayer();
+        }
 
         updateFigureWidgetLocations(oldVisibleFigureWidgets);
         updateBlockWidgetBounds(oldVisibleBlockWidgets);

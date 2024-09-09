@@ -36,6 +36,7 @@ public class Diagram {
 
     private List<Figure> figures;
     private final Map<InputBlock, Block> blocks;
+    private Set<LiveRangeSegment> liveRangeSegments;
     private final String nodeText;
     private final String shortNodeText;
     private final String tinyNodeText;
@@ -65,6 +66,7 @@ public class Diagram {
         this.tinyNodeText = tinyNodeText;
         this.figures = new ArrayList<>();
         this.blocks = new LinkedHashMap<>(8);
+        this.liveRangeSegments = new HashSet<>();
         this.blockConnections = new HashSet<>();
         this.cfg = false;
         int curId = 0;
@@ -126,6 +128,13 @@ public class Diagram {
             Block s = getBlock(e.getTo());
             blockConnections.add(new BlockConnection(p, s, e.getLabel()));
         }
+
+        for (InputLiveRange lrg : graph.getLiveRanges()) {
+            for (Block b : getBlocks()) {
+                LiveRangeSegment s = new LiveRangeSegment(lrg, b);
+                this.liveRangeSegments.add(s);
+            }
+        }
     }
 
     public Block getBlock(InputBlock b) {
@@ -159,6 +168,10 @@ public class Diagram {
 
     public List<Figure> getFigures() {
         return Collections.unmodifiableList(figures);
+    }
+
+    public Collection<LiveRangeSegment> getLiveRangeSegments() {
+        return Collections.unmodifiableCollection(liveRangeSegments);
     }
 
     public FigureConnection createConnection(InputSlot inputSlot, OutputSlot outputSlot, String label) {

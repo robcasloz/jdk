@@ -36,6 +36,7 @@ public class LayoutGraph {
     private final HashMap<Vertex, Set<Port>> inputPorts;
     private final HashMap<Vertex, Set<Port>> outputPorts;
     private final HashMap<Port, Set<Link>> portLinks;
+    private HashSet<Segment> segments;
 
     public LayoutGraph(Set<? extends Link> links) {
         this(links, new HashSet<>());
@@ -49,6 +50,7 @@ public class LayoutGraph {
         portLinks = new HashMap<>(links.size());
         inputPorts = new HashMap<>(links.size());
         outputPorts = new HashMap<>(links.size());
+        segments = new HashSet<>();
 
         for (Link l : links) {
             if (l.getFrom() == null || l.getTo() == null) {
@@ -97,6 +99,14 @@ public class LayoutGraph {
                 vertices.add(v);
             }
         }
+    }
+
+    public Set<Segment> getSegments() {
+        return segments;
+    }
+
+    public void setSegments(Set<? extends Segment> s) {
+        segments = new HashSet<>(s);
     }
 
     public Set<Port> getInputPorts(Vertex v) {
