@@ -135,6 +135,7 @@ public class ClusterNode implements Vertex {
             maxX = Math.max(maxX, p.x + n.getSize().width);
             maxY = Math.max(maxY, p.y + n.getSize().height);
         }
+        int maxXNodes = maxX;
 
         for (Link l : subEdges) {
             List<Point> points = l.getControlPoints();
@@ -150,15 +151,9 @@ public class ClusterNode implements Vertex {
 
         for (Segment segment : subSegments) {
             Point s = segment.getStart();
-            minX = Math.min(minX, s.x);
-            maxX = Math.max(maxX, s.x);
-            minY = Math.min(minY, s.y);
-            maxY = Math.max(maxY, s.y);
+            maxX = Math.max(maxX, s.x + maxXNodes);
             Point e = segment.getStart();
-            minX = Math.min(minX, e.x);
-            maxX = Math.max(maxX, e.x);
-            minY = Math.min(minY, e.y);
-            maxY = Math.max(maxY, e.y);
+            maxX = Math.max(maxX, e.x + maxXNodes);
         }
 
         size = new Dimension(maxX - minX, maxY - minY + headerVerticalSpace);
@@ -198,11 +193,15 @@ public class ClusterNode implements Vertex {
 
     public void setPosition(Point pos) {
 
+        int maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE;
         this.position = pos;
         for (Vertex n : subNodes) {
             Point cur = new Point(n.getPosition());
             cur.translate(pos.x + border, pos.y + border);
             n.setPosition(cur);
+            maxX = Math.max(maxX, cur.x + n.getSize().width);
+            minY = Math.min(minY, cur.y);
         }
 
         for (Link e : subEdges) {
@@ -219,6 +218,23 @@ public class ClusterNode implements Vertex {
             }
 
             e.setControlPoints(newArr);
+        }
+
+        if (maxX == Integer.MIN_VALUE) {
+            // FIXME: hack for blocks without nodes, shouldn't be needed.
+            maxX = pos.x + border;
+        }
+        if (minY == Integer.MAX_VALUE) {
+            // FIXME: hack for blocks without nodes, shouldn't be needed.
+            minY = pos.y + border;
+        }
+        for (Segment s : subSegments) {
+            Point curStart = new Point(s.getStart());
+            curStart.translate(maxX, minY);
+            s.setStart(curStart);
+            Point curEnd = new Point(s.getEnd());
+            curEnd.translate(maxX, minY);
+            s.setEnd(curEnd);
         }
     }
 
