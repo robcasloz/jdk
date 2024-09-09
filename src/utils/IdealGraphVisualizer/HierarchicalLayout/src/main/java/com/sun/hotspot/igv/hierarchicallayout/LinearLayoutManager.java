@@ -26,6 +26,7 @@ package com.sun.hotspot.igv.hierarchicallayout;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.layout.LayoutManager;
 import com.sun.hotspot.igv.layout.Link;
+import com.sun.hotspot.igv.layout.Segment;
 import com.sun.hotspot.igv.layout.Vertex;
 import java.awt.Point;
 import java.util.*;
@@ -58,11 +59,21 @@ public class LinearLayoutManager implements LayoutManager {
 
         // Assign vertical coordinates in rank order.
         assignVerticalCoordinates(vertices);
+
+        System.out.println("doLayout:");
+        int x = 0;
+        for (Segment s : graph.getSegments()) {
+            System.out.println("  s: " + s);
+            s.setStart(new Point(x, 0));
+            s.setEnd(new Point(x, 200));
+            x += 100;
+        }
     }
 
     private void assignVerticalCoordinates(List<Vertex> vertices) {
         int curY = 0;
         for (Vertex v : vertices) {
+            System.out.println("curY: " + curY);
             v.setPosition(new Point(0, curY));
             curY += v.getSize().getHeight();
         }

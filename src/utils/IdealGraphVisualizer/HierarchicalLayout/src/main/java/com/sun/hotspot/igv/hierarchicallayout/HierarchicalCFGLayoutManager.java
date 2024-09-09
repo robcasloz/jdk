@@ -73,16 +73,35 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
     }
 
     public void doLayout(LayoutGraph graph) {
+        System.out.println("HierarchicalCFGLayoutManager::doLayout()");
 
         // Create cluster-level nodes and edges.
         Map<Cluster, ClusterNode> clusterNode = createClusterNodes(graph);
         Set<ClusterEdge> clusterEdges = createClusterEdges(clusterNode);
         markRootClusters(clusterEdges);
+        for (Segment s : segments) {
+            Cluster c = s.getCluster();
+            assert c != null : "Cluster of segment " + s + " is null!";
+            System.out.println("  clusterNode.get(c).addSubSegment(" + s + ")");
+            clusterNode.get(c).addSubSegment(s);
+        }
 
         // Compute layout for each cluster.
         for (Cluster c : clusters) {
+            System.out.println("  c: " + c);
             ClusterNode n = clusterNode.get(c);
-            subManager.doLayout(new LayoutGraph(n.getSubEdges(), n.getSubNodes()), new HashSet<>());
+            System.out.println("  n: " + n);
+            LayoutGraph g = new LayoutGraph(n.getSubEdges(), n.getSubNodes());
+            Set<Segment> clusterSegments = new HashSet<>();
+            for (Segment s : segments) {
+                if (s.getCluster().equals(c)) {
+                    clusterSegments.add(s);
+                }
+            }
+            System.out.println("  clusterSegments.size(): " + clusterSegments.size());
+            System.out.println("  n.getSubSegments().size(): " + n.getSubSegments().size());
+            g.setSegments(n.getSubSegments());
+            subManager.doLayout(g, new HashSet<>());
             n.updateSize();
         }
 

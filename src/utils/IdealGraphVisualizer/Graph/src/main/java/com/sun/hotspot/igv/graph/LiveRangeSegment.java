@@ -23,22 +23,18 @@
  */
 package com.sun.hotspot.igv.graph;
 
-import com.sun.hotspot.igv.data.InputBlock;
 import com.sun.hotspot.igv.data.InputLiveRange;
 import com.sun.hotspot.igv.layout.Segment;
-import java.awt.Color;
 import java.awt.Point;
-import java.util.ArrayList;
-import java.util.List;
 
 public class LiveRangeSegment implements Segment {
 
     private InputLiveRange liveRange;
-    private InputBlock block;
+    private Block block;
     private Point start;
     private Point end;
 
-    protected LiveRangeSegment(InputLiveRange liveRange, InputBlock block) {
+    protected LiveRangeSegment(InputLiveRange liveRange, Block block) {
         this.liveRange = liveRange;
         this.block = block;
     }
@@ -47,7 +43,7 @@ public class LiveRangeSegment implements Segment {
         return liveRange;
     }
 
-    public InputBlock getBlock() {
+    public Block getCluster() {
         return block;
     }
 
@@ -55,13 +51,21 @@ public class LiveRangeSegment implements Segment {
         return start;
     }
 
+    public void setStart(Point start) {
+        this.start = start;
+    }
+
     public Point getEnd() {
         return end;
     }
 
+    public void setEnd(Point end) {
+        this.end = end;
+    }
+
     @Override
     public String toString() {
-        return "LiveRangeSegment('" + liveRange + "', " + block.getName() + ")";
+        return "LiveRangeSegment('" + liveRange + "', B" + block + ")";
     }
 
     @Override
@@ -70,7 +74,7 @@ public class LiveRangeSegment implements Segment {
             return false;
         }
         return getLiveRange().equals(((LiveRangeSegment)o).getLiveRange())
-            && getBlock().equals(((LiveRangeSegment)o).getBlock());
+            && getCluster().equals(((LiveRangeSegment)o).getCluster());
     }
 
 }

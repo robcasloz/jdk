@@ -26,6 +26,7 @@ package com.sun.hotspot.igv.hierarchicallayout;
 import com.sun.hotspot.igv.layout.Cluster;
 import com.sun.hotspot.igv.layout.Link;
 import com.sun.hotspot.igv.layout.Port;
+import com.sun.hotspot.igv.layout.Segment;
 import com.sun.hotspot.igv.layout.Vertex;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -43,6 +44,7 @@ public class ClusterNode implements Vertex {
     private Dimension size;
     private Point position;
     private final Set<Link> subEdges;
+    private final Set<Segment> subSegments;
     private boolean root;
     private final String name;
     private final int border;
@@ -55,6 +57,7 @@ public class ClusterNode implements Vertex {
                        Dimension emptySize) {
         this.subNodes = new HashSet<>();
         this.subEdges = new HashSet<>();
+        this.subSegments = new HashSet<>();
         this.cluster = cluster;
         this.position = new Point(0, 0);
         this.name = name;
@@ -81,6 +84,10 @@ public class ClusterNode implements Vertex {
 
     public void addSubEdge(Link l) {
         subEdges.add(l);
+    }
+
+    public void addSubSegment(Segment s) {
+        subSegments.add(s);
     }
 
     public Set<Link> getSubEdges() {
@@ -139,6 +146,19 @@ public class ClusterNode implements Vertex {
                     maxY = Math.max(maxY, p.y);
                 }
             }
+        }
+
+        for (Segment segment : subSegments) {
+            Point s = segment.getStart();
+            minX = Math.min(minX, s.x);
+            maxX = Math.max(maxX, s.x);
+            minY = Math.min(minY, s.y);
+            maxY = Math.max(maxY, s.y);
+            Point e = segment.getStart();
+            minX = Math.min(minX, e.x);
+            maxX = Math.max(maxX, e.x);
+            minY = Math.min(minY, e.y);
+            maxY = Math.max(maxY, e.y);
         }
 
         size = new Dimension(maxX - minX, maxY - minY + headerVerticalSpace);
@@ -233,5 +253,9 @@ public class ClusterNode implements Vertex {
 
     public Set<? extends Vertex> getSubNodes() {
         return subNodes;
+    }
+
+    public Set<? extends Segment> getSubSegments() {
+        return subSegments;
     }
 }
