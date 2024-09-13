@@ -2395,6 +2395,7 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
   Compile::AliasType* alias_type = C->alias_type(adr_type);
   assert(alias_type->index() != Compile::AliasIdxBot, "no bare pointers here");
 
+  assert(!UseNewCode || alias_type->adr_type() != TypeInstPtr::KLASS, "should not exist");
   if (alias_type->adr_type() == TypeInstPtr::KLASS ||
       alias_type->adr_type() == TypeAryPtr::RANGE) {
     set_map(old_map);

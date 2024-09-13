@@ -1781,6 +1781,7 @@ const TypeFunc *OptoRuntime::register_finalizer_Type() {
 const TypeFunc *OptoRuntime::class_id_load_barrier_Type() {
   // create input type (domain)
   const Type **fields = TypeTuple::fields(1);
+  assert(!UseNewCode, "FIXME");
   fields[TypeFunc::Parms+0] = TypeInstPtr::KLASS;
   const TypeTuple *domain = TypeTuple::make(TypeFunc::Parms + 1, fields);
 

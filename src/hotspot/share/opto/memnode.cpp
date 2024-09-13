@@ -941,7 +941,8 @@ Node* LoadNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const TypeP
   Compile* C = gvn.C;
 
   // sanity check the alias category against the created node type
-  assert(!(adr_type->isa_oopptr() &&
+  assert(UseNewCode ||
+         !(adr_type->isa_oopptr() &&
            adr_type->offset() == oopDesc::klass_offset_in_bytes()),
          "use LoadKlassNode instead");
   assert(!(adr_type->isa_aryptr() &&
@@ -2408,7 +2409,14 @@ Node* LoadKlassNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const 
   const TypePtr *adr_type = adr->bottom_type()->isa_ptr();
   assert(adr_type != nullptr, "expecting TypeKlassPtr");
 #ifdef _LP64
-  if (adr_type->is_ptr_to_narrowklass()) {
+  bool use_load_nklass;
+  if (UseNewCode && adr_type->isa_oopptr() && tk == TypeInstKlassPtr::OBJECT) {
+    // We assume LoadNKlassNode can only load from object header.
+    use_load_nklass = UseCompressedClassPointers;
+  } else {
+    use_load_nklass = adr_type->is_ptr_to_narrowklass();
+  }
+  if (use_load_nklass) {
     assert(UseCompressedClassPointers, "no compressed klasses");
     Node* load_klass = gvn.transform(new LoadNKlassNode(ctl, mem, adr, at, tk->make_narrowklass(), MemNode::unordered));
     return new DecodeNKlassNode(load_klass, load_klass->bottom_type()->make_ptr());
@@ -2473,14 +2481,15 @@ const Type* LoadNode::klass_value_common(PhaseGVN* phase) const {
     }
     if (!tinst->is_loaded())
       return _type;             // Bail out if not loaded
-    if (offset == oopDesc::klass_offset_in_bytes()) {
+    if (!UseNewCode && (offset == oopDesc::klass_offset_in_bytes())) {
       return tinst->as_klass_type(true);
     }
   }
 
   // Check for loading klass from an array
   const TypeAryPtr *tary = tp->isa_aryptr();
-  if (tary != nullptr &&
+  if (!UseNewCode &&
+      tary != nullptr &&
       tary->offset() == oopDesc::klass_offset_in_bytes()) {
     return tary->as_klass_type(true);
   }
@@ -2547,7 +2556,7 @@ Node* LoadNode::klass_identity_common(PhaseGVN* phase) {
 
   // We can fetch the klass directly through an AllocateNode.
   // This works even if the klass is not constant (clone or newArray).
-  if (offset == oopDesc::klass_offset_in_bytes()) {
+  if (!UseNewCode && offset == oopDesc::klass_offset_in_bytes()) {
     Node* allocated_klass = AllocateNode::Ideal_klass(base, phase);
     if (allocated_klass != nullptr) {
       return allocated_klass;

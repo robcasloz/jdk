@@ -1362,7 +1362,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
       } else if( offset == arrayOopDesc::length_offset_in_bytes() ) {
         // range is OK as-is.
         tj = ta = TypeAryPtr::RANGE;
-      } else if( offset == oopDesc::klass_offset_in_bytes() ) {
+      } else if( !UseNewCode && offset == oopDesc::klass_offset_in_bytes() ) {
         tj = TypeInstPtr::KLASS; // all klass loads look alike
         ta = TypeAryPtr::RANGE; // generic ignored junk
         ptr = TypePtr::BotPTR;
@@ -1524,7 +1524,8 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
   offset = tj->offset();
   assert( offset != Type::OffsetTop, "Offset has fallen from constant" );
 
-  assert( (offset != Type::OffsetBot && tj->base() != Type::AryPtr) ||
+  assert( UseNewCode ||
+          (offset != Type::OffsetBot && tj->base() != Type::AryPtr) ||
           (offset == Type::OffsetBot && tj->base() == Type::AryPtr) ||
           (offset == Type::OffsetBot && tj == TypeOopPtr::BOTTOM) ||
           (offset == Type::OffsetBot && tj == TypePtr::BOTTOM) ||
@@ -1676,7 +1677,10 @@ Compile::AliasType* Compile::find_alias_type(const TypePtr* adr_type, bool no_cr
     // Add a new alias type.
     idx = _num_alias_types++;
     _alias_types[idx]->Init(idx, flat);
-    if (flat == TypeInstPtr::KLASS)  alias_type(idx)->set_rewritable(false);
+    if (flat == TypeInstPtr::KLASS)  {
+      assert(!UseNewCode, "should not exist");
+      alias_type(idx)->set_rewritable(false);
+    }
     if (flat == TypeAryPtr::RANGE)   alias_type(idx)->set_rewritable(false);
     if (flat->isa_instptr()) {
       if (flat->offset() == java_lang_Class::klass_offset()

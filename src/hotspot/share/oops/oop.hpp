@@ -331,6 +331,7 @@ class oopDesc {
   static int klass_offset_in_bytes()     {
 #ifdef _LP64
     if (UseCompactObjectHeaders) {
+      assert(!UseNewCode, "the prototype solution should not rely on this function");
       // NOTE: The only place where this is used with compact headers is
       // the C2 compiler, and even there we don't use it to access the (narrow)Klass*
       // directly. It is used only as a placeholder to identify the special memory slice

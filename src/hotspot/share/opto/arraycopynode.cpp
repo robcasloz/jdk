@@ -140,7 +140,7 @@ int ArrayCopyNode::get_count(PhaseGVN *phase) const {
       // 3 or 4 elements) might lead to the same length input
       // (e.g. 2 double-words).
       assert(!ary_src->size()->is_con() || (get_length_if_constant(phase) >= 0) ||
-             phase->is_IterGVN() || phase->C->inlining_incrementally() || StressReflectiveCode, "inconsistent");
+             phase->is_IterGVN() || phase->C->inlining_incrementally() || StressReflectiveCode || UseNewCode, "inconsistent");
       if (ary_src->size()->is_con()) {
         return ary_src->size()->get_con();
       }

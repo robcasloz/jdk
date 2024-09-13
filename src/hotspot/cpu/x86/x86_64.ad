@@ -4369,28 +4369,32 @@ instruct loadKlass(rRegP dst, memory mem)
 // Load narrow Klass Pointer
 instruct loadNKlass(rRegN dst, memory mem)
 %{
-  predicate(!UseCompactObjectHeaders);
   match(Set dst (LoadNKlass mem));
 
   ins_cost(125); // XXX
   format %{ "movl    $dst, $mem\t# compressed klass ptr" %}
   ins_encode %{
-    __ movl($dst$$Register, $mem$$Address);
+    if (UseNewCode) {
+      // The incoming address is pointing into obj-start.
+      if (UseCompactObjectHeaders) {
+        __ movq($dst$$Register, $mem$$Address.plus_disp(oopDesc::mark_offset_in_bytes()));
+        __ shrq($dst$$Register, markWord::klass_shift);
+      } else {
+        __ movl($dst$$Register, $mem$$Address.plus_disp(oopDesc::klass_offset_in_bytes()));
+      }
+    } else {
+      if (UseCompactObjectHeaders) {
+        // The incoming address is pointing into obj-start + klass_offset_in_bytes. We need to extract
+        // obj-start, so that we can load from the object's mark-word instead. Usually the address
+        // comes as obj-start in obj and klass_offset_in_bytes in disp.
+        __ movq($dst$$Register, $mem$$Address.plus_disp(-oopDesc::klass_offset_in_bytes()));
+        __ shrq($dst$$Register, markWord::klass_shift);
+      } else {
+        __ movl($dst$$Register, $mem$$Address);
+      }
+    }
   %}
   ins_pipe(ialu_reg_mem); // XXX
-%}
-
-instruct loadNKlassCompactHeaders(rRegN dst, memory mem, rFlagsReg cr)
-%{
-  predicate(UseCompactObjectHeaders);
-  match(Set dst (LoadNKlass mem));
-  effect(KILL cr);
-  ins_cost(125); // XXX
-  format %{ "movl    $dst, $mem\t# compressed klass ptr" %}
-  ins_encode %{
-    __ load_nklass_compact_c2($dst$$Register, $mem$$Address);
-  %}
-  ins_pipe(pipe_slow); // XXX
 %}
 
 // Load Float
@@ -11730,7 +11734,7 @@ instruct compN_rReg_imm_klass(rFlagsRegU cr, rRegN op1, immNKlass op2) %{
 
 instruct compN_mem_imm_klass(rFlagsRegU cr, memory mem, immNKlass src)
 %{
-  predicate(!UseCompactObjectHeaders);
+  predicate(!UseNewCode && !UseCompactObjectHeaders);
   match(Set cr (CmpN src (LoadNKlass mem)));
 
   format %{ "cmpl    $mem, $src\t# compressed klass ptr" %}
