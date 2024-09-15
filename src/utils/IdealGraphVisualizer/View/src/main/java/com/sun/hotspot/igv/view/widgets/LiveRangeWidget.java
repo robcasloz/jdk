@@ -34,32 +34,22 @@ public class LiveRangeWidget extends Widget {
     private final Point end;
     private final Rectangle clientArea;
 
+    private static final int RANGE_WIDTH = 4;
+
     public LiveRangeWidget(DiagramScene scene, Point start, Point end) {
         super(scene);
         this.scene = scene;
         this.start = start;
         this.end = end;
 
-        int minX = start.x;
+        int x = start.x;
         int minY = start.y;
-        int maxX = end.x;
         int maxY = end.y;
-        if (minX > maxX) {
-            int tmp = minX;
-            minX = maxX;
-            maxX = tmp;
-        }
-
-        if (minY > maxY) {
-            int tmp = minY;
-            minY = maxY;
-            maxY = tmp;
-        }
 
         setBackground(Color.BLACK);
 
-        clientArea = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
-        clientArea.grow(5, 5);
+        clientArea = new Rectangle(x, minY, 1, maxY - minY + 1);
+        clientArea.grow(RANGE_WIDTH * 2, 5);
         System.out.println("LiveRangeWidget::clientArea: " + clientArea);
 
     }
@@ -78,9 +68,10 @@ public class LiveRangeWidget extends Widget {
 
         Graphics2D g = getScene().getGraphics();
         g.setPaint(this.getBackground());
-        float width = 1.0f;
 
-        g.setStroke(new BasicStroke(2));
+        g.setStroke(new BasicStroke(1.5f));
+        g.drawLine(start.x - RANGE_WIDTH, start.y, start.x + RANGE_WIDTH, start.y);
         g.drawLine(start.x, start.y, end.x, end.y);
+        g.drawLine(end.x - RANGE_WIDTH, end.y, end.x + RANGE_WIDTH, end.y);
     }
 }
