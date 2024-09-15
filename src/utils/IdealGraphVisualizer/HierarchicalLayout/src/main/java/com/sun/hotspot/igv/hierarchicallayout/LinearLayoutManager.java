@@ -61,10 +61,15 @@ public class LinearLayoutManager implements LayoutManager {
         assignVerticalCoordinates(vertices);
 
         int x = 0;
+        int endY = 0;
+        if (!vertices.isEmpty()) {
+            Vertex last = vertices.get(vertices.size() - 1);
+            endY = (int)last.getPosition().getY() + (int)last.getSize().getHeight();
+        }
         for (Segment s : graph.getSegments()) {
             s.setStart(new Point(x, 0));
-            s.setEnd(new Point(x, 200));
-            x += 20;
+            s.setEnd(new Point(x, endY));
+            x += ClusterNode.LIVE_RANGE_SEPARATION;
         }
     }
 
