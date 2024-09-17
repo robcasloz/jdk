@@ -23,6 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/chaitin.hpp"
 #include "opto/idealGraphPrinter.hpp"
@@ -507,6 +509,12 @@ void IdealGraphPrinter::visit_node(Node *n, bool edges, VectorSet* temp_set) {
 
     if (node->is_Mach()) {
       print_prop("idealOpcode", (const char *)NodeClassNames[node->as_Mach()->ideal_Opcode()]);
+    }
+
+    if (MemNode::barrier_data(node) != 0) {
+      print_prop("barrier", MemNode::barrier_data(node));
+    } else if (node->is_Mach() && node->as_Mach()->barrier_data() != 0) {
+      print_prop("barrier", node->as_Mach()->barrier_data());
     }
 
     print_field(node);
