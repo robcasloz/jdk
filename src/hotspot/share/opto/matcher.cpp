@@ -1823,6 +1823,8 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   NOT_PRODUCT(record_new2old(mach, leaf);)
   // Check for instruction or instruction chain rule
   if( rule >= _END_INST_CHAIN_RULE || rule < _BEGIN_INST_CHAIN_RULE ) {
+    assert(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf),
+           "duplicating node that's already been matched");
     // Instruction
     mach->add_req( leaf->in(0) ); // Set initial control
     // Reduce interior of complex instruction
@@ -2841,7 +2843,8 @@ bool Matcher::is_encode_and_store_pattern(const Node* n, const Node* m) {
   if (n == nullptr ||
       m == nullptr ||
       n->Opcode() != Op_StoreN ||
-      !m->is_EncodeP()) {
+      !m->is_EncodeP() ||
+      n->as_Store()->barrier_data() == 0) {
     return false;
   }
   assert(m == n->in(MemNode::ValueIn), "m should be input to n");
