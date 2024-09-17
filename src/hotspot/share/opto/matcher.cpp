@@ -1824,7 +1824,7 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   // Check for instruction or instruction chain rule
   if( rule >= _END_INST_CHAIN_RULE || rule < _BEGIN_INST_CHAIN_RULE ) {
 #ifndef PRODUCT
-    if (UseNewCode && !(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_lea))) {
+    if (UseNewCode && !(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf))) {
       tty->print_cr("duplicating node that's already been matched");
       tty->print("s->_leaf: ");
       s->_leaf->dump();
