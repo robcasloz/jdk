@@ -1507,6 +1507,10 @@ MachNode *Matcher::match_sfpt( SafePointNode *sfpt ) {
 // making GotoNodes while building the CFG and in init_spill_mask() to identify
 // a Load's result RegMask for memoization in idealreg2regmask[]
 MachNode *Matcher::match_tree( const Node *n ) {
+  if (UseNewCode) {
+    tty->print_cr("match_tree n = %d %s", n->_idx, n->Name());
+  }
+
   assert( n->Opcode() != Op_Phi, "cannot match" );
   assert( !n->is_block_start(), "cannot match" );
   // Set the mark for all locally allocated State objects.
@@ -1585,19 +1589,29 @@ MachNode *Matcher::match_tree( const Node *n ) {
 // match tree.  Return true for requiring a register and false for matching
 // as part of the current match tree.
 static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool shared ) {
-
+  if (UseNewCode) {
+    tty->print("match_into_reg n = %d %s, m = %d %s: ",
+               n->_idx, n->Name(), m->_idx, m->Name());
+  }
   const Type *t = m->bottom_type();
 
   if (t->singleton()) {
     // Never force constants into registers.  Allow them to match as
     // constants or registers.  Copies of the same value will share
     // the same register.  See find_shared_node.
+    if (UseNewCode) {
+      tty->print_cr("false (m is constant)");
+    }
     return false;
   } else {                      // Not a constant
-    if (Matcher::is_encode_and_store_pattern(n, m)) {
+    if (UseNewCode3 && Matcher::is_encode_and_store_pattern(n, m)) {
       // Make it possible to match "encode and store" patterns, regardless of
       // whether the encode operation is pinned to a control node (e.g. by
       // CastPP node removal in final graph reshaping).
+      // Note: replacing Matcher::is_encode_and_store_pattern(n, m) with m->is_EncodeP() works.
+      if (UseNewCode) {
+        tty->print_cr("false (n and m form a n encode-and-store pattern)");
+      }
       return false;
     }
     // Stop recursion if they have different Controls.
@@ -1615,26 +1629,40 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
       const uint max_scan = 6;  // Arbitrary scan cutoff
       uint j;
       for (j=0; j<max_scan; j++) {
-        if (x->is_Region())     // Bail out at merge points
+        if (x->is_Region()) {     // Bail out at merge points
+          if (UseNewCode) {
+            tty->print_cr("true (merge point)");
+          }
           return true;
+        }
         x = x->in(0);
         if (x == m_control)     // Does 'control' post-dominate
           break;                // m->in(0)?  If so, we can use it
         if (x == mem_control)   // Does 'control' post-dominate
           break;                // mem_control?  If so, we can use it
       }
-      if (j == max_scan)        // No post-domination before scan end?
+      if (j == max_scan) {        // No post-domination before scan end?
+        if (UseNewCode) {
+          tty->print_cr("true (end of scan)");
+        }
         return true;            // Then break the match tree up
+      }
     }
     if ((m->is_DecodeN() && Matcher::narrow_oop_use_complex_address()) ||
         (m->is_DecodeNKlass() && Matcher::narrow_klass_use_complex_address())) {
       // These are commonly used in address expressions and can
       // efficiently fold into them on X64 in some cases.
+      if (UseNewCode) {
+        tty->print_cr("false (m is a DecodeN(Klass)? and platform wants this)");
+      }
       return false;
     }
   }
 
   // Not forceable cloning.  If shared, put it into a register.
+  if (UseNewCode) {
+    tty->print_cr(shared ? "true (shared)" : "false (not shared)");
+  }
   return shared;
 }
 
@@ -1653,6 +1681,9 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
 // Tree root is a Store or if there are multiple Loads in the tree, I require
 // all Loads to have the identical memory.
 Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem) {
+  if (UseNewCode) {
+    tty->print_cr("Label_Root n = %d %s", n->_idx, n->Name());
+  }
   // Since Label_Root is a recursive function, its possible that we might run
   // out of stack space.  See bugs 6272980 & 6227033 for more info.
   LabelRootDepth++;
@@ -1691,6 +1722,10 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
   for( i = 1; i < cnt; i++ ){// For my children
     if( !n->match_edge(i) ) continue;
     Node *m = n->in(i);         // Get ith input
+    if (UseNewCode) {
+      tty->print_cr("input m = %d %s (of n = %d %s)", m->_idx, m->Name(), n->_idx, n->Name());
+    }
+
     // Allocate states out of a private arena
     State *s = new (&_states_arena) State;
     svec->_kids[care++] = s;
@@ -1831,8 +1866,10 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
       tty->print_cr("has_new_node(s->_leaf): %d", has_new_node(s->_leaf));
     }
 #endif
-    assert(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf),
-           "duplicating node that's already been matched");
+    if (!UseNewCode2) {
+      assert(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf),
+             "duplicating node that's already been matched");
+    }
     // Instruction
     mach->add_req( leaf->in(0) ); // Set initial control
     // Reduce interior of complex instruction
