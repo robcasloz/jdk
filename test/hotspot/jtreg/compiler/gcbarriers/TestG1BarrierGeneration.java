@@ -52,6 +52,10 @@ public class TestG1BarrierGeneration {
         Object f;
     }
 
+    static class OuterWithVolatileField {
+        volatile Object f;
+    }
+
     static class OuterWithFewFields implements Cloneable {
         Object f1;
         Object f2;
@@ -172,6 +176,17 @@ public class TestG1BarrierGeneration {
     }
 
     @Test
+    @IR(applyIf = {"UseCompressedOops", "false"},
+        counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    @IR(applyIf = {"UseCompressedOops", "true"},
+        counts = {IRNode.G1_ENCODE_P_AND_STORE_N_WITH_BARRIER_FLAG, PRE_AND_POST, "1"},
+        phase = CompilePhase.FINAL_CODE)
+    public static void testStoreVolatile(OuterWithVolatileField o, Object o1) {
+        o.f = o1;
+    }
+
+    @Test
     @IR(applyIfAnd = {"UseCompressedOops", "false", "ReduceInitialCardMarks", "false"},
         counts = {IRNode.G1_STORE_P_WITH_BARRIER_FLAG, POST_ONLY, "1"},
         phase = CompilePhase.FINAL_CODE)
@@ -251,6 +266,7 @@ public class TestG1BarrierGeneration {
                  "testStoreObfuscatedNull",
                  "testStoreNotNull",
                  "testStoreTwice",
+                 "testStoreVolatile",
                  "testStoreOnNewObject",
                  "testStoreNullOnNewObject",
                  "testStoreNotNullOnNewObject",
@@ -286,6 +302,12 @@ public class TestG1BarrierGeneration {
             testStoreTwice(o, p, o1);
             Asserts.assertEquals(o1, o.f);
             Asserts.assertEquals(o1, p.f);
+        }
+        {
+            OuterWithVolatileField o = new OuterWithVolatileField();
+            Object o1 = new Object();
+            testStoreVolatile(o, o1);
+            Asserts.assertEquals(o1, o.f);
         }
         {
             Object o1 = new Object();
