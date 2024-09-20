@@ -27,6 +27,6 @@
  * @test locks
  * @key external-dep
  * @library /test/lib /
- * @run driver/timeout=21600 applications.jcstress.JcstressRunner -v -t org.openjdk.jcstress.tests.locks\.
+ * @run driver/timeout=21600 applications.jcstress.JcstressRunner -v -t org.openjdk.jcstress.tests.locks.stamped.StampedLockPairwiseTests.RL_URs.WLI_Us
  */
 
