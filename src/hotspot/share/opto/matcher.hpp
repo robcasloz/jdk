@@ -137,7 +137,7 @@ private:
   GrowableArray<Node_Notes*>* _old_node_note_array;
 
   // Node labeling iterator for instruction selection
-  Node* Label_Root(const Node* n, State* svec, Node* control, Node*& mem);
+  Node* Label_Root(const Node* n, State* svec, Node* control, Node*& mem, uint level);
 
   Node *transform( Node *dummy );
 

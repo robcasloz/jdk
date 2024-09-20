@@ -1168,6 +1168,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
             }
           }
 
+          if (UseNewCode) {
+            tty->print_cr("set_new_node %d %s -> %d %s", n->_idx, n->Name(), m->_idx, m->Name());
+          }
           set_new_node(n, m);       // Map old to new
           if (_old_node_note_array != nullptr) {
             Node_Notes* nn = C->locate_node_notes(_old_node_note_array,
@@ -1534,7 +1537,7 @@ MachNode *Matcher::match_tree( const Node *n ) {
   s->_leaf = (Node*)n;
   // Label the input tree, allocating labels from top-level arena
   Node* root_mem = mem;
-  Label_Root(n, s, n->in(0), root_mem);
+  Label_Root(n, s, n->in(0), root_mem, 0);
   if (C->failing())  return nullptr;
 
   // The minimum cost match for the whole tree is found at the root State
@@ -1588,8 +1591,11 @@ MachNode *Matcher::match_tree( const Node *n ) {
 // Choose to either match this Node in a register or part of the current
 // match tree.  Return true for requiring a register and false for matching
 // as part of the current match tree.
-static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool shared ) {
+static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool shared, uint level ) {
   if (UseNewCode) {
+    for (uint i = 0; i < level; i++) {
+      tty->print("  ");
+    }
     tty->print("match_into_reg n = %d %s, m = %d %s: ",
                n->_idx, n->Name(), m->_idx, m->Name());
   }
@@ -1610,7 +1616,7 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
       // CastPP node removal in final graph reshaping).
       // Note: replacing Matcher::is_encode_and_store_pattern(n, m) with m->is_EncodeP() works.
       if (UseNewCode) {
-        tty->print_cr("false (n and m form a n encode-and-store pattern)");
+        tty->print_cr("false (encode-and-store pattern)");
       }
       return false;
     }
@@ -1680,8 +1686,11 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
 // does not handle DAGs), I have to match the Memory input myself.  If the
 // Tree root is a Store or if there are multiple Loads in the tree, I require
 // all Loads to have the identical memory.
-Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem) {
+Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem, uint level) {
   if (UseNewCode) {
+    for (uint i = 0; i < level; i++) {
+      tty->print("  ");
+    }
     tty->print_cr("Label_Root n = %d %s", n->_idx, n->Name());
   }
   // Since Label_Root is a recursive function, its possible that we might run
@@ -1723,6 +1732,10 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
     if( !n->match_edge(i) ) continue;
     Node *m = n->in(i);         // Get ith input
     if (UseNewCode) {
+      tty->print("  ");
+      for (uint i = 0; i < level; i++) {
+        tty->print("  ");
+      }
       tty->print_cr("input m = %d %s (of n = %d %s)", m->_idx, m->Name(), n->_idx, n->Name());
     }
 
@@ -1739,7 +1752,7 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
     // Check for leaves of the State Tree; things that cannot be a part of
     // the current tree.  If it finds any, that value is matched as a
     // register operand.  If not, then the normal matching is used.
-    if( match_into_reg(n, m, control, i, is_shared(m)) ||
+    if( match_into_reg(n, m, control, i, is_shared(m), level + 1) ||
         // Stop recursion if this is a LoadNode and there is another memory access
         // to a different memory location in the same tree (for example, a StoreNode
         // at the root of this tree or another LoadNode in one of the children).
@@ -1761,7 +1774,7 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
       if( control == nullptr && m->in(0) != nullptr && m->req() > 1 )
         control = m->in(0);         // Pick up control
       // Else match as a normal part of the match tree.
-      control = Label_Root(m, s, control, mem);
+      control = Label_Root(m, s, control, mem, level + 1);
       if (C->failing()) return nullptr;
     }
   }
@@ -1863,6 +1876,7 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
       tty->print_cr("duplicating node that's already been matched");
       tty->print("s->_leaf: ");
       s->_leaf->dump();
+      tty->print_cr("C->node_arena()->contains(s->_leaf): %d", C->node_arena()->contains(s->_leaf));
       tty->print_cr("has_new_node(s->_leaf): %d", has_new_node(s->_leaf));
     }
 #endif
@@ -2893,10 +2907,10 @@ bool Matcher::is_encode_and_store_pattern(const Node* n, const Node* m) {
     return false;
   }
 #ifndef PRODUCT
-  if (UseNewCode) {
-    tty->print_cr("is_encode_and_store_pattern n = %d %s (barrier_data: %d), m = %d %s",
-                  n->_idx, n->Name(), n->as_Store()->barrier_data(), m->_idx, m->Name());
-  }
+  // if (UseNewCode) {
+  //   tty->print_cr("is_encode_and_store_pattern n = %d %s (barrier_data: %d), m = %d %s",
+  //                 n->_idx, n->Name(), n->as_Store()->barrier_data(), m->_idx, m->Name());
+  // }
 #endif
   assert(m == n->in(MemNode::ValueIn), "m should be input to n");
   return true;
