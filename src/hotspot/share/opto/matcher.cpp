@@ -1629,11 +1629,12 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
     }
     return false;
   } else {                      // Not a constant
-    if (!UseNewCode3 && Matcher::is_encode_and_store_pattern(n, m)) {
-      // Make it possible to match "encode and store" patterns, regardless of
-      // whether the encode operation is pinned to a control node (e.g. by
-      // CastPP node removal in final graph reshaping).
-      // Note: replacing Matcher::is_encode_and_store_pattern(n, m) with m->is_EncodeP() works.
+    if (!UseNewCode3 && Matcher::is_encode_and_store_pattern(n, m) && m->outcnt() == 1) {
+      // Make it possible to match "encode and store" patterns with non-shared
+      // encode operations that are pinned to a control node (e.g. by CastPP
+      // node removal in final graph reshaping). The matched instruction cannot
+      // float above the encode's control node because it is pinned to the
+      // store's control node.
       if (UseNewCode) {
         tty->print_cr("false (encode-and-store pattern)");
       }
