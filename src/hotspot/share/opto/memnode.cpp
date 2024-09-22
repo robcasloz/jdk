@@ -105,6 +105,9 @@ void MemNode::dump_spec(outputStream *st) const {
   if (_unsafe_access) {
     st->print(" unsafe");
   }
+  if (_barrier_data != 0) {
+    st->print(" (barrier_data: %d)", _barrier_data);
+  }
 }
 
 void MemNode::dump_adr_type(const Node* mem, const TypePtr* adr_type, outputStream *st) {
