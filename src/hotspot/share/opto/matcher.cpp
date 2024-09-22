@@ -1128,6 +1128,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
   // Use one stack to keep both: child's node/state and parent's node/index
   MStack mstack(max_stack * 2 * 2); // usually: C->live_nodes() * 2 * 2
   mstack.push(n, Visit, nullptr, -1);  // set null as parent to indicate root
+  if (UseNewCode) {
+    tty->print_cr("mstack.push(%d %s, Visit) (xform)", n->_idx, n->Name());
+  }
   while (mstack.is_nonempty()) {
     C->check_node_count(NodeLimitFudgeFactor, "too many nodes matching instructions");
     if (C->failing()) return nullptr;
@@ -1192,6 +1195,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
         Node *m = oldn->in(i);
         if (m == nullptr) break;
         // set -1 to call add_prec() instead of set_req() during Step1
+        if (UseNewCode) {
+          tty->print_cr("mstack.push(%d %s, Visit) (prec1)", m->_idx, m->Name());
+        }
         mstack.push(m, Visit, n, -1);
       }
 
@@ -1201,6 +1207,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
         if (m == nullptr || C->node_arena()->contains(m)) continue;
         n->rm_prec(i);
         // set -1 to call add_prec() instead of set_req() during Step1
+        if (UseNewCode) {
+          tty->print_cr("mstack.push(%d %s, Visit) (prec2)", m->_idx, m->Name());
+        }
         mstack.push(m, Visit, n, -1);
       }
 
@@ -1224,8 +1233,14 @@ Node *Matcher::xform( Node *n, int max_stack ) {
           m = m->clone();
           NOT_PRODUCT(record_new2old(m, n));
           mstack.push(m, Post_Visit, n, i); // Don't need to visit
+          if (UseNewCode) {
+            tty->print_cr("mstack.push(%d %s, Visit) (debug)", m->in(0)->_idx, m->in(0)->Name());
+          }
           mstack.push(m->in(0), Visit, m, 0);
         } else {
+          if (UseNewCode) {
+            tty->print_cr("mstack.push(%d %s, Visit) (debug)", m->_idx, m->Name());
+          }
           mstack.push(m, Visit, n, i);
         }
       }
@@ -1233,8 +1248,12 @@ Node *Matcher::xform( Node *n, int max_stack ) {
       // And now walk his children, and convert his inputs to new-space.
       for( ; i >= 0; --i ) { // For all normal inputs do
         Node *m = n->in(i);  // Get input
-        if(m != nullptr)
+        if(m != nullptr) {
+          if (UseNewCode) {
+            tty->print_cr("mstack.push(%d %s, Visit) (walk)", m->_idx, m->Name());
+          }
           mstack.push(m, Visit, n, i);
+        }
       }
 
     }
@@ -1555,13 +1574,13 @@ MachNode *Matcher::match_tree( const Node *n ) {
   if (mincost == max_juint) {
 #ifndef PRODUCT
     tty->print("No matching rule for:");
-    s->dump();
+    s->dump(0);
 #endif
     Matcher::soft_match_failure();
     return nullptr;
   }
   // Reduce input tree based upon the state labels to machine Nodes
-  MachNode *m = ReduceInst(s, s->rule(mincost), mem);
+  MachNode *m = ReduceInst(s, s->rule(mincost), mem, 0);
   // New-to-old mapping is done in ReduceInst, to cover complex instructions.
   NOT_PRODUCT(_old2new_map.map(n->_idx, m);)
 
@@ -1610,7 +1629,7 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
     }
     return false;
   } else {                      // Not a constant
-    if (UseNewCode3 && Matcher::is_encode_and_store_pattern(n, m)) {
+    if (!UseNewCode3 && Matcher::is_encode_and_store_pattern(n, m)) {
       // Make it possible to match "encode and store" patterns, regardless of
       // whether the encode operation is pinned to a control node (e.g. by
       // CastPP node removal in final graph reshaping).
@@ -1667,7 +1686,7 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
 
   // Not forceable cloning.  If shared, put it into a register.
   if (UseNewCode) {
-    tty->print_cr(shared ? "true (shared)" : "false (not shared)");
+    tty->print_cr(shared ? "true (%d %s shared)" : "false (%d %s not shared)", m->_idx, m->Name());
   }
   return shared;
 }
@@ -1752,6 +1771,12 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem,
     // Check for leaves of the State Tree; things that cannot be a part of
     // the current tree.  If it finds any, that value is matched as a
     // register operand.  If not, then the normal matching is used.
+    if (UseNewCode) {
+      for (uint i = 0; i < level; i++) {
+        tty->print("  ");
+      }
+      tty->print_cr("is_shared(%d %s): %d", m->_idx, m->Name(), is_shared(m));
+    }
     if( match_into_reg(n, m, control, i, is_shared(m), level + 1) ||
         // Stop recursion if this is a LoadNode and there is another memory access
         // to a different memory location in the same tree (for example, a StoreNode
@@ -1790,7 +1815,7 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem,
 
   if (x >= _LAST_MACH_OPER) {
     n->dump();
-    svec->dump();
+    svec->dump(0);
     assert( false, "bad AD file" );
   }
 #endif
@@ -1854,8 +1879,15 @@ MachNode* Matcher::find_shared_node(Node* leaf, uint rule) {
 // (3) Child is the start of a operand -
 //     Build the operand, place it inside the instruction
 //     Call ReduceOper.
-MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
+MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem, uint level ) {
   assert( rule >= NUM_OPERANDS, "called with operand rule" );
+  if (UseNewCode) {
+    for (uint i = 0; i < level; i++) {
+      tty->print("  ");
+    }
+    tty->print_cr("ReduceInst");
+    s->dump(level);
+  }
 
   MachNode* shared_node = find_shared_node(s->_leaf, rule);
   if (shared_node != nullptr) {
@@ -1880,18 +1912,14 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
       tty->print_cr("has_new_node(s->_leaf): %d", has_new_node(s->_leaf));
     }
 #endif
-    if (!UseNewCode2) {
-      assert(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf),
-             "duplicating node that's already been matched");
-    }
     // Instruction
     mach->add_req( leaf->in(0) ); // Set initial control
     // Reduce interior of complex instruction
-    ReduceInst_Interior( s, rule, mem, mach, 1 );
+    ReduceInst_Interior( s, rule, mem, mach, 1, level );
   } else {
     // Instruction chain rules are data-dependent on their inputs
     mach->add_req(nullptr);     // Set initial control to none
-    ReduceInst_Chain_Rule( s, rule, mem, mach );
+    ReduceInst_Chain_Rule( s, rule, mem, mach, level );
   }
 
   // If a Memory was used, insert a Memory edge
@@ -1981,7 +2009,15 @@ void Matcher::handle_precedence_edges(Node* n, MachNode *mach) {
   }
 }
 
-void Matcher::ReduceInst_Chain_Rule(State* s, int rule, Node* &mem, MachNode* mach) {
+void Matcher::ReduceInst_Chain_Rule(State* s, int rule, Node* &mem, MachNode* mach, uint level) {
+  if (UseNewCode) {
+    for (uint i = 0; i < level; i++) {
+      tty->print("  ");
+    }
+    tty->print_cr("ReduceInst_Chain_Rule mach = %d %s", mach->_idx, mach->Name());
+    s->dump(level);
+  }
+
   // 'op' is what I am expecting to receive
   int op = _leftOp[rule];
   // Operand type to catch childs result
@@ -1999,22 +2035,30 @@ void Matcher::ReduceInst_Chain_Rule(State* s, int rule, Node* &mem, MachNode* ma
     // Insert operand into array of operands for this instruction
     mach->_opnds[1] = s->MachOperGenerator(opnd_class_instance);
 
-    ReduceOper(s, newrule, mem, mach);
+    ReduceOper(s, newrule, mem, mach, level);
   } else {
     // Chain from the result of an instruction
     assert(newrule >= _LAST_MACH_OPER, "Do NOT chain from internal operand");
     mach->_opnds[1] = s->MachOperGenerator(_reduceOp[catch_op]);
     Node *mem1 = (Node*)1;
     debug_only(Node *save_mem_node = _mem_node;)
-    mach->add_req( ReduceInst(s, newrule, mem1) );
+    mach->add_req(ReduceInst(s, newrule, mem1, level + 1) );
     debug_only(_mem_node = save_mem_node;)
   }
   return;
 }
 
 
-uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mach, uint num_opnds ) {
+uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mach, uint num_opnds, uint level ) {
   handle_precedence_edges(s->_leaf, mach);
+
+  if (UseNewCode) {
+    for (uint i = 0; i < level; i++) {
+      tty->print("  ");
+    }
+    tty->print_cr("ReduceInst_Interior mach = %d %s", mach->_idx, mach->Name());
+    s->dump(level);
+  }
 
   if( s->_leaf->is_Load() ) {
     Node *mem2 = s->_leaf->in(MemNode::Memory);
@@ -2051,20 +2095,20 @@ uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mac
       // Operand/operandClass
       // Insert operand into array of operands for this instruction
       mach->_opnds[num_opnds++] = newstate->MachOperGenerator(opnd_class_instance);
-      ReduceOper(newstate, newrule, mem, mach);
+      ReduceOper(newstate, newrule, mem, mach, level);
 
     } else {                    // Child is internal operand or new instruction
       if (newrule < _LAST_MACH_OPER) { // internal operand or instruction?
         // internal operand --> call ReduceInst_Interior
         // Interior of complex instruction.  Do nothing but recurse.
-        num_opnds = ReduceInst_Interior(newstate, newrule, mem, mach, num_opnds);
+        num_opnds = ReduceInst_Interior(newstate, newrule, mem, mach, num_opnds, level);
       } else {
         // instruction --> call build operand(  ) to catch result
         //             --> ReduceInst( newrule )
         mach->_opnds[num_opnds++] = s->MachOperGenerator(_reduceOp[catch_op]);
         Node *mem1 = (Node*)1;
         debug_only(Node *save_mem_node = _mem_node;)
-        mach->add_req( ReduceInst( newstate, newrule, mem1 ) );
+          mach->add_req( ReduceInst( newstate, newrule, mem1, level + 1 ) );
         debug_only(_mem_node = save_mem_node;)
       }
     }
@@ -2082,10 +2126,19 @@ uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mac
 // (3) Child is an instruction -
 //     Call ReduceInst recursively and
 //     and instruction as an input to the MachNode
-void Matcher::ReduceOper( State *s, int rule, Node *&mem, MachNode *mach ) {
+void Matcher::ReduceOper( State *s, int rule, Node *&mem, MachNode *mach, uint level ) {
   assert( rule < _LAST_MACH_OPER, "called with operand rule" );
   State *kid = s->_kids[0];
   assert( kid == nullptr || s->_leaf->in(0) == nullptr, "internal operands have no control" );
+
+  if (UseNewCode) {
+    for (uint i = 0; i < level; i++) {
+      tty->print("  ");
+    }
+    tty->print_cr("ReduceOper mach = %d %s", mach->_idx, mach->Name());
+    s->dump(level);
+  }
+
 
   // Leaf?  And not subsumed?
   if( kid == nullptr && !_swallowed[rule] ) {
@@ -2119,14 +2172,14 @@ void Matcher::ReduceOper( State *s, int rule, Node *&mem, MachNode *mach ) {
 
     if (newrule < _LAST_MACH_OPER) { // Operand or instruction?
       // Internal operand; recurse but do nothing else
-      ReduceOper(kid, newrule, mem, mach);
+      ReduceOper(kid, newrule, mem, mach, level);
 
     } else {                    // Child is a new instruction
       // Reduce the instruction, and add a direct pointer from this
       // machine instruction to the newly reduced one.
       Node *mem1 = (Node*)1;
       debug_only(Node *save_mem_node = _mem_node;)
-      mach->add_req( ReduceInst( kid, newrule, mem1 ) );
+        mach->add_req( ReduceInst( kid, newrule, mem1, level + 1 ) );
       debug_only(_mem_node = save_mem_node;)
     }
   }
@@ -2164,6 +2217,9 @@ bool Matcher::clone_node(Node* n, Node* m, Matcher::MStack& mstack) {
   // expect the allocator to haul the flags from the int-side to the
   // fp-side.  No can do.
   if (_must_clone[m->Opcode()]) {
+    if (UseNewCode) {
+      tty->print_cr("mstack.push(%d %s, Visit) (clone_node)", m->_idx, m->Name());
+    }
     mstack.push(m, Visit);
     return true;
   }
@@ -2190,6 +2246,9 @@ bool Matcher::clone_base_plus_offset_address(AddPNode* m, Matcher::MStack& mstac
 //------------------------------find_shared------------------------------------
 // Set bits if Node is shared or otherwise a root
 void Matcher::find_shared(Node* n) {
+  if (UseNewCode) {
+    tty->print_cr("find_shared n = %d %s", n->_idx, n->Name());
+  }
   // Allocate stack of size C->live_nodes() * 2 to avoid frequent realloc
   MStack mstack(C->live_nodes() * 2);
   // Mark nodes as address_visited if they are inputs to an address expression
@@ -2198,6 +2257,9 @@ void Matcher::find_shared(Node* n) {
   while (mstack.is_nonempty()) {
     n = mstack.node();       // Leave node on stack
     Node_State nstate = mstack.state();
+    if (UseNewCode) {
+      tty->print_cr("  visit n = %d %s nstate = %d", n->_idx, n->Name(), nstate);
+    }
     uint nop = n->Opcode();
     if (nstate == Pre_Visit) {
       if (address_visited.test(n->_idx)) { // Visited in address already?
@@ -2207,11 +2269,13 @@ void Matcher::find_shared(Node* n) {
       if (is_visited(n)) {   // Visited already?
         // Node is shared and has no reason to clone.  Flag it as shared.
         // This causes it to match into a register for the sharing.
+        if (UseNewCode) tty->print_cr("  -> shared, no reason to clone");
         set_shared(n);       // Flag as shared and
         if (n->is_DecodeNarrowPtr()) {
           // Oop field/array element loads must be shared but since
           // they are shared through a DecodeN they may appear to have
           // a single use so force sharing here.
+          if (UseNewCode) tty->print_cr("  -> input to DecodeNarrowPtr must be shared");
           set_shared(n->in(1));
         }
         mstack.pop();        // remove node from stack
@@ -2233,7 +2297,26 @@ void Matcher::find_shared(Node* n) {
           continue;  // Ignore nulls
         }
         if (clone_node(n, m, mstack)) {
+          if (UseNewCode) {
+            tty->print_cr("  -> clone_node m = %d %s", m->_idx, m->Name());
+          }
           continue;
+        }
+        if (UseNewCode2 && m->is_EncodeP()) {
+          // Clone EncodeP nodes as soon as one of their outputs forms an
+          // "encode and store" pattern. The alternative is to remove the
+          // special handling in match_into_reg. TODO: measure impact of doing
+          // that, if not that big maybe we can leave this for future work?
+          bool clone = false;
+          for (DUIterator_Fast imax, i = m->fast_outs(imax); i < imax; i++) {
+            if (clone_node(m->fast_out(i), m, mstack)) {
+              clone = true;
+              break;
+            }
+          }
+          if (clone) {
+            continue;
+          }
         }
 
         // Clone addressing expressions as they are "free" in memory access instructions
@@ -2251,6 +2334,9 @@ void Matcher::find_shared(Node* n) {
             continue;
           }
         }   // if( mem_op &&
+        if (UseNewCode) {
+          tty->print_cr("mstack.push(%d %s, Pre_Visit)", m->_idx, m->Name());
+        }
         mstack.push(m, Pre_Visit);
       }     // for(int i = ...)
     }
@@ -2288,6 +2374,7 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
     case Op_Parm:
     case Op_Proj:            // All handled specially during matching
     case Op_SafePointScalarObject:
+      if (UseNewCode) tty->print_cr("  -> shared, special node");
       set_shared(n);
       set_dontcare(n);
       break;
@@ -2306,14 +2393,18 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
     case Op_ConvI2F:         //   Load but not a following Store
       if( n->in(1)->is_Load() &&        // Prior load
           n->outcnt() == 1 &&           // Not already shared
-          n->unique_out()->is_Store() ) // Following store
+          n->unique_out()->is_Store() ) { // Following store
+        if (UseNewCode) tty->print_cr("  -> shared, conv");
         set_shared(n);       // Force it to be a root
+      }
       break;
     case Op_ReverseBytesI:
     case Op_ReverseBytesL:
       if( n->in(1)->is_Load() &&        // Prior load
-          n->outcnt() == 1 )            // Not already shared
+          n->outcnt() == 1 ) {            // Not already shared
+        if (UseNewCode) tty->print_cr("  -> shared, reversebytes");
         set_shared(n);                  // Force it to be a root
+      }
       break;
     case Op_BoxLock:         // Can't match until we get stack-regs in ADLC
     case Op_IfFalse:
@@ -2352,6 +2443,7 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
     case Op_CompressM:
     case Op_ExpandV:
     case Op_VectorLoadMask:
+      if (UseNewCode) tty->print_cr("  -> shared, weird instruction");
       set_shared(n); // Force result into register (it will be anyways)
       break;
     case Op_ConP: {  // Convert pointers above the centerline to NUL
@@ -2386,8 +2478,10 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
       if( n->is_Mem() ) { // Loads and LoadStores
         mem_op = true;
         // Loads must be root of match tree due to prior load conflict
-        if( C->subsume_loads() == false )
+        if( C->subsume_loads() == false ) {
+          if (UseNewCode) tty->print_cr("  -> shared, mem_op must be root of match tree");
           set_shared(n);
+        }
       }
       // Fall into default case
       if( !n->ideal_reg() )
@@ -3103,31 +3197,37 @@ State::~State() {
 
 #ifndef PRODUCT
 //---------------------------dump----------------------------------------------
-void State::dump() {
-  tty->print("\n");
-  dump(0);
+void State::dump(uint level) {
+  dump(0, level);
 }
 
-void State::dump(int depth) {
+void State::dump(int depth, uint level) {
+  for (uint j = 0; j < level; j++) {
+    tty->print("  ");
+  }
   for (int j = 0; j < depth; j++) {
     tty->print("   ");
   }
-  tty->print("--N: ");
-  _leaf->dump();
+  tty->print_cr("--N: %d %s", _leaf->_idx, _leaf->Name());
   uint i;
-  for (i = 0; i < _LAST_MACH_OPER; i++) {
-    // Check for valid entry
-    if (valid(i)) {
-      for (int j = 0; j < depth; j++) {
-        tty->print("   ");
+  if (Verbose) {
+    for (i = 0; i < _LAST_MACH_OPER; i++) {
+      // Check for valid entry
+      if (valid(i)) {
+        for (uint j = 0; j < level; j++) {
+          tty->print("  ");
+        }
+        for (int j = 0; j < depth; j++) {
+          tty->print("   ");
+        }
+        assert(cost(i) != max_juint, "cost must be a valid value");
+        assert(rule(i) < _last_Mach_Node, "rule[i] must be valid rule");
+        tty->print_cr("%s  %d  %s",
+                      ruleName[i], cost(i), ruleName[rule(i)] );
       }
-      assert(cost(i) != max_juint, "cost must be a valid value");
-      assert(rule(i) < _last_Mach_Node, "rule[i] must be valid rule");
-      tty->print_cr("%s  %d  %s",
-                    ruleName[i], cost(i), ruleName[rule(i)] );
     }
+    tty->cr();
   }
-  tty->cr();
 
   for (i = 0; i < 2; i++) {
     if (_kids[i]) {

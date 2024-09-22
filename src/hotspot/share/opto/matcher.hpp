@@ -100,10 +100,10 @@ private:
 
   // Private methods which perform the actual matching and reduction
   // Walks the label tree, generating machine nodes
-  MachNode *ReduceInst( State *s, int rule, Node *&mem);
-  void ReduceInst_Chain_Rule( State *s, int rule, Node *&mem, MachNode *mach);
-  uint ReduceInst_Interior(State *s, int rule, Node *&mem, MachNode *mach, uint num_opnds);
-  void ReduceOper( State *s, int newrule, Node *&mem, MachNode *mach );
+  MachNode *ReduceInst( State *s, int rule, Node *&mem, uint level);
+  void ReduceInst_Chain_Rule( State *s, int rule, Node *&mem, MachNode *mach, uint level);
+  uint ReduceInst_Interior(State *s, int rule, Node *&mem, MachNode *mach, uint num_opnds, uint level);
+  void ReduceOper( State *s, int newrule, Node *&mem, MachNode *mach, uint level );
 
   // If this node already matched using "rule", return the MachNode for it.
   MachNode* find_shared_node(Node* n, uint rule);
@@ -198,9 +198,20 @@ public:
   MachNode* mach_null() const { return _mach_null; }
 
   bool    is_shared( Node *n ) { return _shared.test(n->_idx) != 0; }
-  void   set_shared( Node *n ) {  _shared.set(n->_idx); }
+  void   set_shared( Node *n ) {
+    if (UseNewCode) {
+      // note: why is 397 EncodeP set as shared? shouldn't it be cloned?
+      tty->print_cr("set_shared(%d %s)", n->_idx, n->Name());
+    }
+    _shared.set(n->_idx);
+  }
   bool   is_visited( Node *n ) { return _visited.test(n->_idx) != 0; }
-  void  set_visited( Node *n ) { _visited.set(n->_idx); }
+  void  set_visited( Node *n ) {
+    if (UseNewCode) {
+      tty->print_cr("set_visited(%d %s)", n->_idx, n->Name());
+    }
+    _visited.set(n->_idx);
+  }
   bool  is_dontcare( Node *n ) { return _dontcare.test(n->_idx) != 0; }
   void set_dontcare( Node *n ) {  _dontcare.set(n->_idx); }
 

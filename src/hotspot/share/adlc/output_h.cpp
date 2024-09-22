@@ -2051,8 +2051,8 @@ void ArchDesc::defineStateClass(FILE *fp) {
   fprintf(fp,"  }\n");
   fprintf(fp,"\n");
   fprintf(fp,"#ifndef PRODUCT\n");
-  fprintf(fp,"  void dump();                // Debugging prints\n");
-  fprintf(fp,"  void dump(int depth);\n");
+  fprintf(fp,"  void dump(uint level);                // Debugging prints\n");
+  fprintf(fp,"  void dump(int depth, uint level);\n");
   fprintf(fp,"#endif\n");
   if (_dfa_small) {
     // Generate the routine name we'll need
