@@ -242,6 +242,29 @@ static void print_bytecode_count() {}
 
 #endif // PRODUCT
 
+class CollectG1BarrierStatsClosure : public ThreadClosure {
+public:
+  unsigned long long _total_store;
+  unsigned long long _total_store_encode_candidate;
+  unsigned long long _total_store_encode;
+  unsigned long long _total_atomic;
+  unsigned long long _total_load;
+  CollectG1BarrierStatsClosure() :
+    _total_store(0),
+    _total_store_encode_candidate(0),
+    _total_store_encode(0),
+    _total_atomic(0),
+    _total_load(0) {}
+
+  void do_thread(Thread* thread) {
+    const JavaThread* javaThread = JavaThread::cast(thread);
+    _total_store += javaThread->_total_store;
+    _total_store_encode_candidate += javaThread->_total_store_encode_candidate;
+    _total_store_encode += javaThread->_total_store_encode;
+    _total_atomic += javaThread->_total_atomic;
+    _total_load += javaThread->_total_load;
+  }
+};
 
 // General statistics printing (profiling ...)
 void print_statistics() {

@@ -113,6 +113,12 @@
 // Set by os layer.
 size_t      JavaThread::_stack_size_at_create = 0;
 
+unsigned long long JavaThread::_total_store;
+unsigned long long JavaThread::_total_store_encode_candidate;
+unsigned long long JavaThread::_total_store_encode;
+unsigned long long JavaThread::_total_atomic;
+unsigned long long JavaThread::_total_load;
+
 #ifdef DTRACE_ENABLED
 
 // Only bother with this argument setup if dtrace is available
@@ -433,6 +439,11 @@ JavaThread::JavaThread(MEMFLAGS flags) :
   _suspend_flags(0),
 
   _thread_state(_thread_new),
+  _store_counter(0),
+  _store_encode_candidate_counter(0),
+  _store_encode_counter(0),
+  _atomic_counter(0),
+  _load_counter(0),
   _saved_exception_pc(nullptr),
 #ifdef ASSERT
   _no_safepoint_count(0),
@@ -655,6 +666,12 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz, MEMFLAGS fla
 }
 
 JavaThread::~JavaThread() {
+
+  _total_store += _store_counter;
+  _total_store_encode_candidate += _store_encode_candidate_counter;
+  _total_store_encode += _store_encode_counter;
+  _total_atomic += _atomic_counter;
+  _total_load += _load_counter;
 
   // Enqueue OopHandles for release by the service thread.
   add_oop_handles_for_release();

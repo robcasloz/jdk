@@ -238,6 +238,13 @@ class JavaThread: public Thread {
   // Safepoint support
  public:                                                        // Expose _thread_state for SafeFetchInt()
   volatile JavaThreadState _thread_state;
+  unsigned long long _store_encode_counter;
+  unsigned long long _store_counter;
+  static unsigned long long _total_store;
+  static unsigned long long _total_store_encode_candidate;
+  static unsigned long long _total_store_encode;
+  static unsigned long long _total_atomic;
+  static unsigned long long _total_load;
  private:
   SafepointMechanism::ThreadData _poll_data;
   ThreadSafepointState*          _safepoint_state;              // Holds information about a thread during a safepoint
@@ -784,6 +791,11 @@ private:
   static ByteSize polling_page_offset()          { return byte_offset_of(JavaThread, _poll_data) + byte_offset_of(SafepointMechanism::ThreadData, _polling_page);}
   static ByteSize saved_exception_pc_offset()    { return byte_offset_of(JavaThread, _saved_exception_pc); }
   static ByteSize osthread_offset()              { return byte_offset_of(JavaThread, _osthread); }
+  static ByteSize store_counter_offset()         { return byte_offset_of(JavaThread, _store_counter);}
+  static ByteSize store_encode_candidate_counter_offset() { return byte_offset_of(JavaThread, _store_encode_candidate_counter);}
+  static ByteSize store_encode_counter_offset()  { return byte_offset_of(JavaThread, _store_encode_counter);}
+  static ByteSize atomic_counter_offset()        { return byte_offset_of(JavaThread, _atomic_counter);}
+  static ByteSize load_counter_offset()          { return byte_offset_of(JavaThread, _load_counter);}
 #if INCLUDE_JVMCI
   static ByteSize pending_deoptimization_offset() { return byte_offset_of(JavaThread, _pending_deoptimization); }
   static ByteSize pending_monitorenter_offset()  { return byte_offset_of(JavaThread, _pending_monitorenter); }
