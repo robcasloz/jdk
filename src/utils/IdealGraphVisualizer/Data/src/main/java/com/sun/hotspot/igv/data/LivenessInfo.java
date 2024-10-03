@@ -31,15 +31,10 @@ public class LivenessInfo {
     public Set<Integer> use;
     public Set<Integer> kill;
     public Set<Integer> join;
+    public Set<Integer> livein;
     public Set<Integer> liveout;
 
-    public LivenessInfo() {
-        def = null;
-        use = null;
-        kill = null;
-        join = null;
-        liveout = null;
-    }
+    public LivenessInfo() {}
 
     @Override
     public String toString() {
@@ -47,6 +42,7 @@ public class LivenessInfo {
             ", use: " + use +
             ", kill: " + kill +
             ", join: " + join +
+            ", livein: " + livein +
             ", liveout: " + liveout;
     }
 

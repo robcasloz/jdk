@@ -320,6 +320,10 @@ public class InputGraph extends Properties.Entity implements FolderElement {
         livenessInfo.put(node.getId(), info);
     }
 
+    public LivenessInfo getLivenessInfoForNode(InputNode node) {
+        return livenessInfo.get(node.getId());
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

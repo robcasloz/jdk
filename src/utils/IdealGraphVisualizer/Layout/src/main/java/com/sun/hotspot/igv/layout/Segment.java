@@ -27,8 +27,10 @@ import java.awt.Point;
 
 public interface Segment {
     Cluster getCluster();
-    Point getStart();
-    void setStart(Point start);
-    Point getEnd();
-    void setEnd(Point end);
+    Vertex getStart();
+    Vertex getEnd();
+    Point getStartPoint();
+    void setStartPoint(Point startPoint);
+    Point getEndPoint();
+    void setEndPoint(Point endPoint);
 }

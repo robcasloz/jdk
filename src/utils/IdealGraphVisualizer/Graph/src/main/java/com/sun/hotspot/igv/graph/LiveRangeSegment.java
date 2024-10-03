@@ -31,12 +31,17 @@ public class LiveRangeSegment implements Segment {
 
     private InputLiveRange liveRange;
     private Block block;
-    private Point start;
-    private Point end;
+    private Figure start;
+    private Figure end;
+    private Point startPoint;
+    private Point endPoint;
 
-    protected LiveRangeSegment(InputLiveRange liveRange, Block block) {
-        this.liveRange = liveRange;
+    protected LiveRangeSegment(InputLiveRange liveRange, Block block, Figure start, Figure end) {
         this.block = block;
+        this.liveRange = liveRange;
+        this.start = start;
+        this.end = end;
+        assert(start == null || end == null || (start.getBlock() == end.getBlock()));
     }
 
     public InputLiveRange getLiveRange() {
@@ -47,25 +52,33 @@ public class LiveRangeSegment implements Segment {
         return block;
     }
 
-    public Point getStart() {
+    public Figure getStart() {
         return start;
     }
 
-    public void setStart(Point start) {
-        this.start = start;
-    }
-
-    public Point getEnd() {
+    public Figure getEnd() {
         return end;
     }
 
-    public void setEnd(Point end) {
-        this.end = end;
+    public Point getStartPoint() {
+        return startPoint;
+    }
+
+    public void setStartPoint(Point startPoint) {
+        this.startPoint = startPoint;
+    }
+
+    public Point getEndPoint() {
+        return endPoint;
+    }
+
+    public void setEndPoint(Point endPoint) {
+        this.endPoint = endPoint;
     }
 
     @Override
     public String toString() {
-        return "LiveRangeSegment('" + liveRange + "', B" + block + ")";
+        return "LiveRangeSegment('" + liveRange + ", " + start + ", " + end + ")";
     }
 
     @Override
@@ -74,7 +87,8 @@ public class LiveRangeSegment implements Segment {
             return false;
         }
         return getLiveRange().equals(((LiveRangeSegment)o).getLiveRange())
-            && getCluster().equals(((LiveRangeSegment)o).getCluster());
+            && getStart().equals(((LiveRangeSegment)o).getStart())
+            && getEnd().equals(((LiveRangeSegment)o).getEnd());
     }
 
 }

@@ -152,7 +152,7 @@ public class ClusterNode implements Vertex {
         }
 
         for (Segment segment : subSegments) {
-            Point s = segment.getStart();
+            Point s = segment.getStartPoint();
             maxX = Math.max(maxX, LIVE_RANGE_SEPARATION + s.x + maxXNodes);
         }
         if (!subSegments.isEmpty()) {
@@ -232,12 +232,12 @@ public class ClusterNode implements Vertex {
             minY = pos.y + border;
         }
         for (Segment s : subSegments) {
-            Point curStart = new Point(s.getStart());
+            Point curStart = new Point(s.getStartPoint());
             curStart.translate(LIVE_RANGE_SEPARATION + maxX, minY);
-            s.setStart(curStart);
-            Point curEnd = new Point(s.getEnd());
+            s.setStartPoint(curStart);
+            Point curEnd = new Point(s.getEndPoint());
             curEnd.translate(LIVE_RANGE_SEPARATION + maxX, minY);
-            s.setEnd(curEnd);
+            s.setEndPoint(curEnd);
         }
     }
 

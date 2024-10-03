@@ -129,11 +129,62 @@ public class Diagram {
             blockConnections.add(new BlockConnection(p, s, e.getLabel()));
         }
 
+        Hashtable<Integer, InputLiveRange> liveRangeHash = new Hashtable<>();
         for (InputLiveRange lrg : graph.getLiveRanges()) {
-            for (Block b : getBlocks()) {
-                LiveRangeSegment s = new LiveRangeSegment(lrg, b);
-                this.liveRangeSegments.add(s);
+            liveRangeHash.put(lrg.getId(), lrg);
+        }
+
+        for (InputBlock b : graph.getBlocks()) {
+            System.out.println("B" + b.getName());
+            if (b.getNodes().isEmpty()) {
+                continue; // FIXME: we might want to print instant live segments anyway.
             }
+            Map<Integer, InputNode> active = new HashMap<>();
+            InputNode previous = null;
+            InputNode header = b.getNodes().get(0);
+            for (int liveRangeId : graph.getLivenessInfoForNode(header).livein) {
+                active.put(liveRangeId, null);
+            }
+            previous = header;
+            // System.out.print("  active: ");
+            // for (Integer liveRangeId : active.keySet()) {
+            //     System.out.print(liveRangeId + "@" + (active.get(liveRangeId) == null ? "entry" : active.get(liveRangeId).getProperties().get("idx")) + " ");
+            // }
+            // System.out.println();
+            for (InputNode n : b.getNodes()) {
+                // System.out.print("  active: ");
+                // for (Integer liveRangeId : active.keySet()) {
+                //     System.out.print(liveRangeId + "@" + active.get(liveRangeId).getProperties().get("idx") + " ");
+                // }
+                // System.out.println();
+                LivenessInfo l = graph.getLivenessInfoForNode(n);
+                // Commit segments killed by n.
+                if (l.kill != null) {
+                    for (int liveRangeId : l.kill) {
+                        InputNode startNode = active.get(liveRangeId);
+                        Figure start = startNode == null ? null : figureHash.get(startNode.getId());
+                        InputNode endNode = previous;
+                        Figure end = previous == null ? null : figureHash.get(endNode.getId());
+                        this.liveRangeSegments.add(new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, end));
+                        System.out.println("  -> L" + liveRangeId + " [" + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", " + (endNode == null ? "exit" : endNode.getProperties().get("idx")) + "]");
+                        active.remove(liveRangeId);
+                    }
+                }
+                // Activate new segments.
+                if (l.def != null && !active.containsKey(l.def)) {
+                    active.put(l.def, n);
+                }
+                previous = n;
+            }
+            // Commit segments live out the block.
+            for (Integer liveRangeId : active.keySet()) {
+                InputNode startNode = active.get(liveRangeId);
+                Figure start = startNode == null ? null : figureHash.get(startNode.getId());
+                LiveRangeSegment s = new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, null);
+                this.liveRangeSegments.add(s);
+                System.out.println("  -> L" + liveRangeId + " [" + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", exit]");
+            }
+            System.out.println("");
         }
     }
 
