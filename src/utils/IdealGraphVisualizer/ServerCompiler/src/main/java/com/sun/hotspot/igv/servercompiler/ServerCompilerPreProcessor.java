@@ -151,6 +151,9 @@ public class ServerCompilerPreProcessor implements PreProcessor {
                         }
                     }
                 }
+                String liveInList = liveRangeList(liveOut.stream());
+                n.getProperties().setProperty("livein", liveInList);
+                livenessInfo.livein = new HashSet<>(liveOut);
                 graph.addLivenessInfo(n, livenessInfo);
             }
         }

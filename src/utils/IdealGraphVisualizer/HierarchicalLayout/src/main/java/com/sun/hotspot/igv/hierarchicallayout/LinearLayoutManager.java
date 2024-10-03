@@ -60,16 +60,25 @@ public class LinearLayoutManager implements LayoutManager {
         // Assign vertical coordinates in rank order.
         assignVerticalCoordinates(vertices);
 
-        int x = 0;
-        int endY = 0;
-        if (!vertices.isEmpty()) {
+        if (vertices.isEmpty()) {
+            int x = 0;
+            for (Segment s : graph.getSegments()) {
+                s.setStartPoint(new Point(x, 0));
+                s.setEndPoint(new Point(x, 5));
+                x += ClusterNode.LIVE_RANGE_SEPARATION;
+            }
+        } else {
+            int x = 0;
+            int entryY = (int)vertices.get(0).getPosition().getY();
             Vertex last = vertices.get(vertices.size() - 1);
-            endY = (int)last.getPosition().getY() + (int)last.getSize().getHeight();
-        }
-        for (Segment s : graph.getSegments()) {
-            s.setStart(new Point(x, 0));
-            s.setEnd(new Point(x, endY));
-            x += ClusterNode.LIVE_RANGE_SEPARATION;
+            int exitY = (int)last.getPosition().getY() + (int)last.getSize().getHeight();
+            for (Segment s : graph.getSegments()) {
+                int startY = s.getStart() == null ? entryY : s.getStart().getPosition().y;
+                s.setStartPoint(new Point(x, startY));
+                int endY = s.getEnd() == null ? exitY : s.getEnd().getPosition().y + (int)s.getEnd().getSize().getHeight();
+                s.setEndPoint(new Point(x, endY));
+                x += ClusterNode.LIVE_RANGE_SEPARATION;
+            }
         }
     }
 
