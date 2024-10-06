@@ -622,8 +622,18 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private void rebuildBlockLayer() {
         blockLayer.removeChildren();
         if (getModel().getShowBlocks() || getModel().getShowCFG()) {
+            Map<String, Integer> blockNodeWidth = new HashMap<>();
+            for (Figure figure : getModel().getDiagram().getFigures()) {
+                blockNodeWidth.put(figure.getBlock().getInputBlock().getName(), figure.getWidth());
+            }
             for (InputBlock inputBlock : getModel().getDiagram().getInputBlocks()) {
-                BlockWidget blockWidget = new BlockWidget(this, inputBlock);
+                List<Integer> liveRangeSegmentIds = new ArrayList<>();
+                for (LiveRangeSegment s : getModel().getDiagram().getLiveRangeSegments()) {
+                    if (s.getCluster().getInputBlock().getName().equals(inputBlock.getName())) {
+                        liveRangeSegmentIds.add(s.getLiveRange().getId());
+                    }
+                }
+                BlockWidget blockWidget = new BlockWidget(this, inputBlock, liveRangeSegmentIds, blockNodeWidth.getOrDefault(inputBlock.getName(), 0));
                 blockWidget.getActions().addAction(new DoubleClickAction(blockWidget));
                 blockWidget.setVisible(false);
                 addObject(inputBlock, blockWidget);
