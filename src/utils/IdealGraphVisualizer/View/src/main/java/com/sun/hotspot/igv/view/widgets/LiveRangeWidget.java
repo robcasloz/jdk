@@ -69,7 +69,7 @@ public class LiveRangeWidget extends Widget {
         Graphics2D g = getScene().getGraphics();
         g.setPaint(this.getBackground());
 
-        g.setStroke(new BasicStroke(1.5f));
+        g.setStroke(new BasicStroke(1.4f));
         g.drawLine(start.x - RANGE_WIDTH, start.y, start.x + RANGE_WIDTH, start.y);
         g.drawLine(start.x, start.y, end.x, end.y);
         g.drawLine(end.x - RANGE_WIDTH, end.y, end.x + RANGE_WIDTH, end.y);
