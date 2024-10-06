@@ -26,7 +26,12 @@ package com.sun.hotspot.igv.hierarchicallayout;
 import com.sun.hotspot.igv.layout.LayoutManager;
 import com.sun.hotspot.igv.layout.*;
 import java.awt.*;
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class HierarchicalCFGLayoutManager implements LayoutManager {
 
@@ -37,7 +42,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
     // Lays out clusters in the CFG.
     private LayoutManager manager;
     private Set<Cluster> clusters;
-    private Set<Segment> segments;
+    private List<Segment> segments;
 
     public HierarchicalCFGLayoutManager() {
         // Anticipate block label sizes to dimension blocks appropriately.
@@ -64,7 +69,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         this.clusters = clusters;
     }
 
-    public void setSegments(Set<Segment> segments) {
+    public void setSegments(List<Segment> segments) {
         this.segments = segments;
     }
 

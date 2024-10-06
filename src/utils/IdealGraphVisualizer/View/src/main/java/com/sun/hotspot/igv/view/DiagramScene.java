@@ -731,7 +731,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         m.doLayout(new LayoutGraph(edges));
     }
 
-    private void doCFGLayout(HashSet<Figure> figures, HashSet<Connection> edges, HashSet<LiveRangeSegment> segments) {
+    private void doCFGLayout(HashSet<Figure> figures, HashSet<Connection> edges, List<LiveRangeSegment> segments) {
         Diagram diagram = getModel().getDiagram();
         HierarchicalCFGLayoutManager m = new HierarchicalCFGLayoutManager();
         HierarchicalLayoutManager manager = new HierarchicalLayoutManager(HierarchicalLayoutManager.Combine.SAME_OUTPUTS);
@@ -768,7 +768,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                 edges.add(c);
             }
         }
-        m.setSegments(new HashSet<>(segments));
+        m.setSegments(new ArrayList<>(segments));
         m.setSubManager(new LinearLayoutManager(figureRank));
         Set<Block> visibleBlocks = new HashSet<>();
         for (Block b : diagram.getBlocks()) {
@@ -1155,8 +1155,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return visibleConnections;
     }
 
-    private HashSet<LiveRangeSegment> getVisibleLiveRangeSegments() {
-        HashSet<LiveRangeSegment> visibleLiveRangeSegments = new HashSet<>(getModel().getDiagram().getLiveRangeSegments());
+    private List<LiveRangeSegment> getVisibleLiveRangeSegments() {
+        List<LiveRangeSegment> visibleLiveRangeSegments = getModel().getDiagram().getLiveRangeSegments();
         return visibleLiveRangeSegments;
     }
 
@@ -1233,7 +1233,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
         HashSet<Figure> visibleFigures = getVisibleFigures();
         HashSet<Connection> visibleConnections = getVisibleConnections();
-        HashSet<LiveRangeSegment> visibleLiveRangeSegments = getVisibleLiveRangeSegments();
+        List<LiveRangeSegment> visibleLiveRangeSegments = getVisibleLiveRangeSegments();
         if (getModel().getShowStableSea()) {
             doStableSeaLayout(visibleFigures, visibleConnections);
         } else if (getModel().getShowSea()) {

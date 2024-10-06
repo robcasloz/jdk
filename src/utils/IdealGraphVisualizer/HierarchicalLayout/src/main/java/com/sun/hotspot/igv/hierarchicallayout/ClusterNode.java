@@ -44,7 +44,7 @@ public class ClusterNode implements Vertex {
     private Dimension size;
     private Point position;
     private final Set<Link> subEdges;
-    private final Set<Segment> subSegments;
+    private final List<Segment> subSegments;
     private boolean root;
     private final String name;
     private final int border;
@@ -59,7 +59,7 @@ public class ClusterNode implements Vertex {
                        Dimension emptySize) {
         this.subNodes = new HashSet<>();
         this.subEdges = new HashSet<>();
-        this.subSegments = new HashSet<>();
+        this.subSegments = new ArrayList<>();
         this.cluster = cluster;
         this.position = new Point(0, 0);
         this.name = name;
@@ -119,7 +119,7 @@ public class ClusterNode implements Vertex {
 
     private void calculateSize() {
 
-        if (subNodes.isEmpty()) {
+        if (subNodes.isEmpty() && subSegments.isEmpty()) {
             size = emptySize;
             return;
         }
@@ -274,7 +274,7 @@ public class ClusterNode implements Vertex {
         return subNodes;
     }
 
-    public Set<? extends Segment> getSubSegments() {
+    public List<? extends Segment> getSubSegments() {
         return subSegments;
     }
 }

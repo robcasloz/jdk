@@ -36,7 +36,7 @@ public class Diagram {
 
     private List<Figure> figures;
     private final Map<InputBlock, Block> blocks;
-    private Set<LiveRangeSegment> liveRangeSegments;
+    private List<LiveRangeSegment> liveRangeSegments;
     private final String nodeText;
     private final String shortNodeText;
     private final String tinyNodeText;
@@ -66,7 +66,7 @@ public class Diagram {
         this.tinyNodeText = tinyNodeText;
         this.figures = new ArrayList<>();
         this.blocks = new LinkedHashMap<>(8);
-        this.liveRangeSegments = new HashSet<>();
+        this.liveRangeSegments = new ArrayList<>();
         this.blockConnections = new HashSet<>();
         this.cfg = false;
         int curId = 0;
@@ -165,8 +165,11 @@ public class Diagram {
                         Figure start = startNode == null ? null : figureHash.get(startNode.getId());
                         InputNode endNode = previous;
                         Figure end = previous == null ? null : figureHash.get(endNode.getId());
-                        this.liveRangeSegments.add(new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, end));
-                        System.out.println("  -> L" + liveRangeId + " [" + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", " + (endNode == null ? "exit" : endNode.getProperties().get("idx")) + "]");
+                        liveRangeSegments
+                            .add(new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, end));
+                        System.out.println("  -> L" + liveRangeId + " ["
+                                + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", "
+                                + (endNode == null ? "exit" : endNode.getProperties().get("idx")) + "]");
                         active.remove(liveRangeId);
                     }
                 }
@@ -181,11 +184,13 @@ public class Diagram {
                 InputNode startNode = active.get(liveRangeId);
                 Figure start = startNode == null ? null : figureHash.get(startNode.getId());
                 LiveRangeSegment s = new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, null);
-                this.liveRangeSegments.add(s);
-                System.out.println("  -> L" + liveRangeId + " [" + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", exit]");
+                liveRangeSegments.add(s);
+                System.out.println("  -> L" + liveRangeId + " ["
+                        + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", exit]");
             }
             System.out.println("");
         }
+        liveRangeSegments.sort(Comparator.comparingInt(s -> s.getLiveRange().getId()));
     }
 
     public Block getBlock(InputBlock b) {
@@ -221,8 +226,8 @@ public class Diagram {
         return Collections.unmodifiableList(figures);
     }
 
-    public Collection<LiveRangeSegment> getLiveRangeSegments() {
-        return Collections.unmodifiableCollection(liveRangeSegments);
+    public List<LiveRangeSegment> getLiveRangeSegments() {
+        return Collections.unmodifiableList(liveRangeSegments);
     }
 
     public FigureConnection createConnection(InputSlot inputSlot, OutputSlot outputSlot, String label) {
