@@ -166,6 +166,10 @@ public class ClusterNode implements Vertex {
             n.setPosition(new Point(n.getPosition().x - minX + nodeOffset.width,
                                     n.getPosition().y - minY + nodeOffset.height + headerVerticalSpace));
         }
+        for (Segment s : subSegments) {
+            s.getStartPoint().translate(0, -nodeOffset.height);
+            s.getEndPoint().translate(0, -nodeOffset.height - 1);
+        }
 
         for (Link l : subEdges) {
             List<Point> points = new ArrayList<>(l.getControlPoints());
