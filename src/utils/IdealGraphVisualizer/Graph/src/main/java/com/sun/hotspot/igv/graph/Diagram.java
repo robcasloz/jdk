@@ -140,12 +140,10 @@ public class Diagram {
                 continue; // FIXME: we might want to print instant live segments anyway.
             }
             Map<Integer, InputNode> active = new HashMap<>();
-            InputNode previous = null;
             InputNode header = b.getNodes().get(0);
             for (int liveRangeId : graph.getLivenessInfoForNode(header).livein) {
                 active.put(liveRangeId, null);
             }
-            previous = header;
             // System.out.print("  active: ");
             // for (Integer liveRangeId : active.keySet()) {
             //     System.out.print(liveRangeId + "@" + (active.get(liveRangeId) == null ? "entry" : active.get(liveRangeId).getProperties().get("idx")) + " ");
@@ -163,8 +161,8 @@ public class Diagram {
                     for (int liveRangeId : l.kill) {
                         InputNode startNode = active.get(liveRangeId);
                         Figure start = startNode == null ? null : figureHash.get(startNode.getId());
-                        InputNode endNode = previous;
-                        Figure end = previous == null ? null : figureHash.get(endNode.getId());
+                        InputNode endNode = n;
+                        Figure end = figureHash.get(endNode.getId());
                         liveRangeSegments
                             .add(new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, end));
                         System.out.println("  -> L" + liveRangeId + " ["
@@ -177,7 +175,6 @@ public class Diagram {
                 if (l.def != null && !active.containsKey(l.def)) {
                     active.put(l.def, n);
                 }
-                previous = n;
             }
             // Commit segments live out the block.
             for (Integer liveRangeId : active.keySet()) {
