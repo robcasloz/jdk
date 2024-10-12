@@ -23,15 +23,13 @@
  */
 package com.sun.hotspot.igv.view.widgets;
 
-import com.sun.hotspot.igv.data.InputBlock;
 import com.sun.hotspot.igv.data.services.InputGraphProvider;
-import com.sun.hotspot.igv.hierarchicallayout.ClusterNode;
+import com.sun.hotspot.igv.graph.Block;
 import com.sun.hotspot.igv.util.DoubleClickHandler;
 import com.sun.hotspot.igv.util.LookupHistory;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
-import java.util.List;
 import org.netbeans.api.visual.action.WidgetAction;
 import org.netbeans.api.visual.widget.Scene;
 import org.netbeans.api.visual.widget.Widget;
@@ -48,14 +46,12 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
     public static final Color TITLE_COLOR = new Color(42, 42, 171);
     private static final Font LIVE_RANGE_FONT = new Font("Arial", Font.BOLD, 12);
     public static final Color LIVE_RANGE_COLOR = Color.BLACK;
-    private final InputBlock blockNode;
-    private final List<Integer> liveRangeIds;
+    private final Block block;
     private final int nodeWidth;
 
-    public BlockWidget(Scene scene, InputBlock blockNode, List<Integer> liveRangeIds, int nodeWidth) {
+    public BlockWidget(Scene scene, Block block, int nodeWidth) {
         super(scene);
-        this.blockNode = blockNode;
-        this.liveRangeIds = liveRangeIds;
+        this.block = block;
         this.nodeWidth = nodeWidth;
         this.setBackground(BACKGROUND_COLOR);
         this.setOpaque(true);
@@ -79,18 +75,18 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
         g.setColor(TITLE_COLOR);
         g.setFont(TITLE_FONT);
 
-        String s = "B" + blockNode.getName();
+        String s = "B" + block.getInputBlock().getName();
         Rectangle2D r1 = g.getFontMetrics().getStringBounds(s, g);
         g.drawString(s, r.x + 5, r.y + (int) r1.getHeight());
 
         g.setColor(LIVE_RANGE_COLOR);
         g.setFont(LIVE_RANGE_FONT);
-        int x = nodeWidth + ClusterNode.LIVE_RANGE_SEPARATION;
-        for (int liveRangeId : liveRangeIds) {
+        int x = nodeWidth + block.getLiveRangeSeparation();
+        for (int liveRangeId : block.getLiveRangeIds()) {
             String ls = "L" + String.valueOf(liveRangeId);
             Rectangle2D lr = g.getFontMetrics().getStringBounds(ls, g);
             g.drawString(ls, r.x + x, r.y + (int) lr.getHeight());
-            x += ClusterNode.LIVE_RANGE_SEPARATION;
+            x += block.getLiveRangeSeparation();
         }
 
         g.setStroke(old);
@@ -102,7 +98,7 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
             if (!additiveSelection) {
                 graphProvider.clearSelectedNodes();
             }
-            graphProvider.addSelectedNodes(blockWidget.blockNode.getNodes(), false);
+            graphProvider.addSelectedNodes(blockWidget.block.getInputBlock().getNodes(), false);
         }
     }
 

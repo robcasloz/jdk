@@ -28,6 +28,8 @@ import com.sun.hotspot.igv.layout.Cluster;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.util.HashSet;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -39,6 +41,8 @@ public class Block implements Cluster {
     private InputBlock inputBlock;
     private Rectangle bounds;
     private Diagram diagram;
+    private List<Integer> liveRangeIds;
+    int liveRangeSeparation = -1;
 
     public Block(InputBlock inputBlock, Diagram diagram) {
         this.inputBlock = inputBlock;
@@ -63,12 +67,28 @@ public class Block implements Cluster {
         return new Dimension(0, -Figure.getVerticalOffset());
     }
 
+    public int getLiveRangeSeparation() {
+        assert liveRangeSeparation > 0;
+        return liveRangeSeparation;
+    }
+
     public void setBounds(Rectangle r) {
         this.bounds = r;
     }
 
     public Rectangle getBounds() {
         return bounds;
+    }
+
+    public List<Integer> getLiveRangeIds() {
+        return liveRangeIds;
+    }
+
+    public void setLiveRangeIds(List<Integer> liveRangeIds) {
+        this.liveRangeIds = liveRangeIds;
+        int maxLiveRangeId = liveRangeIds.isEmpty() ? 0 : Collections.max(liveRangeIds);
+        int extraDigits = (int)java.lang.Math.log10(maxLiveRangeId);
+        liveRangeSeparation = 20 + extraDigits * 7;
     }
 
     public int compareTo(Cluster o) {
@@ -80,4 +100,3 @@ public class Block implements Cluster {
         return inputBlock.getName();
     }
 }
-

@@ -52,8 +52,6 @@ public class ClusterNode implements Vertex {
     private final int headerVerticalSpace;
     private final Dimension emptySize;
 
-    public static final int LIVE_RANGE_SEPARATION = 20;
-
     public ClusterNode(Cluster cluster, String name, int border,
                        Dimension nodeOffset, int headerVerticalSpace,
                        Dimension emptySize) {
@@ -153,10 +151,10 @@ public class ClusterNode implements Vertex {
 
         for (Segment segment : subSegments) {
             Point s = segment.getStartPoint();
-            maxX = Math.max(maxX, LIVE_RANGE_SEPARATION + s.x + maxXNodes);
+            maxX = Math.max(maxX, cluster.getLiveRangeSeparation() + s.x + maxXNodes);
         }
         if (!subSegments.isEmpty()) {
-            maxX += LIVE_RANGE_SEPARATION;
+            maxX += cluster.getLiveRangeSeparation();
         }
 
         size = new Dimension(maxX - minX, maxY - minY + headerVerticalSpace);
@@ -237,10 +235,10 @@ public class ClusterNode implements Vertex {
         }
         for (Segment s : subSegments) {
             Point curStart = new Point(s.getStartPoint());
-            curStart.translate(LIVE_RANGE_SEPARATION + maxX, minY);
+            curStart.translate(cluster.getLiveRangeSeparation() + maxX, minY);
             s.setStartPoint(curStart);
             Point curEnd = new Point(s.getEndPoint());
-            curEnd.translate(LIVE_RANGE_SEPARATION + maxX, minY);
+            curEnd.translate(cluster.getLiveRangeSeparation() + maxX, minY);
             s.setEndPoint(curEnd);
         }
     }
