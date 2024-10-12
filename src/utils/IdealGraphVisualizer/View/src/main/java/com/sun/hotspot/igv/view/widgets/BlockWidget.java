@@ -85,7 +85,7 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
         for (int liveRangeId : block.getLiveRangeIds()) {
             String ls = "L" + String.valueOf(liveRangeId);
             Rectangle2D lr = g.getFontMetrics().getStringBounds(ls, g);
-            g.drawString(ls, r.x + x, r.y + (int) lr.getHeight());
+            g.drawString(ls, r.x + x, r.y + (int) lr.getHeight() + 2);
             x += block.getLiveRangeSeparation();
         }
 
