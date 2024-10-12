@@ -63,8 +63,8 @@ public class LinearLayoutManager implements LayoutManager {
         if (vertices.isEmpty()) {
             int x = 0;
             for (Segment s : graph.getSegments()) {
-                s.setStartPoint(new Point(x, 0));
-                s.setEndPoint(new Point(x, 5));
+                s.setStartPoint(new Point(x, 12));
+                s.setEndPoint(new Point(x, 12));
                 x += s.getCluster().getLiveRangeSeparation();
             }
         } else {
