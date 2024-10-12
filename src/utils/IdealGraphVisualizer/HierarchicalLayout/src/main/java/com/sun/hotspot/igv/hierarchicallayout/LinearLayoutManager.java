@@ -75,7 +75,7 @@ public class LinearLayoutManager implements LayoutManager {
             for (Segment s : graph.getSegments()) {
                 int startY = s.getStart() == null ? entryY : s.getStart().getPosition().y;
                 s.setStartPoint(new Point(x, startY));
-                int endY = s.getEnd() == null ? exitY : s.getEnd().getPosition().y + (int)s.getEnd().getSize().getHeight();
+                int endY = s.getEnd() == null ? exitY : s.getEnd().getPosition().y;
                 s.setEndPoint(new Point(x, endY));
                 x += ClusterNode.LIVE_RANGE_SEPARATION;
             }
