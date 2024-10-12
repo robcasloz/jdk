@@ -65,7 +65,7 @@ public class LinearLayoutManager implements LayoutManager {
             for (Segment s : graph.getSegments()) {
                 s.setStartPoint(new Point(x, 0));
                 s.setEndPoint(new Point(x, 5));
-                x += ClusterNode.LIVE_RANGE_SEPARATION;
+                x += s.getCluster().getLiveRangeSeparation();
             }
         } else {
             int x = 0;
@@ -77,7 +77,7 @@ public class LinearLayoutManager implements LayoutManager {
                 s.setStartPoint(new Point(x, startY));
                 int endY = s.getEnd() == null ? exitY : s.getEnd().getPosition().y;
                 s.setEndPoint(new Point(x, endY));
-                x += ClusterNode.LIVE_RANGE_SEPARATION;
+                x += s.getCluster().getLiveRangeSeparation();
             }
         }
     }

@@ -38,4 +38,7 @@ public interface Cluster extends Comparable<Cluster> {
     Set<? extends Cluster> getSuccessors();
 
     Dimension getNodeOffset();
+
+    int getLiveRangeSeparation();
+
 }

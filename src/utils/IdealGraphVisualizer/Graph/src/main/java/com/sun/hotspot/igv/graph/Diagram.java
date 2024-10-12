@@ -188,6 +188,16 @@ public class Diagram {
             System.out.println("");
         }
         liveRangeSegments.sort(Comparator.comparingInt(s -> s.getLiveRange().getId()));
+        for (InputBlock inputBlock : graph.getBlocks()) {
+            // This loop could be sped up by fusing it with the above one.
+            List<Integer> liveRangeSegmentIds = new ArrayList<>();
+            for (LiveRangeSegment s : getLiveRangeSegments()) {
+                if (s.getCluster().getInputBlock().getName().equals(inputBlock.getName())) {
+                    liveRangeSegmentIds.add(s.getLiveRange().getId());
+                }
+            }
+            blocks.get(inputBlock).setLiveRangeIds(liveRangeSegmentIds);
+        }
     }
 
     public Block getBlock(InputBlock b) {

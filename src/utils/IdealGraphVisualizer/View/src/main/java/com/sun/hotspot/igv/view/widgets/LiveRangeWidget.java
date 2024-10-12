@@ -50,8 +50,6 @@ public class LiveRangeWidget extends Widget {
 
         clientArea = new Rectangle(x, minY, 1, maxY - minY + 1);
         clientArea.grow(RANGE_WIDTH * 2, 5);
-        System.out.println("LiveRangeWidget::clientArea: " + clientArea);
-
     }
 
     @Override
@@ -61,7 +59,6 @@ public class LiveRangeWidget extends Widget {
 
     @Override
     protected void paintWidget() {
-        System.out.println("LiveRangeWidget::paintWidget() start = " + start + ", end = " + end);
         if (scene.getZoomFactor() < 0.1) {
             return;
         }
@@ -71,7 +68,9 @@ public class LiveRangeWidget extends Widget {
 
         g.setStroke(new BasicStroke(1.4f));
         g.drawLine(start.x - RANGE_WIDTH, start.y, start.x + RANGE_WIDTH, start.y);
-        g.drawLine(start.x, start.y, end.x, end.y);
-        g.drawLine(end.x - RANGE_WIDTH, end.y, end.x + RANGE_WIDTH, end.y);
+        if (start.y != end.y) {
+            g.drawLine(start.x, start.y, end.x, end.y);
+            g.drawLine(end.x - RANGE_WIDTH, end.y, end.x + RANGE_WIDTH, end.y);
+        }
     }
 }
