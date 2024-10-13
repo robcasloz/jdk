@@ -183,7 +183,7 @@ public class ClusterNode implements Vertex {
         }
         for (Segment s : subSegments) {
             s.getStartPoint().translate(0, -nodeOffset.height);
-            s.getEndPoint().translate(0, -nodeOffset.height - 1);
+            s.getEndPoint().translate(0, -nodeOffset.height);
         }
 
         for (Link l : subEdges) {
