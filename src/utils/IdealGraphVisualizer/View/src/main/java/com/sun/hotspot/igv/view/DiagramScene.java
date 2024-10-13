@@ -627,7 +627,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
                 blockNodeWidth.put(figure.getBlock().getInputBlock().getName(), figure.getWidth());
             }
             for (InputBlock inputBlock : getModel().getDiagram().getInputBlocks()) {
-                BlockWidget blockWidget = new BlockWidget(this, getModel().getDiagram().getBlock(inputBlock), blockNodeWidth.getOrDefault(inputBlock.getName(), 0));
+                BlockWidget blockWidget = new BlockWidget(this, getModel().getDiagram().getBlock(inputBlock), blockNodeWidth.getOrDefault(inputBlock.getName(), ClusterNode.EMPTY_BLOCK_LIVE_RANGE_OFFSET));
                 blockWidget.getActions().addAction(new DoubleClickAction(blockWidget));
                 blockWidget.setVisible(false);
                 addObject(inputBlock, blockWidget);
@@ -1034,7 +1034,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         System.out.println("rebuildSegmentLayer");
         segmentLayer.removeChildren();
         for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
-            System.out.println("segment: " + segment + ", (" + segment.getStart() + ", " + segment.getEnd());
+            System.out.println("segment: " + segment + ", (" + segment.getStart() + ", " + segment.getEnd() + ")");
+            System.out.println("  start: " + segment.getStartPoint());
+            System.out.println("  end:   " + segment.getEndPoint());
+
             LiveRangeWidget segmentWidget = new LiveRangeWidget(this, segment.getStartPoint(), segment.getEndPoint());
             System.out.println("isVisible: " + segmentWidget.isVisible());
             segmentLayer.addChild(segmentWidget);

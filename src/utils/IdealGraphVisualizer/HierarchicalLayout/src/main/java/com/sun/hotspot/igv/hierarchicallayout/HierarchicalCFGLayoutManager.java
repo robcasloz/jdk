@@ -110,8 +110,32 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             n.updateSize();
         }
 
+        System.out.println("segments of B3 after inner layout computation: ");
+        for (Cluster c : clusters) {
+            if (c.toString().equals("3")) {
+                System.out.println("Cluster " + c + ":");
+                for (Segment s : segments) {
+                    if (s.getCluster().equals(c)) {
+                        System.out.println("  " + s + ": " + s.getStartPoint() + " - " + s.getEndPoint());
+                    }
+                }
+            }
+        }
+
         // Compute inter-cluster layout.
         manager.doLayout(new LayoutGraph(clusterEdges, new HashSet<>(clusterNode.values())), new HashSet<>());
+
+        System.out.println("segments of B3 after outer layout computation: ");
+        for (Cluster c : clusters) {
+            if (c.toString().equals("3")) {
+                System.out.println("Cluster " + c + ":");
+                for (Segment s : segments) {
+                    if (s.getCluster().equals(c)) {
+                        System.out.println("  " + s + ": " + s.getStartPoint() + " - " + s.getEndPoint());
+                    }
+                }
+            }
+        }
 
         // Write back results.
         writeBackClusterBounds(clusterNode);

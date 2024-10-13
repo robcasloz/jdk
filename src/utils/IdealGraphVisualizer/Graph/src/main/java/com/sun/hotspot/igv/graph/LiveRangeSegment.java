@@ -78,7 +78,7 @@ public class LiveRangeSegment implements Segment {
 
     @Override
     public String toString() {
-        return "LiveRangeSegment('" + liveRange + ", " + start + ", " + end + ")";
+        return "LiveRangeSegment(" + liveRange + "@B" + block + ", " + start + ", " + end + ")";
     }
 
     @Override

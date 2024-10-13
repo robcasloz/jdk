@@ -52,6 +52,8 @@ public class ClusterNode implements Vertex {
     private final int headerVerticalSpace;
     private final Dimension emptySize;
 
+    public static final int EMPTY_BLOCK_LIVE_RANGE_OFFSET = 20;
+
     public ClusterNode(Cluster cluster, String name, int border,
                        Dimension nodeOffset, int headerVerticalSpace,
                        Dimension emptySize) {
@@ -122,6 +124,12 @@ public class ClusterNode implements Vertex {
             return;
         }
 
+        for (Segment segment : subSegments) {
+            Point s = segment.getStartPoint();
+            System.out.println("calculateSize: start point: " + s);
+        }
+
+
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -135,7 +143,6 @@ public class ClusterNode implements Vertex {
             maxX = Math.max(maxX, p.x + n.getSize().width);
             maxY = Math.max(maxY, p.y + n.getSize().height);
         }
-        int maxXNodes = maxX;
 
         for (Link l : subEdges) {
             List<Point> points = l.getControlPoints();
@@ -151,10 +158,20 @@ public class ClusterNode implements Vertex {
 
         for (Segment segment : subSegments) {
             Point s = segment.getStartPoint();
-            maxX = Math.max(maxX, cluster.getLiveRangeSeparation() + s.x + maxXNodes);
+            System.out.println("segment: " + segment + "@B" + segment.getCluster().toString());
+            System.out.println("s: " + s);
+            minX = Math.min(minX, s.x);
+            maxX = Math.max(maxX, s.x + cluster.getLiveRangeSeparation());
+            System.out.println("minX: " + minX);
+            System.out.println("maxX: " + maxX);
         }
+        System.out.println("-> final maxX: " + maxX);
+        System.out.println("-> final minX: " + minX);
         if (!subSegments.isEmpty()) {
             maxX += cluster.getLiveRangeSeparation();
+        }
+        if (subNodes.isEmpty()) {
+            maxX += ClusterNode.EMPTY_BLOCK_LIVE_RANGE_OFFSET;
         }
 
         size = new Dimension(maxX - minX, maxY - minY + headerVerticalSpace);
@@ -178,9 +195,18 @@ public class ClusterNode implements Vertex {
             l.setControlPoints(points);
 
         }
+        for (Segment segment : subSegments) {
+            Point s = segment.getStartPoint();
+            System.out.println("start point (after): " + s);
+        }
 
         size.width += 2 * border;
         size.height += 2 * border;
+
+        for (Segment segment : subSegments) {
+            Point s = segment.getStartPoint();
+            System.out.println("calculateSize (after): start point: " + s);
+        }
     }
 
     public Port getInputSlot() {
@@ -197,15 +223,15 @@ public class ClusterNode implements Vertex {
     }
 
     public void setPosition(Point pos) {
+        int startX = pos.x + border;
+        int startY = pos.y + border;
 
-        int maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE;
         this.position = pos;
         for (Vertex n : subNodes) {
             Point cur = new Point(n.getPosition());
-            cur.translate(pos.x + border, pos.y + border);
+            cur.translate(startX, startY);
             n.setPosition(cur);
-            maxX = Math.max(maxX, cur.x + n.getSize().width);
             minY = Math.min(minY, cur.y);
         }
 
@@ -215,7 +241,7 @@ public class ClusterNode implements Vertex {
             for (Point p : arr) {
                 if (p != null) {
                     Point p2 = new Point(p);
-                    p2.translate(pos.x + border, pos.y + border);
+                    p2.translate(startX, startY);
                     newArr.add(p2);
                 } else {
                     newArr.add(null);
@@ -225,21 +251,12 @@ public class ClusterNode implements Vertex {
             e.setControlPoints(newArr);
         }
 
-        if (maxX == Integer.MIN_VALUE) {
-            // FIXME: hack for blocks without nodes, shouldn't be needed.
-            maxX = pos.x + border;
-        }
-        if (minY == Integer.MAX_VALUE) {
-            // FIXME: hack for blocks without nodes, shouldn't be needed.
-            minY = pos.y + border;
+        if (subNodes.isEmpty()) {
+            minY = startY + 12;
         }
         for (Segment s : subSegments) {
-            Point curStart = new Point(s.getStartPoint());
-            curStart.translate(cluster.getLiveRangeSeparation() + maxX, minY);
-            s.setStartPoint(curStart);
-            Point curEnd = new Point(s.getEndPoint());
-            curEnd.translate(cluster.getLiveRangeSeparation() + maxX, minY);
-            s.setEndPoint(curEnd);
+            s.getStartPoint().translate(startX + cluster.getLiveRangeSeparation(), minY);
+            s.getEndPoint().translate(startX + cluster.getLiveRangeSeparation(), minY);
         }
     }
 

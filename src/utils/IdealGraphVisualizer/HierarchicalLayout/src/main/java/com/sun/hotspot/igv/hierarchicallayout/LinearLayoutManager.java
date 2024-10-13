@@ -61,15 +61,16 @@ public class LinearLayoutManager implements LayoutManager {
         assignVerticalCoordinates(vertices);
 
         if (vertices.isEmpty()) {
-            int x = 0;
+            int x = ClusterNode.EMPTY_BLOCK_LIVE_RANGE_OFFSET;
             for (Segment s : graph.getSegments()) {
-                s.setStartPoint(new Point(x, 12));
-                s.setEndPoint(new Point(x, 12));
+                s.setStartPoint(new Point(x, 0));
+                s.setEndPoint(new Point(x, 0));
                 x += s.getCluster().getLiveRangeSeparation();
             }
         } else {
-            int x = 0;
-            int entryY = (int)vertices.get(0).getPosition().getY();
+            Vertex first = vertices.get(0);
+            int x = (int)first.getSize().getWidth();
+            int entryY = (int)first.getPosition().getY();
             Vertex last = vertices.get(vertices.size() - 1);
             int exitY = (int)last.getPosition().getY() + (int)last.getSize().getHeight();
             for (Segment s : graph.getSegments()) {
@@ -80,6 +81,11 @@ public class LinearLayoutManager implements LayoutManager {
                 x += s.getCluster().getLiveRangeSeparation();
             }
         }
+        for (Segment segment : graph.getSegments()) {
+            Point s = segment.getStartPoint();
+            System.out.println("linearlayoutmanager: start point: " + s);
+        }
+
     }
 
     private void assignVerticalCoordinates(List<Vertex> vertices) {
