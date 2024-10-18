@@ -33,4 +33,7 @@ public interface Segment {
     void setStartPoint(Point startPoint);
     Point getEndPoint();
     void setEndPoint(Point endPoint);
+    boolean isLastOfLiveRange();
+    void setLastOfLiveRange(boolean lastOfLiveRange);
+    int parentId();
 }

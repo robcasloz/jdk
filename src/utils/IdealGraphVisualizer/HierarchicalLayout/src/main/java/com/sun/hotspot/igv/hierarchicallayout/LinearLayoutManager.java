@@ -65,7 +65,9 @@ public class LinearLayoutManager implements LayoutManager {
             for (Segment s : graph.getSegments()) {
                 s.setStartPoint(new Point(x, 0));
                 s.setEndPoint(new Point(x, 0));
-                x += s.getCluster().getLiveRangeSeparation();
+                if (s.isLastOfLiveRange()) {
+                    x += s.getCluster().getLiveRangeSeparation();
+                }
             }
         } else {
             Vertex first = vertices.get(0);
@@ -78,12 +80,10 @@ public class LinearLayoutManager implements LayoutManager {
                 s.setStartPoint(new Point(x, startY));
                 int endY = s.getEnd() == null ? exitY : s.getEnd().getPosition().y;
                 s.setEndPoint(new Point(x, endY));
-                x += s.getCluster().getLiveRangeSeparation();
+                if (s.isLastOfLiveRange()) {
+                    x += s.getCluster().getLiveRangeSeparation();
+                }
             }
-        }
-        for (Segment segment : graph.getSegments()) {
-            Point s = segment.getStartPoint();
-            System.out.println("linearlayoutmanager: start point: " + s);
         }
 
     }

@@ -35,6 +35,7 @@ public class LiveRangeSegment implements Segment {
     private Figure end;
     private Point startPoint;
     private Point endPoint;
+    private boolean lastOfLiveRange;
 
     protected LiveRangeSegment(InputLiveRange liveRange, Block block, Figure start, Figure end) {
         this.block = block;
@@ -42,6 +43,7 @@ public class LiveRangeSegment implements Segment {
         this.start = start;
         this.end = end;
         assert(start == null || end == null || (start.getBlock() == end.getBlock()));
+        lastOfLiveRange = true;
     }
 
     public InputLiveRange getLiveRange() {
@@ -74,6 +76,18 @@ public class LiveRangeSegment implements Segment {
 
     public void setEndPoint(Point endPoint) {
         this.endPoint = endPoint;
+    }
+
+    public void setLastOfLiveRange(boolean lastOfLiveRange) {
+        this.lastOfLiveRange = lastOfLiveRange;
+    }
+
+    public boolean isLastOfLiveRange() {
+        return lastOfLiveRange;
+    }
+
+    public int parentId() {
+        return this.liveRange.getId();
     }
 
     @Override
