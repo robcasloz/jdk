@@ -86,8 +86,10 @@ public class Block implements Cluster {
 
     public void setLiveRangeIds(List<Integer> liveRangeIds) {
         this.liveRangeIds = liveRangeIds;
-        int maxLiveRangeId = liveRangeIds.isEmpty() ? 0 : Collections.max(liveRangeIds);
-        int extraDigits = (int)java.lang.Math.log10(maxLiveRangeId);
+        int extraDigits = 0;
+        if (!liveRangeIds.isEmpty()) {
+            extraDigits = (int)java.lang.Math.log10(Collections.max(liveRangeIds));
+        }
         liveRangeSeparation = 20 + extraDigits * 7;
     }
 
