@@ -191,9 +191,14 @@ public class Diagram {
         for (InputBlock inputBlock : graph.getBlocks()) {
             // This loop could be sped up by fusing it with the above one.
             List<Integer> liveRangeSegmentIds = new ArrayList<>();
+            int lastAddedLiveRangeId = -1;
             for (LiveRangeSegment s : getLiveRangeSegments()) {
                 if (s.getCluster().getInputBlock().getName().equals(inputBlock.getName())) {
-                    liveRangeSegmentIds.add(s.getLiveRange().getId());
+                    int thisLiveRangeId = s.getLiveRange().getId();
+                    if (thisLiveRangeId != lastAddedLiveRangeId) {
+                        liveRangeSegmentIds.add(thisLiveRangeId);
+                        lastAddedLiveRangeId = thisLiveRangeId;
+                    }
                 }
             }
             blocks.get(inputBlock).setLiveRangeIds(liveRangeSegmentIds);

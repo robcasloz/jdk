@@ -90,6 +90,7 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
             System.out.println("  c: " + c);
             ClusterNode n = clusterNode.get(c);
             System.out.println("  n: " + n);
+            n.groupSegments();
             LayoutGraph g = new LayoutGraph(n.getSubEdges(), n.getSubNodes());
             Set<Segment> clusterSegments = new HashSet<>();
             for (Segment s : segments) {

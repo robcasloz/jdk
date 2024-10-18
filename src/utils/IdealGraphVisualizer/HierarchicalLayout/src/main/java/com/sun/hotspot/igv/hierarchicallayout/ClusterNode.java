@@ -92,6 +92,16 @@ public class ClusterNode implements Vertex {
         subSegments.add(s);
     }
 
+    public void groupSegments() {
+        for (int i = 1; i < subSegments.size(); i++) {
+            if (subSegments.get(i).parentId() == subSegments.get(i - 1).parentId()) {
+                subSegments.get(i - 1).setLastOfLiveRange(false);
+            } else {
+                subSegments.get(i - 1).setLastOfLiveRange(true);
+            }
+        }
+    }
+
     public Set<Link> getSubEdges() {
         return Collections.unmodifiableSet(subEdges);
     }
