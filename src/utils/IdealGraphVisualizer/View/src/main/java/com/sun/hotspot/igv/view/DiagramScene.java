@@ -696,6 +696,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return w1.isVisible() && w2.isVisible();
     }
 
+    private boolean isVisible(LiveRangeSegment s) {
+        return true;
+    }
+
     private void doStableSeaLayout(HashSet<Figure> visibleFigures, HashSet<Connection> visibleConnections) {
         hierarchicalStableLayoutManager.updateLayout(visibleFigures, visibleConnections);
     }
@@ -1013,16 +1017,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private void rebuildSegmentLayer() {
-        System.out.println("rebuildSegmentLayer");
         segmentLayer.removeChildren();
         for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
-            System.out.println("segment: " + segment + ", (" + segment.getStart() + ", " + segment.getEnd() + ")");
-            System.out.println("  start: " + segment.getStartPoint());
-            System.out.println("  end:   " + segment.getEndPoint());
-
-            LiveRangeWidget segmentWidget = new LiveRangeWidget(this, segment.getStartPoint(), segment.getEndPoint());
-            System.out.println("isVisible: " + segmentWidget.isVisible());
-            segmentLayer.addChild(segmentWidget);
+            if (isVisible(segment)) {
+                LiveRangeWidget segmentWidget = new LiveRangeWidget(this, segment.getStartPoint(),
+                        segment.getEndPoint());
+                segmentLayer.addChild(segmentWidget);
+            }
         }
     }
 
@@ -1145,7 +1146,12 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private List<LiveRangeSegment> getVisibleLiveRangeSegments() {
-        List<LiveRangeSegment> visibleLiveRangeSegments = getModel().getDiagram().getLiveRangeSegments();
+        List<LiveRangeSegment> visibleLiveRangeSegments = new ArrayList<>();
+        for (LiveRangeSegment segment: getModel().getDiagram().getLiveRangeSegments()) {
+            if (isVisible(segment)) {
+                visibleLiveRangeSegments.add(segment);
+            }
+        }
         return visibleLiveRangeSegments;
     }
 
