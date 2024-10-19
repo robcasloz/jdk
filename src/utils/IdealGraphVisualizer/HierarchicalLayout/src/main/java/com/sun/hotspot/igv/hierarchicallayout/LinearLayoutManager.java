@@ -76,9 +76,13 @@ public class LinearLayoutManager implements LayoutManager {
             Vertex last = vertices.get(vertices.size() - 1);
             int exitY = (int)last.getPosition().getY() + (int)last.getSize().getHeight();
             for (Segment s : graph.getSegments()) {
-                int startY = s.getStart() == null ? entryY : s.getStart().getPosition().y;
+                Vertex start = s.getStart();
+                int startY = s.getStart() == null ? entryY : start.getPosition().y;
                 s.setStartPoint(new Point(x, startY));
                 int endY = s.getEnd() == null ? exitY : s.getEnd().getPosition().y;
+                if (s.isInstantaneous()) {
+                    endY = start.getPosition().y + (int)start.getSize().getHeight();
+                }
                 s.setEndPoint(new Point(x, endY));
                 if (s.isLastOfLiveRange()) {
                     x += s.getCluster().getLiveRangeSeparation();

@@ -36,6 +36,7 @@ public class LiveRangeSegment implements Segment {
     private Point startPoint;
     private Point endPoint;
     private boolean lastOfLiveRange;
+    private boolean instantaneous;
 
     protected LiveRangeSegment(InputLiveRange liveRange, Block block, Figure start, Figure end) {
         this.block = block;
@@ -88,6 +89,14 @@ public class LiveRangeSegment implements Segment {
 
     public int parentId() {
         return this.liveRange.getId();
+    }
+
+    public void setInstantaneous(boolean instantaneous) {
+        this.instantaneous = instantaneous;
+    }
+
+    public boolean isInstantaneous() {
+        return instantaneous;
     }
 
     @Override
