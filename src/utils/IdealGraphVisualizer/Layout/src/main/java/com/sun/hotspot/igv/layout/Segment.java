@@ -36,4 +36,5 @@ public interface Segment {
     boolean isLastOfLiveRange();
     void setLastOfLiveRange(boolean lastOfLiveRange);
     int parentId();
+    boolean isInstantaneous();
 }

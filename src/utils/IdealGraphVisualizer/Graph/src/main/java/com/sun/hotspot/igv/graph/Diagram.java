@@ -140,6 +140,7 @@ public class Diagram {
                 continue; // FIXME: we might want to print instant live segments anyway.
             }
             Map<Integer, InputNode> active = new HashMap<>();
+            Set<Integer> instant = new HashSet<>();
             InputNode header = b.getNodes().get(0);
             for (int liveRangeId : graph.getLivenessInfoForNode(header).livein) {
                 active.put(liveRangeId, null);
@@ -174,6 +175,9 @@ public class Diagram {
                 // Activate new segments.
                 if (l.def != null && !active.containsKey(l.def)) {
                     active.put(l.def, n);
+                    if (!l.liveout.contains(l.def)) {
+                        instant.add(l.def);
+                    }
                 }
             }
             // Commit segments live out the block.
@@ -181,6 +185,9 @@ public class Diagram {
                 InputNode startNode = active.get(liveRangeId);
                 Figure start = startNode == null ? null : figureHash.get(startNode.getId());
                 LiveRangeSegment s = new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, null);
+                if (instant.contains(liveRangeId)) {
+                    s.setInstantaneous(true);
+                }
                 liveRangeSegments.add(s);
                 System.out.println("  -> L" + liveRangeId + " ["
                         + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", exit]");
