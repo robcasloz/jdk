@@ -40,6 +40,7 @@ public class InputGraph extends Properties.Entity implements FolderElement {
     private final Map<Integer, InputBlock> nodeToBlock;
     private final Map<Integer, InputLiveRange> liveRanges;
     private Map<Integer, LivenessInfo> livenessInfo;
+    private Map<Integer, Set<InputNode>> relatedNodes;
     private final boolean isDiffGraph;
     private final InputGraph firstGraph;
     private final InputGraph secondGraph;
@@ -62,6 +63,7 @@ public class InputGraph extends Properties.Entity implements FolderElement {
         blocks = new LinkedHashMap<>();
         liveRanges = new LinkedHashMap<>();
         livenessInfo = new LinkedHashMap<>();
+        relatedNodes = new LinkedHashMap<>();
         blockEdges = new ArrayList<>();
         nodeToBlock = new LinkedHashMap<>();
         isDiffGraph = firstGraph != null && secondGraph != null;
@@ -310,6 +312,7 @@ public class InputGraph extends Properties.Entity implements FolderElement {
 
     public void addLiveRange(InputLiveRange lrg) {
         liveRanges.put(lrg.getId(), lrg);
+        relatedNodes.put(lrg.getId(), new HashSet<>());
     }
 
     public Collection<InputLiveRange> getLiveRanges() {
@@ -318,10 +321,27 @@ public class InputGraph extends Properties.Entity implements FolderElement {
 
     public void addLivenessInfo(InputNode node, LivenessInfo info) {
         livenessInfo.put(node.getId(), info);
+        if (info.def != null) {
+            relatedNodes.get(info.def).add(node);
+        }
+        if (info.use != null) {
+            for (int lrg : info.use) {
+                relatedNodes.get(lrg).add(node);
+            }
+        }
+        if (info.join != null) {
+            for (int lrg : info.join) {
+                relatedNodes.get(lrg).add(node);
+            }
+        }
     }
 
     public LivenessInfo getLivenessInfoForNode(InputNode node) {
         return livenessInfo.get(node.getId());
+    }
+
+    public Set<InputNode> getRelatedNodes(int liveRangeId) {
+        return relatedNodes.get(liveRangeId);
     }
 
     @Override

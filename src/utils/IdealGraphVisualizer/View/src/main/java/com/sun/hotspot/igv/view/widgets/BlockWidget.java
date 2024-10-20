@@ -30,6 +30,7 @@ import com.sun.hotspot.igv.util.LookupHistory;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
+import java.util.List;
 import org.netbeans.api.visual.action.WidgetAction;
 import org.netbeans.api.visual.widget.Scene;
 import org.netbeans.api.visual.widget.Widget;
@@ -48,6 +49,7 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
     public static final Color LIVE_RANGE_COLOR = Color.BLACK;
     private final Block block;
     private final int nodeWidth;
+    private List<Integer> liveRangeIds;
 
     public BlockWidget(Scene scene, Block block, int nodeWidth) {
         super(scene);
@@ -56,6 +58,10 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
         this.setBackground(BACKGROUND_COLOR);
         this.setOpaque(true);
         this.setCheckClipping(true);
+    }
+
+    public void setLiveRangeIds(List<Integer> liveRangeIds) {
+        this.liveRangeIds = liveRangeIds;
     }
 
     @Override
@@ -82,7 +88,7 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
         g.setColor(LIVE_RANGE_COLOR);
         g.setFont(LIVE_RANGE_FONT);
         int x = nodeWidth + block.getLiveRangeSeparation();
-        for (int liveRangeId : block.getLiveRangeIds()) {
+        for (int liveRangeId : liveRangeIds) {
             String ls = "L" + String.valueOf(liveRangeId);
             Rectangle2D lr = g.getFontMetrics().getStringBounds(ls, g);
             g.drawString(ls, r.x + x, r.y + (int) lr.getHeight() + 2);

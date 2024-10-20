@@ -35,6 +35,7 @@ import java.util.*;
 public class Diagram {
 
     private List<Figure> figures;
+    private final Hashtable<Integer, Figure> figureHash;
     private final Map<InputBlock, Block> blocks;
     private List<LiveRangeSegment> liveRangeSegments;
     private final String nodeText;
@@ -65,6 +66,7 @@ public class Diagram {
         this.shortNodeText = shortNodeText;
         this.tinyNodeText = tinyNodeText;
         this.figures = new ArrayList<>();
+        this.figureHash = new Hashtable<>();
         this.blocks = new LinkedHashMap<>(8);
         this.liveRangeSegments = new ArrayList<>();
         this.blockConnections = new HashSet<>();
@@ -76,7 +78,6 @@ public class Diagram {
         }
 
         Collection<InputNode> nodes = graph.getNodes();
-        Hashtable<Integer, Figure> figureHash = new Hashtable<>();
         for (InputNode n : nodes) {
             Figure f = new Figure(this, curId, n);
             curId++;
@@ -210,6 +211,12 @@ public class Diagram {
             }
             blocks.get(inputBlock).setLiveRangeIds(liveRangeSegmentIds);
         }
+    }
+
+    public Figure getFigure(InputNode n) {
+        int nodeId = n.getId();
+        assert figureHash.containsKey(nodeId);
+        return figureHash.get(nodeId);
     }
 
     public Block getBlock(InputBlock b) {
