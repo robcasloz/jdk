@@ -622,6 +622,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private void rebuildBlockLayer() {
         blockLayer.removeChildren();
         if (getModel().getShowBlocks() || getModel().getShowCFG()) {
+            // FIXME: move nodeWidth computation to relayout(), do it based on visible nodes.
             Map<String, Integer> blockNodeWidth = new HashMap<>();
             for (Figure figure : getModel().getDiagram().getFigures()) {
                 blockNodeWidth.put(figure.getBlock().getInputBlock().getName(), figure.getWidth());
@@ -707,8 +708,19 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return w1.isVisible() && w2.isVisible();
     }
 
-    private boolean isVisible(LiveRangeSegment s) {
+    private boolean isVisibleLiveRange(int liveRangeId) {
+        Set<InputNode> relatedNodes = getModel().getGraph().getRelatedNodes(liveRangeId);
+        for (InputNode n : relatedNodes) {
+            Figure f = getModel().getDiagram().getFigure(n);
+            if (!getWidget(f, FigureWidget.class).isVisible()) {
+                return false;
+            }
+        }
         return true;
+    }
+
+    private boolean isVisible(LiveRangeSegment s) {
+        return isVisibleLiveRange(s.getLiveRange().getId());
     }
 
     private void doStableSeaLayout(HashSet<Figure> visibleFigures, HashSet<Connection> visibleConnections) {
@@ -749,13 +761,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         manager.setXOffset(25);
         manager.setLayerOffset(25);
         m.setManager(manager);
-        Map<InputNode, Figure> nodeFig = new HashMap<>();
-        for (Figure f : figures) {
-            InputNode n = f.getInputNode();
-            if (n != null) {
-                nodeFig.put(n, f);
-            }
-        }
         // Compute global ranking among figures given by in-block order. If
         // needed, this could be cached as long as it is computed for all the
         // figures in the model, not just the visible ones.
@@ -763,7 +768,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         int r = 0;
         for (InputBlock b : diagram.getInputBlocks()) {
             for (InputNode n : b.getNodes()) {
-                Figure f = nodeFig.get(n);
+                Figure f = diagram.getFigure(n);
                 if (f != null) {
                     figureRank.put(f, r);
                     r++;
@@ -1247,6 +1252,19 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         HashSet<Figure> visibleFigures = getVisibleFigures();
         HashSet<Connection> visibleConnections = getVisibleConnections();
         List<LiveRangeSegment> visibleLiveRangeSegments = getVisibleLiveRangeSegments();
+        for (InputBlock inputBlock : getModel().getDiagram().getInputBlocks()) {
+            BlockWidget blockWidget = getWidget(inputBlock);
+            if (blockWidget.isVisible()) {
+                List<Integer> liveRangeIds = new ArrayList<>();
+                for (Integer liveRangeId : getModel().getDiagram().getBlock(inputBlock).getLiveRangeIds()) {
+                    if (isVisibleLiveRange(liveRangeId)) {
+                        liveRangeIds.add(liveRangeId);
+                    }
+                }
+                blockWidget.setLiveRangeIds(liveRangeIds);
+            }
+        }
+
         if (getModel().getShowStableSea()) {
             doStableSeaLayout(visibleFigures, visibleConnections);
         } else if (getModel().getShowSea()) {
