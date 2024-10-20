@@ -707,7 +707,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         Set<InputNode> relatedNodes = getModel().getGraph().getRelatedNodes(liveRangeId);
         for (InputNode n : relatedNodes) {
             Figure f = getModel().getDiagram().getFigure(n);
-            if (!getWidget(f, FigureWidget.class).isVisible()) {
+            FigureWidget fw = getWidget(f);
+            if (fw == null || !fw.isVisible()) {
                 return false;
             }
         }
