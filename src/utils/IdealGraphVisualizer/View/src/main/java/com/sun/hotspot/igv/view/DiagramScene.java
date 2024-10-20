@@ -622,13 +622,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     private void rebuildBlockLayer() {
         blockLayer.removeChildren();
         if (getModel().getShowBlocks() || getModel().getShowCFG()) {
-            // FIXME: move nodeWidth computation to relayout(), do it based on visible nodes.
-            Map<String, Integer> blockNodeWidth = new HashMap<>();
-            for (Figure figure : getModel().getDiagram().getFigures()) {
-                blockNodeWidth.put(figure.getBlock().getInputBlock().getName(), figure.getWidth());
-            }
             for (InputBlock inputBlock : getModel().getDiagram().getInputBlocks()) {
-                BlockWidget blockWidget = new BlockWidget(this, getModel().getDiagram().getBlock(inputBlock), blockNodeWidth.getOrDefault(inputBlock.getName(), ClusterNode.EMPTY_BLOCK_LIVE_RANGE_OFFSET));
+                BlockWidget blockWidget = new BlockWidget(this, getModel().getDiagram().getBlock(inputBlock));
                 blockWidget.getActions().addAction(new DoubleClickAction(blockWidget));
                 blockWidget.setVisible(false);
                 addObject(inputBlock, blockWidget);
@@ -1143,6 +1138,18 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
                 BlockWidget blockWidget = getWidget(inputBlock);
                 blockWidget.setVisible(visibleAfter);
+
+                // Update node width for live range layout.
+                int nodeWidth = ClusterNode.EMPTY_BLOCK_LIVE_RANGE_OFFSET;
+                for (InputNode n : inputBlock.getNodes()) {
+                    Figure f = getModel().getDiagram().getFigure(n);
+                    FigureWidget figureWidget = getWidget(f);
+                    if (figureWidget != null && figureWidget.isVisible()) {
+                        nodeWidth = f.getWidth();
+                        break;
+                    }
+                }
+                blockWidget.setNodeWidth(nodeWidth);
             }
         }
     }

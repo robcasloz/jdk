@@ -48,13 +48,12 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
     private static final Font LIVE_RANGE_FONT = new Font("Arial", Font.BOLD, 12);
     public static final Color LIVE_RANGE_COLOR = Color.BLACK;
     private final Block block;
-    private final int nodeWidth;
+    private int nodeWidth;
     private List<Integer> liveRangeIds;
 
-    public BlockWidget(Scene scene, Block block, int nodeWidth) {
+    public BlockWidget(Scene scene, Block block) {
         super(scene);
         this.block = block;
-        this.nodeWidth = nodeWidth;
         this.setBackground(BACKGROUND_COLOR);
         this.setOpaque(true);
         this.setCheckClipping(true);
@@ -62,6 +61,10 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
 
     public void setLiveRangeIds(List<Integer> liveRangeIds) {
         this.liveRangeIds = liveRangeIds;
+    }
+
+    public void setNodeWidth(int nodeWidth) {
+        this.nodeWidth = nodeWidth;
     }
 
     @Override
