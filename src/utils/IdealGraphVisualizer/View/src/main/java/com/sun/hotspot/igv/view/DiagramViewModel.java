@@ -70,6 +70,7 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
     private boolean showCFG;
     private boolean showNodeHull;
     private boolean showEmptyBlocks;
+    private boolean showLiveRanges;
     private static boolean globalSelection = false;
     private static boolean cutEdges = false;
 
@@ -168,6 +169,15 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
         diagramChangedEvent.fire();
     }
 
+    public boolean getShowLiveRanges() {
+        return showLiveRanges;
+    }
+
+    public void setShowLiveRanges(boolean b) {
+        showLiveRanges = b;
+        diagramChangedEvent.fire();
+    }
+
     private void initGroup() {
         group.getChangedEvent().addListener(g -> {
             assert g == group;
@@ -207,6 +217,7 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
         showBlocks = model.getShowBlocks();
         showNodeHull = model.getShowNodeHull();
         showEmptyBlocks = model.getShowEmptyBlocks();
+        showLiveRanges = model.getShowLiveRanges();
 
         hiddenNodes = new HashSet<>(model.getHiddenNodes());
         selectedNodes = new HashSet<>();
@@ -231,6 +242,7 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
         showCFG = Settings.get().getInt(Settings.DEFAULT_VIEW, Settings.DEFAULT_VIEW_DEFAULT) == Settings.DefaultView.CONTROL_FLOW_GRAPH;
         showNodeHull = true;
         showEmptyBlocks = true;
+        showLiveRanges = true;
 
         hiddenNodes = new HashSet<>();
         selectedNodes = new HashSet<>();

@@ -704,6 +704,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private boolean isVisibleLiveRange(int liveRangeId) {
+        if (!getModel().getShowLiveRanges()) {
+            return false;
+        }
         Set<InputNode> relatedNodes = getModel().getGraph().getRelatedNodes(liveRangeId);
         for (InputNode n : relatedNodes) {
             Figure f = getModel().getDiagram().getFigure(n);
