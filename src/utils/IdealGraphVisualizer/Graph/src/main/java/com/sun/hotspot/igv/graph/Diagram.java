@@ -143,6 +143,10 @@ public class Diagram {
             Map<Integer, InputNode> active = new HashMap<>();
             Set<Integer> instant = new HashSet<>();
             InputNode header = b.getNodes().get(0);
+            if (graph.getLivenessInfoForNode(header) == null) {
+                // No liveness information available, skip.
+                continue;
+            }
             for (int liveRangeId : graph.getLivenessInfoForNode(header).livein) {
                 active.put(liveRangeId, null);
             }
