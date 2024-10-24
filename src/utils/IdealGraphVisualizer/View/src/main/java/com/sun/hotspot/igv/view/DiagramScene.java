@@ -703,6 +703,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         return w1.isVisible() && w2.isVisible();
     }
 
+    private boolean isVisible(InputBlock b) {
+        BlockWidget bw = getWidget(b);
+        return bw != null && getWidget(b, BlockWidget.class).isVisible();
+    }
+
     private boolean isVisibleLiveRange(int liveRangeId) {
         if (!getModel().getShowLiveRanges()) {
             return false;
@@ -711,7 +716,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         for (InputNode n : relatedNodes) {
             Figure f = getModel().getDiagram().getFigure(n);
             FigureWidget fw = getWidget(f);
-            if (fw == null || !fw.isVisible()) {
+            if (isVisible(f.getBlock().getInputBlock()) &&
+                (fw == null || !fw.isVisible())) {
                 return false;
             }
         }
@@ -720,7 +726,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
 
     private boolean isVisible(LiveRangeSegment s) {
         return isVisibleLiveRange(s.getLiveRange().getId()) &&
-            getWidget(s.getCluster().getInputBlock(), BlockWidget.class).isVisible();
+               isVisible(s.getCluster().getInputBlock());
     }
 
     private void doStableSeaLayout(HashSet<Figure> visibleFigures, HashSet<Connection> visibleConnections) {
@@ -785,16 +791,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         m.setSubManager(new LinearLayoutManager(figureRank));
         Set<Block> visibleBlocks = new HashSet<>();
         for (Block b : diagram.getBlocks()) {
-            BlockWidget w = getWidget(b.getInputBlock());
-            if (w.isVisible()) {
+            if (isVisible(b.getInputBlock())) {
                 visibleBlocks.add(b);
             }
         }
         m.setClusters(new HashSet<>(visibleBlocks));
         m.doLayout(new LayoutGraph(edges, figures));
     }
-
-
 
     private boolean shouldAnimate() {
         int visibleFigureCount = 0;
