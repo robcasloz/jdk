@@ -90,12 +90,14 @@ public class BlockWidget extends Widget implements DoubleClickHandler {
 
         g.setColor(LIVE_RANGE_COLOR);
         g.setFont(LIVE_RANGE_FONT);
-        int x = nodeWidth + block.getLiveRangeSeparation();
-        for (int liveRangeId : liveRangeIds) {
-            String ls = "L" + String.valueOf(liveRangeId);
-            Rectangle2D lr = g.getFontMetrics().getStringBounds(ls, g);
-            g.drawString(ls, r.x + x, r.y + (int) lr.getHeight() + 2);
-            x += block.getLiveRangeSeparation();
+        if (liveRangeIds != null) {
+            int x = nodeWidth + block.getLiveRangeSeparation();
+            for (int liveRangeId : liveRangeIds) {
+                String ls = "L" + String.valueOf(liveRangeId);
+                Rectangle2D lr = g.getFontMetrics().getStringBounds(ls, g);
+                g.drawString(ls, r.x + x, r.y + (int) lr.getHeight() + 2);
+                x += block.getLiveRangeSeparation();
+            }
         }
 
         g.setStroke(old);

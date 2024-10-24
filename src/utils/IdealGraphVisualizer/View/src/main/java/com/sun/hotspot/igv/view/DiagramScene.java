@@ -1255,6 +1255,21 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
+    private void updateLiveRangeIdsInBlockWidgets() {
+        for (InputBlock inputBlock : getModel().getDiagram().getInputBlocks()) {
+            BlockWidget blockWidget = getWidget(inputBlock);
+            if (blockWidget != null && blockWidget.isVisible()) {
+                List<Integer> liveRangeIds = new ArrayList<>();
+                for (Integer liveRangeId : getModel().getDiagram().getBlock(inputBlock).getLiveRangeIds()) {
+                    if (isVisibleLiveRange(liveRangeId)) {
+                        liveRangeIds.add(liveRangeId);
+                    }
+                }
+                blockWidget.setLiveRangeIds(liveRangeIds);
+            }
+        }
+    }
+
     private void relayout() {
         rebuilding = true;
         Set<FigureWidget> oldVisibleFigureWidgets = getVisibleFigureWidgets();
@@ -1267,18 +1282,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         HashSet<Figure> visibleFigures = getVisibleFigures();
         HashSet<Connection> visibleConnections = getVisibleConnections();
         List<LiveRangeSegment> visibleLiveRangeSegments = getVisibleLiveRangeSegments();
-        for (InputBlock inputBlock : getModel().getDiagram().getInputBlocks()) {
-            BlockWidget blockWidget = getWidget(inputBlock);
-            if (blockWidget.isVisible()) {
-                List<Integer> liveRangeIds = new ArrayList<>();
-                for (Integer liveRangeId : getModel().getDiagram().getBlock(inputBlock).getLiveRangeIds()) {
-                    if (isVisibleLiveRange(liveRangeId)) {
-                        liveRangeIds.add(liveRangeId);
-                    }
-                }
-                blockWidget.setLiveRangeIds(liveRangeIds);
-            }
-        }
 
         if (getModel().getShowStableSea()) {
             doStableSeaLayout(visibleFigures, visibleConnections);
@@ -1292,6 +1295,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         rebuildConnectionLayer();
         if (getModel().getShowCFG()) {
             rebuildSegmentLayer();
+            updateLiveRangeIdsInBlockWidgets();
         }
 
         updateFigureWidgetLocations(oldVisibleFigureWidgets);
