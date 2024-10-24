@@ -639,6 +639,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         updateFigureWidths();
         rebuildMainLayer();
         rebuildBlockLayer();
+        segmentLayer.removeChildren();
         relayout();
         setFigureSelection(model.getSelectedFigures());
         validateAll();
