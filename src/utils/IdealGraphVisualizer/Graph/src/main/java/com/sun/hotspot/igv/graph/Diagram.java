@@ -136,9 +136,8 @@ public class Diagram {
         }
 
         for (InputBlock b : graph.getBlocks()) {
-            System.out.println("B" + b.getName());
             if (b.getNodes().isEmpty()) {
-                continue; // FIXME: we might want to print instant live segments anyway.
+                continue;
             }
             Map<Integer, InputNode> active = new HashMap<>();
             Set<Integer> instant = new HashSet<>();
@@ -150,17 +149,7 @@ public class Diagram {
             for (int liveRangeId : graph.getLivenessInfoForNode(header).livein) {
                 active.put(liveRangeId, null);
             }
-            // System.out.print("  active: ");
-            // for (Integer liveRangeId : active.keySet()) {
-            //     System.out.print(liveRangeId + "@" + (active.get(liveRangeId) == null ? "entry" : active.get(liveRangeId).getProperties().get("idx")) + " ");
-            // }
-            // System.out.println();
             for (InputNode n : b.getNodes()) {
-                // System.out.print("  active: ");
-                // for (Integer liveRangeId : active.keySet()) {
-                //     System.out.print(liveRangeId + "@" + active.get(liveRangeId).getProperties().get("idx") + " ");
-                // }
-                // System.out.println();
                 LivenessInfo l = graph.getLivenessInfoForNode(n);
                 // Commit segments killed by n.
                 if (l.kill != null) {
@@ -171,9 +160,6 @@ public class Diagram {
                         Figure end = figureHash.get(endNode.getId());
                         liveRangeSegments
                             .add(new LiveRangeSegment(liveRangeHash.get(liveRangeId), getBlock(b), start, end));
-                        System.out.println("  -> L" + liveRangeId + " ["
-                                + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", "
-                                + (endNode == null ? "exit" : endNode.getProperties().get("idx")) + "]");
                         active.remove(liveRangeId);
                     }
                 }
@@ -194,10 +180,7 @@ public class Diagram {
                     s.setInstantaneous(true);
                 }
                 liveRangeSegments.add(s);
-                System.out.println("  -> L" + liveRangeId + " ["
-                        + (startNode == null ? "entry" : startNode.getProperties().get("idx")) + ", exit]");
             }
-            System.out.println("");
         }
         liveRangeSegments.sort(Comparator.comparingInt(s -> s.getLiveRange().getId()));
         for (InputBlock inputBlock : graph.getBlocks()) {

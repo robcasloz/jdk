@@ -106,7 +106,6 @@ public class LineWidget extends Widget implements PopupMenuProvider {
 
         clientArea = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
         clientArea.grow(BORDER, BORDER);
-        System.out.println("LineWidget::clientArea: " + clientArea);
 
         Color color = Color.BLACK;
         if (connections.size() > 0) {
@@ -173,7 +172,6 @@ public class LineWidget extends Widget implements PopupMenuProvider {
 
     @Override
     protected void paintWidget() {
-        System.out.println("LineWidget::paintWidget()");
         if (scene.getZoomFactor() < ZOOM_FACTOR) {
             return;
         }

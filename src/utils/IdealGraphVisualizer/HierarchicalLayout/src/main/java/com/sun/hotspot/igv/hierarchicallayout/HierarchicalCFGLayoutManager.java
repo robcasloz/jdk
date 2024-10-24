@@ -78,7 +78,6 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
     }
 
     public void doLayout(LayoutGraph graph) {
-        System.out.println("HierarchicalCFGLayoutManager::doLayout()");
 
         // Create cluster-level nodes and edges.
         Map<Cluster, ClusterNode> clusterNode = createClusterNodes(graph);
@@ -87,15 +86,12 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
         for (Segment s : segments) {
             Cluster c = s.getCluster();
             assert c != null : "Cluster of segment " + s + " is null!";
-            System.out.println("  clusterNode.get(c).addSubSegment(" + s + ")");
             clusterNode.get(c).addSubSegment(s);
         }
 
         // Compute layout for each cluster.
         for (Cluster c : clusters) {
-            System.out.println("  c: " + c);
             ClusterNode n = clusterNode.get(c);
-            System.out.println("  n: " + n);
             n.groupSegments();
             LayoutGraph g = new LayoutGraph(n.getSubEdges(), n.getSubNodes());
             Set<Segment> clusterSegments = new HashSet<>();
@@ -104,39 +100,13 @@ public class HierarchicalCFGLayoutManager implements LayoutManager {
                     clusterSegments.add(s);
                 }
             }
-            System.out.println("  clusterSegments.size(): " + clusterSegments.size());
-            System.out.println("  n.getSubSegments().size(): " + n.getSubSegments().size());
             g.setSegments(n.getSubSegments());
             subManager.doLayout(g, new HashSet<>());
             n.updateSize();
         }
 
-        System.out.println("segments of B3 after inner layout computation: ");
-        for (Cluster c : clusters) {
-            if (c.toString().equals("3")) {
-                System.out.println("Cluster " + c + ":");
-                for (Segment s : segments) {
-                    if (s.getCluster().equals(c)) {
-                        System.out.println("  " + s + ": " + s.getStartPoint() + " - " + s.getEndPoint());
-                    }
-                }
-            }
-        }
-
         // Compute inter-cluster layout.
         manager.doLayout(new LayoutGraph(clusterEdges, new HashSet<>(clusterNode.values())), new HashSet<>());
-
-        System.out.println("segments of B3 after outer layout computation: ");
-        for (Cluster c : clusters) {
-            if (c.toString().equals("3")) {
-                System.out.println("Cluster " + c + ":");
-                for (Segment s : segments) {
-                    if (s.getCluster().equals(c)) {
-                        System.out.println("  " + s + ": " + s.getStartPoint() + " - " + s.getEndPoint());
-                    }
-                }
-            }
-        }
 
         // Write back results.
         writeBackClusterBounds(clusterNode);

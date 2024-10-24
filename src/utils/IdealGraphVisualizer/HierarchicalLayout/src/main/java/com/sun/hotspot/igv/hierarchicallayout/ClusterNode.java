@@ -134,12 +134,6 @@ public class ClusterNode implements Vertex {
             return;
         }
 
-        for (Segment segment : subSegments) {
-            Point s = segment.getStartPoint();
-            System.out.println("calculateSize: start point: " + s);
-        }
-
-
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -168,15 +162,9 @@ public class ClusterNode implements Vertex {
 
         for (Segment segment : subSegments) {
             Point s = segment.getStartPoint();
-            System.out.println("segment: " + segment + "@B" + segment.getCluster().toString());
-            System.out.println("s: " + s);
             minX = Math.min(minX, s.x);
             maxX = Math.max(maxX, s.x + cluster.getLiveRangeSeparation());
-            System.out.println("minX: " + minX);
-            System.out.println("maxX: " + maxX);
         }
-        System.out.println("-> final maxX: " + maxX);
-        System.out.println("-> final minX: " + minX);
         if (!subSegments.isEmpty()) {
             maxX += cluster.getLiveRangeSeparation();
         }
@@ -205,18 +193,9 @@ public class ClusterNode implements Vertex {
             l.setControlPoints(points);
 
         }
-        for (Segment segment : subSegments) {
-            Point s = segment.getStartPoint();
-            System.out.println("start point (after): " + s);
-        }
 
         size.width += 2 * border;
         size.height += 2 * border;
-
-        for (Segment segment : subSegments) {
-            Point s = segment.getStartPoint();
-            System.out.println("calculateSize (after): start point: " + s);
-        }
     }
 
     public Port getInputSlot() {
