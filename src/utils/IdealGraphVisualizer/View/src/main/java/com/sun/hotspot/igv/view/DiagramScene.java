@@ -719,7 +719,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private boolean isVisible(LiveRangeSegment s) {
-        return isVisibleLiveRange(s.getLiveRange().getId());
+        return isVisibleLiveRange(s.getLiveRange().getId()) &&
+            getWidget(s.getCluster().getInputBlock(), BlockWidget.class).isVisible();
     }
 
     private void doStableSeaLayout(HashSet<Figure> visibleFigures, HashSet<Connection> visibleConnections) {
