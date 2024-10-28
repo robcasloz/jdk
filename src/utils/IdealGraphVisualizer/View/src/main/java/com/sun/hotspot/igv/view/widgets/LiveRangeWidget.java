@@ -23,21 +23,32 @@
  */
 package com.sun.hotspot.igv.view.widgets;
 
+import com.sun.hotspot.igv.data.Properties;
+import com.sun.hotspot.igv.graph.LiveRangeSegment;
+import com.sun.hotspot.igv.util.PropertiesConverter;
+import com.sun.hotspot.igv.util.PropertiesSheet;
 import com.sun.hotspot.igv.view.DiagramScene;
 import java.awt.*;
 import org.netbeans.api.visual.widget.Widget;
+import org.openide.nodes.AbstractNode;
+import org.openide.nodes.Children;
+import org.openide.nodes.Node;
+import org.openide.nodes.Sheet;
 
-public class LiveRangeWidget extends Widget {
+public class LiveRangeWidget extends Widget implements Properties.Provider {
 
+    private final LiveRangeSegment liveRangeSegment;
     private final DiagramScene scene;
     private final Point start;
     private final Point end;
     private final Rectangle clientArea;
+    private final Node node;
 
     private static final int RANGE_WIDTH = 4;
 
-    public LiveRangeWidget(DiagramScene scene, Point start, Point end) {
+    public LiveRangeWidget(LiveRangeSegment liveRangeSegment, DiagramScene scene, Point start, Point end) {
         super(scene);
+        this.liveRangeSegment = liveRangeSegment;
         this.scene = scene;
         this.start = start;
         this.end = end;
@@ -50,6 +61,19 @@ public class LiveRangeWidget extends Widget {
 
         clientArea = new Rectangle(x, minY, 1, maxY - minY + 1);
         clientArea.grow(RANGE_WIDTH * 2, 5);
+
+        // Initialize node for property sheet
+        node = new AbstractNode(Children.LEAF) {
+            @Override
+            protected Sheet createSheet() {
+                Sheet s = super.createSheet();
+                PropertiesSheet.initializeSheet(getProperties(), s);
+                return s;
+            }
+        };
+        node.setDisplayName("L" + liveRangeSegment.getLiveRange().getId());
+
+        this.setToolTipText(PropertiesConverter.convertToHTML(getProperties()));
     }
 
     @Override
@@ -72,5 +96,10 @@ public class LiveRangeWidget extends Widget {
             g.drawLine(start.x, start.y, end.x, end.y);
             g.drawLine(end.x - RANGE_WIDTH, end.y, end.x + RANGE_WIDTH, end.y);
         }
+    }
+
+    @Override
+    public Properties getProperties() {
+        return liveRangeSegment.getLiveRange().getProperties();
     }
 }

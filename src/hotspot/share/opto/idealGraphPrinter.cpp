@@ -929,9 +929,30 @@ void IdealGraphPrinter::print(const char* name, Node* node, GrowableArray<const 
   if (has_liveness_info()) {
     head(LIVE_RANGES_ELEMENT);
     for (uint i = 1; i < _chaitin->_lrg_map.max_lrg_id(); i++) {
-      begin_elem(LIVE_RANGE_ELEMENT);
+      begin_head(LIVE_RANGE_ELEMENT);
       print_attr(LIVE_RANGE_ID_PROPERTY, i);
-      end_elem();
+      end_head();
+      head(PROPERTIES_ELEMENT);
+      const LRG& lrg = _chaitin->lrgs(i);
+      if (lrg._degree_valid) {
+        print_prop("degree", lrg.degree());
+      }
+      print_prop("num_regs", lrg.num_regs());
+      print_prop("reg_pressure", lrg.reg_pressure());
+      print_prop("score", lrg.score());
+      print_prop("mask_size", lrg.mask_size());
+      if (lrg._risk_bias != 0) {
+        print_prop("risk_bias", lrg._risk_bias);
+      }
+      if (lrg._copy_bias != 0) {
+        print_prop("copy_bias", lrg._copy_bias);
+      }
+      buffer[0] = 0;
+      stringStream lrg_mask_stream(buffer, sizeof(buffer) - 1);
+      lrg.mask().dump(&lrg_mask_stream);
+      print_prop("mask", buffer);
+      tail(PROPERTIES_ELEMENT);
+      tail(LIVE_RANGE_ELEMENT);
     }
     tail(LIVE_RANGES_ELEMENT);
   }

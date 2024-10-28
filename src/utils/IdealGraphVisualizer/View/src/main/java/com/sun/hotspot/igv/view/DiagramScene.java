@@ -1047,8 +1047,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         segmentLayer.removeChildren();
         for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
             if (isVisible(segment)) {
-                LiveRangeWidget segmentWidget = new LiveRangeWidget(this, segment.getStartPoint(),
-                        segment.getEndPoint());
+                LiveRangeWidget segmentWidget =
+                    new LiveRangeWidget(segment, this, segment.getStartPoint(), segment.getEndPoint());
                 segmentLayer.addChild(segmentWidget);
             }
         }

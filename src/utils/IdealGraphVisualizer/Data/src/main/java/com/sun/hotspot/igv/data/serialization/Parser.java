@@ -556,6 +556,7 @@ public class Parser implements GraphParser {
         nodeHandler.addChild(propertiesHandler);
         propertiesHandler.addChild(propertyHandler);
         groupPropertiesHandler.addChild(propertyHandler);
+        liveRangeHandler.addChild(propertiesHandler);
     }
 
     private int lookupID(String i) {
