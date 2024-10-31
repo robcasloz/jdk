@@ -62,9 +62,36 @@ public:
     MStack(int size) : Node_Stack(size) { }
 
     void push(Node *n, Node_State ns) {
+      if (UseNewCode) {
+        tty->print("mstack.push(%d %s, ", n->_idx, n->Name());
+        if (ns == Pre_Visit) {
+          tty->print("Pre_Visit");
+        } else if (ns == Visit) {
+          tty->print("Visit");
+        } else if (ns == Post_Visit) {
+          tty->print("Post_Visit");
+        } else if (ns == Alt_Post_Visit) {
+          tty->print("Alt_Post_Visit");
+        }
+        tty->print_cr(")");
+      }
       Node_Stack::push(n, (uint)ns);
     }
     void push(Node *n, Node_State ns, Node *parent, int indx) {
+      if (UseNewCode) {
+        tty->print("mstack.push(%d %s (parent=%d %s, indx=%d) ",
+                   n->_idx, n->Name(), parent == nullptr ? -1 : parent->_idx, parent == nullptr ? "null" : parent->Name(), indx);
+        if (ns == Pre_Visit) {
+          tty->print("Pre_Visit");
+        } else if (ns == Visit) {
+          tty->print("Visit");
+        } else if (ns == Post_Visit) {
+          tty->print("Post_Visit");
+        } else if (ns == Alt_Post_Visit) {
+          tty->print("Alt_Post_Visit");
+        }
+        tty->print_cr(")");
+      }
       ++_inode_top;
       if ((_inode_top + 1) >= _inode_max) grow();
       _inode_top->node = parent;
@@ -149,6 +176,7 @@ private:
   Node_Array _old2new_map;    // Map roots of ideal-trees to machine-roots
   Node_Array _new2old_map;    // Maps machine nodes back to ideal
   VectorSet _reused;          // Ideal IGV identifiers reused by machine nodes
+  int _recursion_depth;
 #endif // !PRODUCT
 
   void   grow_new_node_array(uint idx_limit) {
