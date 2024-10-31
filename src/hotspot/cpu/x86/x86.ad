@@ -2480,6 +2480,7 @@ bool Matcher::pd_clone_node(Node* n, Node* m, Matcher::MStack& mstack) {
 bool Matcher::pd_clone_address_expressions(AddPNode* m, Matcher::MStack& mstack, VectorSet& address_visited) {
   Node *off = m->in(AddPNode::Offset);
   if (off->is_Con()) {
+    if (UseNewCode) { tty->print_cr("pd_clone_address_expressions m = %d %s", m->_idx, m->Name()); }
     address_visited.test_set(m->_idx); // Flag as address_visited
     Node *adr = m->in(AddPNode::Address);
 
@@ -2488,11 +2489,13 @@ bool Matcher::pd_clone_address_expressions(AddPNode* m, Matcher::MStack& mstack,
     // Cheap to find it by looking for screwy base.
     if (adr->is_AddP() &&
         !adr->in(AddPNode::Base)->is_top() &&
+        (!UseNewCode2 || !(adr->in(AddPNode::Base)->is_DecodeN() && adr->in(AddPNode::Offset)->is_Con())) &&
         LP64_ONLY( off->get_long() == (int) (off->get_long()) && ) // immL32
         // Are there other uses besides address expressions?
         !is_visited(adr)) {
       address_visited.set(adr->_idx); // Flag as address_visited
       Node *shift = adr->in(AddPNode::Offset);
+      verify_address_expression_pattern(m, adr);
       if (!clone_shift(shift, this, mstack, address_visited)) {
         mstack.push(shift, Pre_Visit);
       }

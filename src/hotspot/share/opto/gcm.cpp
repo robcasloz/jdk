@@ -1035,6 +1035,10 @@ Node *Node_Backward_Iterator::next() {
 
       // do not traverse backward control edges
       Node *use = n->is_Proj() ? n->in(0) : n;
+      if (_cfg.get_block_for_node(use) == nullptr) {
+        tty->print("use: ");
+        use->dump();
+      }
       uint use_rpo = _cfg.get_block_for_node(use)->_rpo;
 
       if ( use_rpo < src_rpo )

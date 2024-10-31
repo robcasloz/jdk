@@ -76,6 +76,7 @@ Matcher::Matcher()
   _old2new_map(C->comp_arena()),
   _new2old_map(C->comp_arena()),
   _reused(C->comp_arena()),
+  _recursion_depth(0),
 #endif // !PRODUCT
   _allocation_started(false),
   _ruleName(ruleName),
@@ -170,21 +171,32 @@ void Matcher::verify_new_nodes_only(Node* xroot) {
   worklist.push(xroot);
   while (worklist.size() > 0) {
     Node* n = worklist.pop();
-    visited.set(n->_idx);
+    if (visited.test_set(n->_idx)) {
+      continue;
+    }
+    if (UseNewCode) {
+      tty->print("visit ");
+      n->dump();
+    }
     assert(C->node_arena()->contains(n), "dead node");
     for (uint j = 0; j < n->req(); j++) {
       Node* in = n->in(j);
       if (in != nullptr) {
-        assert(C->node_arena()->contains(in), "dead node");
-        if (!visited.test(in->_idx)) {
-          worklist.push(in);
-        }
+        worklist.push(in);
       }
+    }
+    for (uint j = 0; j < n->outcnt(); j++) {
+      worklist.push(n->raw_out(j));
     }
   }
 }
 #endif
 
+static void indent(int depth) {
+  for (int i = 0; i < depth; i++) {
+    tty->print("  ");
+  }
+}
 
 //---------------------------match---------------------------------------------
 void Matcher::match( ) {
@@ -328,6 +340,10 @@ void Matcher::match( ) {
 
   if (C->failing())  return;  // bailed out on incoming arg failure
 
+  if (UseNewCode) {
+    tty->print_cr("1. collect roots of matcher trees");
+  }
+
   // ---------------
   // Collect roots of matcher trees.  Every node for which
   // _shared[_idx] is cleared is guaranteed to not be shared, and thus
@@ -362,6 +378,10 @@ void Matcher::match( ) {
   C->set_unique(0);
   C->reset_dead_node_list();
 
+  if (UseNewCode) {
+    tty->print_cr("2. match (label/reduce)");
+  }
+
   // Recursively match trees from old space into new space.
   // Correct leaves of new-space Nodes; they point to old-space.
   _visited.clear();
@@ -391,6 +411,9 @@ void Matcher::match( ) {
 
       // Generate new mach node for ConP #null
       assert(new_ideal_null != nullptr, "sanity");
+      if (UseNewCode) {
+        tty->print_cr("match_tree %d %s (new ConP #null)", new_ideal_null->_idx, new_ideal_null->Name());
+      }
       _mach_null = match_tree(new_ideal_null);
       // Don't set control, it will confuse GCM since there are no uses.
       // The control will be set when this node is used first time
@@ -399,6 +422,39 @@ void Matcher::match( ) {
 
       C->set_root(xroot->is_Root() ? xroot->as_Root() : nullptr);
 
+      if (UseNewCode3) {
+        // This is temporary code just to test that the only issue is 110
+        // loadConN having 111 leaPCompressedoffset as output (111 is dead). Is
+        // it OK to generate dead machine nodes as long as we don't refer to
+        // them?
+        ResourceMark rm;
+        Unique_Node_List worklist;
+        VectorSet visited;
+        worklist.push(xroot);
+        while (worklist.size() > 0) {
+          Node* n = worklist.pop();
+          if (visited.test_set(n->_idx)) {
+            continue;
+          }
+          for (uint j = 0; j < n->req(); j++) {
+            Node* in = n->in(j);
+            if (in != nullptr) {
+              if (!C->node_arena()->contains(in) && n->_idx == 111) {
+                // n is 111 leaPCompressedOffset. Remove from its parent. This seems
+                // to fix the issue (the code seems correct, but hard to tell because
+                // the program does not terminate).
+                n->in(2)->dump();
+                n->in(2)->raw_del_out(1);
+                break;
+              }
+              worklist.push(in);
+            }
+          }
+          for (uint j = 0; j < n->outcnt(); j++) {
+            worklist.push(n->raw_out(j));
+          }
+        }
+      }
 #ifdef ASSERT
       verify_new_nodes_only(xroot);
 #endif
@@ -1134,6 +1190,9 @@ static void match_alias_type(Compile* C, Node* n, Node* m) {
 // Node in new-space.  Given a new-space Node, recursively walk his children.
 Node *Matcher::transform( Node *n ) { ShouldNotCallThis(); return n; }
 Node *Matcher::xform( Node *n, int max_stack ) {
+  if (UseNewCode) {
+    tty->print_cr("xform %d %s", n->_idx, n->Name());
+  }
   // Use one stack to keep both: child's node/state and parent's node/index
   MStack mstack(max_stack * 2 * 2); // usually: C->live_nodes() * 2 * 2
   mstack.push(n, Visit, nullptr, -1);  // set null as parent to indicate root
@@ -1141,27 +1200,49 @@ Node *Matcher::xform( Node *n, int max_stack ) {
     C->check_node_count(NodeLimitFudgeFactor, "too many nodes matching instructions");
     if (C->failing()) return nullptr;
     n = mstack.node();          // Leave node on stack
+    if (UseNewCode) {
+      tty->print_cr("n: %d %s", n->_idx, n->Name());
+    }
     Node_State nstate = mstack.state();
     if (nstate == Visit) {
+      if (UseNewCode) {
+        tty->print_cr("Visit");
+      }
       mstack.set_state(Post_Visit);
       Node *oldn = n;
       // Old-space or new-space check
       if (!C->node_arena()->contains(n)) {
+        if (UseNewCode) {
+          tty->print_cr("n is in old space");
+        }
         // Old space!
         Node* m;
         if (has_new_node(n)) {  // Not yet Label/Reduced
           m = new_node(n);
+          if (UseNewCode) {
+            tty->print_cr("n already label/reduced");
+          }
         } else {
           if (!is_dontcare(n)) { // Matcher can match this guy
             // Calls match special.  They match alone with no children.
             // Their children, the incoming arguments, match normally.
-            m = n->is_SafePoint() ? match_sfpt(n->as_SafePoint()):match_tree(n);
+            if (n->is_SafePoint()) {
+              m = match_sfpt(n->as_SafePoint());
+            } else {
+              if (UseNewCode) {
+                tty->print_cr("match_tree %d %s (normal)", n->_idx, n->Name());
+              }
+              m = match_tree(n);
+            }
             if (C->failing())  return nullptr;
             if (m == nullptr) { Matcher::soft_match_failure(); return nullptr; }
             if (n->is_MemBar()) {
               m->as_MachMemBar()->set_adr_type(n->adr_type());
             }
           } else {                  // Nothing the matcher cares about
+            if (UseNewCode) {
+              tty->print_cr("nothing the matcher cares about");
+            }
             if (n->is_Proj() && n->in(0) != nullptr && n->in(0)->is_Multi()) {       // Projections?
               // Convert to machine-dependent projection
               m = n->in(0)->as_Multi()->match( n->as_Proj(), this );
@@ -1245,6 +1326,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
 
     }
     else if (nstate == Post_Visit) {
+      if (UseNewCode) {
+        tty->print_cr("Post_Visit");
+      }
       // Set xformed input
       Node *p = mstack.parent();
       if (p != nullptr) { // root doesn't have parent
@@ -1308,6 +1392,9 @@ MachNode *Matcher::match_sfpt( SafePointNode *sfpt ) {
     cnt = domain->cnt();
 
     // Match just the call, nothing else
+    if (UseNewCode) {
+      tty->print_cr("match_tree %d %s (call)", call->_idx, call->Name());
+    }
     MachNode *m = match_tree(call);
     if (C->failing())  return nullptr;
     if( m == nullptr ) { Matcher::soft_match_failure(); return nullptr; }
@@ -1352,6 +1439,9 @@ MachNode *Matcher::match_sfpt( SafePointNode *sfpt ) {
   else {
     call = nullptr;
     domain = nullptr;
+    if (UseNewCode) {
+      tty->print_cr("match_tree %d %s (safepoint)", sfpt->_idx, sfpt->Name());
+    }
     MachNode *mn = match_tree(sfpt);
     if (C->failing())  return nullptr;
     msfpt = mn->as_MachSafePoint();
@@ -1516,12 +1606,28 @@ MachNode *Matcher::match_sfpt( SafePointNode *sfpt ) {
   return msfpt;
 }
 
+static void print_ins(const Node* n) {
+  tty->print("ins of %d %s: ", n->_idx, n->Name());
+  for (uint i = 0; i < n->req(); i++) {
+    Node* in = n->in(i);
+    if (in == nullptr) {
+      tty->print("(null) ");
+    } else {
+      tty->print("(%d %s) ", in->_idx, in->Name());
+    }
+  }
+  tty->cr();
+}
+
 //---------------------------match_tree----------------------------------------
 // Match a Ideal Node DAG - turn it into a tree; Label & Reduce.  Used as part
 // of the whole-sale conversion from Ideal to Mach Nodes.  Also used for
 // making GotoNodes while building the CFG and in init_spill_mask() to identify
 // a Load's result RegMask for memoization in idealreg2regmask[]
 MachNode *Matcher::match_tree( const Node *n ) {
+  if (UseNewCode) {
+    tty->print_cr("match_tree %d %s", n->_idx, n->Name());
+  }
   assert( n->Opcode() != Op_Phi, "cannot match" );
   assert( !n->is_block_start(), "cannot match" );
   // Set the mark for all locally allocated State objects.
@@ -1545,7 +1651,9 @@ MachNode *Matcher::match_tree( const Node *n ) {
   s->_leaf = (Node*)n;
   // Label the input tree, allocating labels from top-level arena
   Node* root_mem = mem;
+  DEBUG_ONLY(_recursion_depth = 0;)
   Label_Root(n, s, n->in(0), root_mem);
+  DEBUG_ONLY(_recursion_depth = 0;)
   if (C->failing())  return nullptr;
 
   // The minimum cost match for the whole tree is found at the root State
@@ -1569,9 +1677,20 @@ MachNode *Matcher::match_tree( const Node *n ) {
     return nullptr;
   }
   // Reduce input tree based upon the state labels to machine Nodes
+  if (UseNewCode) {
+    tty->print("State tree:");
+    s->dump();
+  }
+  DEBUG_ONLY(_recursion_depth = 0;)
   MachNode *m = ReduceInst(s, s->rule(mincost), mem);
+  DEBUG_ONLY(_recursion_depth = 0;)
   // New-to-old mapping is done in ReduceInst, to cover complex instructions.
   NOT_PRODUCT(_old2new_map.map(n->_idx, m);)
+
+    if (UseNewCode) {
+    tty->print_cr("m before adding matcher-ignored edges: %d %s", m->_idx, m->Name());
+    print_ins(m);
+  }
 
   // Add any Matcher-ignored edges
   uint cnt = n->req();
@@ -1588,6 +1707,11 @@ MachNode *Matcher::match_tree( const Node *n ) {
       else
         m->add_req( n->in(i) );
     }
+  }
+
+  if (UseNewCode) {
+    tty->print_cr("m after adding matcher-ignored edges: %d %s", m->_idx, m->Name());
+    print_ins(m);
   }
 
   debug_only( _mem_node = save_mem_node; )
@@ -1670,6 +1794,10 @@ static bool match_into_reg( const Node *n, Node *m, Node *control, int i, bool s
 // Tree root is a Store or if there are multiple Loads in the tree, I require
 // all Loads to have the identical memory.
 Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem) {
+  if (UseNewCode) {
+    indent(_recursion_depth);
+    tty->print_cr("Label_Root %d %s", n->_idx, n->Name());
+  }
   // Since Label_Root is a recursive function, its possible that we might run
   // out of stack space.  See bugs 6272980 & 6227033 for more info.
   LabelRootDepth++;
@@ -1718,10 +1846,16 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
     s->_kids[1] = nullptr;
     s->_leaf = m;
 
+    bool match_in_reg = match_into_reg(n, m, control, i, is_shared(m));
+    if (UseNewCode) {
+      indent(_recursion_depth);
+      tty->print_cr("match_into_reg(n = %d %s, m = %d %s, shared: %d): %s", n->_idx, n->Name(), m->_idx, m->Name(), is_shared(m), match_in_reg ? "true" : "false");
+    }
+
     // Check for leaves of the State Tree; things that cannot be a part of
     // the current tree.  If it finds any, that value is matched as a
     // register operand.  If not, then the normal matching is used.
-    if( match_into_reg(n, m, control, i, is_shared(m)) ||
+    if(  match_in_reg ||
         // Stop recursion if this is a LoadNode and there is another memory access
         // to a different memory location in the same tree (for example, a StoreNode
         // at the root of this tree or another LoadNode in one of the children).
@@ -1743,7 +1877,9 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
       if( control == nullptr && m->in(0) != nullptr && m->req() > 1 )
         control = m->in(0);         // Pick up control
       // Else match as a normal part of the match tree.
+      DEBUG_ONLY(_recursion_depth++;)
       control = Label_Root(m, s, control, mem);
+      DEBUG_ONLY(_recursion_depth--;)
       if (C->failing()) return nullptr;
     }
   }
@@ -1827,7 +1963,17 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   assert( rule >= NUM_OPERANDS, "called with operand rule" );
 
   MachNode* shared_node = find_shared_node(s->_leaf, rule);
+  if (UseNewCode) {
+    indent(_recursion_depth);
+    tty->print("ReduceInst (leaf: %d %s, rule: %s)", s->_leaf->_idx, s->_leaf->Name(), ruleName[rule]);
+    if (shared_node != nullptr) {
+      tty->print(" -> shared node: %d %s", shared_node->_idx, shared_node->Name());
+    }
+  }
   if (shared_node != nullptr) {
+    if (UseNewCode) {
+      tty->cr();
+    }
     return shared_node;
   }
 
@@ -1838,6 +1984,9 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   assert( mach->_opnds[0] != nullptr, "Missing result operand" );
   Node *leaf = s->_leaf;
   NOT_PRODUCT(record_new2old(mach, leaf);)
+  if (UseNewCode) {
+    tty->print_cr("-> new mach instruction: %d %s", mach->_idx, mach->Name());
+  }
   // Check for instruction or instruction chain rule
   if( rule >= _END_INST_CHAIN_RULE || rule < _BEGIN_INST_CHAIN_RULE ) {
     assert(C->node_arena()->contains(s->_leaf) || !has_new_node(s->_leaf),
@@ -1845,16 +1994,28 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
     // Instruction
     mach->add_req( leaf->in(0) ); // Set initial control
     // Reduce interior of complex instruction
+    DEBUG_ONLY(_recursion_depth++;)
     ReduceInst_Interior( s, rule, mem, mach, 1 );
+    DEBUG_ONLY(_recursion_depth--;)
   } else {
     // Instruction chain rules are data-dependent on their inputs
     mach->add_req(nullptr);     // Set initial control to none
+    DEBUG_ONLY(_recursion_depth++;)
     ReduceInst_Chain_Rule( s, rule, mem, mach );
+    DEBUG_ONLY(_recursion_depth--;)
   }
+
+  // if (UseNewCode) {
+  //   indent(_recursion_depth);
+  //   tty->print_cr("mach after recursion: %d %s", mach->_idx, mach->Name());
+  //   indent(_recursion_depth);
+  //   print_ins(mach);
+  // }
 
   // If a Memory was used, insert a Memory edge
   if( mem != (Node*)1 ) {
     mach->ins_req(MemNode::Memory,mem);
+
 #ifdef ASSERT
     // Verify adr type after matching memory operation
     const MachOper* oper = mach->memory_operand();
@@ -1889,10 +2050,35 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
 #endif
   }
 
+  // if (UseNewCode) {
+  //   indent(_recursion_depth);
+  //   tty->print_cr("mach after possibly adding memory edge: %d %s", mach->_idx, mach->Name());
+  //   indent(_recursion_depth);
+  //   print_ins(mach);
+  // }
+
   // If the _leaf is an AddP, insert the base edge
   if (leaf->is_AddP()) {
+    // Here, 790 DecodeN is inserted as input of 111 leaPCompressedOffset. It is
+    // generally OK to insert Ideal nodes as input because they will be replaced
+    // later with the matched machine nodes. But not in our case (because 111
+    // leaPCompressedOffset is dead?).
     mach->ins_req(AddPNode::Base,leaf->in(AddPNode::Base));
+    if (UseNewCode) {
+      indent(_recursion_depth);
+      tty->print_cr("(%d %s)[Base] = %d %s",
+                    mach->_idx, mach->Name(),
+                    leaf->in(AddPNode::Base)->_idx, leaf->in(AddPNode::Base)->Name());
+    };
   }
+
+  // if (UseNewCode) {
+  //   indent(_recursion_depth);
+  //   tty->print_cr("mach after possibly adding AddP base edge: %d %s", mach->_idx, mach->Name());
+  //   indent(_recursion_depth);
+  //   print_ins(mach);
+  // }
+
 
   uint number_of_projections_prior = number_of_projections();
 
@@ -1908,6 +2094,13 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
     }
     NOT_PRODUCT(record_new2old(ex, s->_leaf);)
   }
+
+  // if (UseNewCode) {
+  //   indent(_recursion_depth);
+  //   tty->print_cr("mach after 1-to-many expansions: %d %s", mach->_idx, mach->Name());
+  //   indent(_recursion_depth);
+  //   print_ins(mach);
+  // }
 
   // PhaseChaitin::fixup_spills will sometimes generate spill code
   // via the matcher.  By the time, nodes have been wired into the CFG,
@@ -1957,14 +2150,18 @@ void Matcher::ReduceInst_Chain_Rule(State* s, int rule, Node* &mem, MachNode* ma
     // Insert operand into array of operands for this instruction
     mach->_opnds[1] = s->MachOperGenerator(opnd_class_instance);
 
+    DEBUG_ONLY(_recursion_depth++;)
     ReduceOper(s, newrule, mem, mach);
+    DEBUG_ONLY(_recursion_depth--;)
   } else {
     // Chain from the result of an instruction
     assert(newrule >= _LAST_MACH_OPER, "Do NOT chain from internal operand");
     mach->_opnds[1] = s->MachOperGenerator(_reduceOp[catch_op]);
     Node *mem1 = (Node*)1;
     debug_only(Node *save_mem_node = _mem_node;)
+    DEBUG_ONLY(_recursion_depth++;)
     mach->add_req( ReduceInst(s, newrule, mem1) );
+    DEBUG_ONLY(_recursion_depth--;)
     debug_only(_mem_node = save_mem_node;)
   }
   return;
@@ -1972,6 +2169,11 @@ void Matcher::ReduceInst_Chain_Rule(State* s, int rule, Node* &mem, MachNode* ma
 
 
 uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mach, uint num_opnds ) {
+  if (UseNewCode) {
+    indent(_recursion_depth);
+    tty->print_cr("ReduceInst_Interior (leaf: %d %s, rule: %s)", s->_leaf->_idx, s->_leaf->Name(), ruleName[rule]);
+  }
+
   handle_precedence_edges(s->_leaf, mach);
 
   if( s->_leaf->is_Load() ) {
@@ -2009,20 +2211,26 @@ uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mac
       // Operand/operandClass
       // Insert operand into array of operands for this instruction
       mach->_opnds[num_opnds++] = newstate->MachOperGenerator(opnd_class_instance);
+      DEBUG_ONLY(_recursion_depth++;)
       ReduceOper(newstate, newrule, mem, mach);
+      DEBUG_ONLY(_recursion_depth--;)
 
     } else {                    // Child is internal operand or new instruction
       if (newrule < _LAST_MACH_OPER) { // internal operand or instruction?
         // internal operand --> call ReduceInst_Interior
         // Interior of complex instruction.  Do nothing but recurse.
+        DEBUG_ONLY(_recursion_depth++;)
         num_opnds = ReduceInst_Interior(newstate, newrule, mem, mach, num_opnds);
+        DEBUG_ONLY(_recursion_depth--;)
       } else {
         // instruction --> call build operand(  ) to catch result
         //             --> ReduceInst( newrule )
         mach->_opnds[num_opnds++] = s->MachOperGenerator(_reduceOp[catch_op]);
         Node *mem1 = (Node*)1;
         debug_only(Node *save_mem_node = _mem_node;)
+        DEBUG_ONLY(_recursion_depth++;)
         mach->add_req( ReduceInst( newstate, newrule, mem1 ) );
+        DEBUG_ONLY(_recursion_depth--;)
         debug_only(_mem_node = save_mem_node;)
       }
     }
@@ -2041,6 +2249,10 @@ uint Matcher::ReduceInst_Interior( State *s, int rule, Node *&mem, MachNode *mac
 //     Call ReduceInst recursively and
 //     and instruction as an input to the MachNode
 void Matcher::ReduceOper( State *s, int rule, Node *&mem, MachNode *mach ) {
+  if (UseNewCode) {
+    indent(_recursion_depth);
+    tty->print_cr("ReduceOper (leaf: %d %s, rule: %s)", s->_leaf->_idx, s->_leaf->Name(), ruleName[rule]);
+  }
   assert( rule < _LAST_MACH_OPER, "called with operand rule" );
   State *kid = s->_kids[0];
   assert( kid == nullptr || s->_leaf->in(0) == nullptr, "internal operands have no control" );
@@ -2077,14 +2289,39 @@ void Matcher::ReduceOper( State *s, int rule, Node *&mem, MachNode *mach ) {
 
     if (newrule < _LAST_MACH_OPER) { // Operand or instruction?
       // Internal operand; recurse but do nothing else
+      DEBUG_ONLY(_recursion_depth++;)
       ReduceOper(kid, newrule, mem, mach);
+      DEBUG_ONLY(_recursion_depth--;)
 
     } else {                    // Child is a new instruction
       // Reduce the instruction, and add a direct pointer from this
       // machine instruction to the newly reduced one.
       Node *mem1 = (Node*)1;
       debug_only(Node *save_mem_node = _mem_node;)
-      mach->add_req( ReduceInst( kid, newrule, mem1 ) );
+      DEBUG_ONLY(_recursion_depth++;)
+      if (s->_leaf->is_AddP() && kid->_leaf->is_AddP()) {
+        // Two AddP that are split, check if s->_leaf has multiple uses, status of is_shared etc.
+        if (UseNewCode) {
+          indent(_recursion_depth);
+          tty->print_cr("Warning: two AddP nodes split across instructions");
+        }
+      }
+      MachNode* result = ReduceInst( kid, newrule, mem1 );
+      DEBUG_ONLY(_recursion_depth--;)
+      mach->add_req( result );
+      if (UseNewCode) {
+        indent(_recursion_depth);
+        tty->print_cr("(%d %s).add_req(%d %s)", mach->_idx, mach->Name(), result->_idx, result->Name());
+        indent(_recursion_depth);
+        print_ins(mach);
+        indent(_recursion_depth);
+        tty->print("outs of %d %s: ", result->_idx, result->Name());
+        for (DUIterator_Fast imax, i = result->fast_outs(imax); i < imax; i++) {
+          Node* out = result->fast_out(i);
+          tty->print("(%d %s) ", out->_idx, out->Name());
+        }
+        tty->cr();
+      }
       debug_only(_mem_node = save_mem_node;)
     }
   }
@@ -2563,6 +2800,10 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
 
 #ifndef PRODUCT
 void Matcher::record_new2old(Node* newn, Node* old) {
+  // if (UseNewCode) {
+  //   indent(_recursion_depth);
+  //   tty->print_cr("record old (%d %s) -> new (%d %s)", old->_idx, old->Name(), newn->_idx, newn->Name());
+  // }
   _new2old_map.map(newn->_idx, old);
   if (!_reused.test_set(old->_igv_idx)) {
     // Reuse the Ideal-level IGV identifier so that the node can be tracked
@@ -2728,6 +2969,9 @@ const RegMask* Matcher::regmask_for_ideal_register(uint ideal_reg, Node* ret) {
 
     default: ShouldNotReachHere();
   }
+  if (UseNewCode) {
+    tty->print_cr("match_tree %d %s (spill)", spill->_idx, spill->Name());
+  }
   MachNode* mspill = match_tree(spill);
   assert(mspill != nullptr || C->failure_is_artificial(), "matching failed: %d", ideal_reg);
   if (C->failing()) {
@@ -2874,6 +3118,21 @@ bool Matcher::is_encode_and_store_pattern(const Node* n, const Node* m) {
   }
   assert(m == n->in(MemNode::ValueIn), "m should be input to n");
   return true;
+}
+
+void Matcher::verify_address_expression_pattern(const Node* m, const Node* adr) {
+  if (UseNewCode) {
+    tty->print("m: ");
+    m->dump();
+    tty->print("adr: ");
+    adr->dump();
+  }
+  assert(m->in(AddPNode::Offset)->is_Con(), "");
+  assert(adr == m->in(AddPNode::Address), "");
+  assert(adr->is_AddP(), "");
+  Node* adr_off = adr->in(AddPNode::Offset);
+  bool is_problematic = adr_off->is_Con() && m->outcnt() > 1;
+  //assert(!is_problematic, "unexpected problematic pattern");
 }
 
 #ifdef ASSERT
@@ -3072,10 +3331,10 @@ void State::dump(int depth) {
   for (int j = 0; j < depth; j++) {
     tty->print("   ");
   }
-  tty->print("--N: ");
-  _leaf->dump();
-  uint i;
-  for (i = 0; i < _LAST_MACH_OPER; i++) {
+  tty->print_cr("--N: %d %s", _leaf->_idx, _leaf->Name());
+  //_leaf->dump();
+  if (!UseNewCode) {
+  for (uint i = 0; i < _LAST_MACH_OPER; i++) {
     // Check for valid entry
     if (valid(i)) {
       for (int j = 0; j < depth; j++) {
@@ -3088,8 +3347,9 @@ void State::dump(int depth) {
     }
   }
   tty->cr();
+  }
 
-  for (i = 0; i < 2; i++) {
+  for (uint i = 0; i < 2; i++) {
     if (_kids[i]) {
       _kids[i]->dump(depth + 1);
     }

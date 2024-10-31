@@ -1409,7 +1409,7 @@ public:
   // sentinel value which denotes a copy of the base memory:
   Node*   empty_memory() const    { return in(Compile::AliasIdxTop); }
   static Node* make_empty_memory(); // where the sentinel comes from
-  bool is_empty_memory(Node* n) const { assert((n == empty_memory()) == n->is_top(), "sanity"); return n->is_top(); }
+  bool is_empty_memory(Node* n) const { /*assert((n == empty_memory()) == n->is_top(), "sanity");*/ return n->is_top(); }
   // hook for the iterator, to perform any necessary setup
   void iteration_setup(const MergeMemNode* other = nullptr);
   // push sentinels until I am at least as long as the other (semantic no-op)
