@@ -2498,6 +2498,32 @@ void Compile::Optimize() {
 
  print_method(PHASE_OPTIMIZE_FINISHED, 2);
  DEBUG_ONLY(set_phase_optimize_finished();)
+
+ {
+     ResourceMark rm;
+  Unique_Node_List worklist;
+  VectorSet visited;
+  worklist.push(C->root());
+  while (worklist.size() > 0) {
+    Node* n = worklist.pop();
+    if (visited.test_set(n->_idx)) {
+      continue;
+    }
+    if (n->is_AddP() &&
+        n->in(AddPNode::Offset)->is_Con() &&
+        n->in(AddPNode::Address)->is_AddP() &&
+        n->in(AddPNode::Address)->in(AddPNode::Offset)->is_Con()) {
+      tty->print_cr("node %d %s should be optimized", n->_idx, n->Name());
+      //assert(false, "node %d %s should be optimized", n->_idx, n->Name());
+    }
+    for (uint j = 0; j < n->req(); j++) {
+      Node* in = n->in(j);
+      if (in != nullptr) {
+        worklist.push(in);
+      }
+    }
+  }
+ }
 }
 
 #ifdef ASSERT

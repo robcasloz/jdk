@@ -1824,7 +1824,8 @@ Node* PhaseMacroExpand::prefetch_allocation(Node* i_o, Node*& needgc_false,
       for ( intx i = 0; i < lines; i++ ) {
         prefetch_adr = new AddPNode( old_pf_wm, new_pf_wmt,
                                             _igvn.MakeConX(distance) );
-        transform_later(prefetch_adr);
+        transform_later(prefetch_adr); // TODO: is this working? should we add something else to the worklist? this should fold into a single AddP, shouldn't it?
+        // Aha, some of these AddP nodes have "top" base. Mmmmh.
         prefetch = new PrefetchAllocationNode( i_o, prefetch_adr );
         transform_later(prefetch);
         distance += step_size;
