@@ -754,7 +754,12 @@ Node *AddPNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   // If the left input is an add of a constant, flatten the expression tree.
   const Node *n = in(Address);
-  if (n->is_AddP() && n->in(Base) == in(Base)) {
+  if (n->is_AddP() &&
+      (n->in(Base) == in(Base) ||
+       (UseNewCode2 && phase->type(n->in(Base)) == Type::TOP && in(Base) == n->in(Address)))) {
+    assert(n->in(Base) == in(Base) ||
+           (bottom_type()->base() == Type::RawPtr && n->bottom_type()->base() == Type::RawPtr),
+           "unexpected non-raw pointer type");
     const AddPNode *addp = n->as_AddP(); // Left input is an AddP
     assert( !addp->in(Address)->is_AddP() ||
              addp->in(Address)->as_AddP() != addp,
