@@ -79,7 +79,7 @@ public:
   virtual Node* Identity(PhaseGVN* phase);
   virtual uint rule() const { return 9999999; }
 #ifndef PRODUCT
-  virtual const char *Name() const { return "BoxLock"; }
+  virtual const char* Name() const { return "BoxLock"; }
 #endif
 
   static OptoReg::Name reg(Node* box_node);
