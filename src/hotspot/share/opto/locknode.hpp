@@ -26,11 +26,12 @@
 #define SHARE_OPTO_LOCKNODE_HPP
 
 #include "opto/node.hpp"
+#include "opto/machnode.hpp"
 #include "opto/opcodes.hpp"
 #include "opto/subnode.hpp"
 
 //------------------------------BoxLockNode------------------------------------
-class BoxLockNode : public Node {
+class BoxLockNode : public MachNode {
 private:
   const int     _slot; // stack slot
   RegMask     _inmask; // OptoReg corresponding to stack slot
@@ -76,6 +77,10 @@ public:
   virtual const class Type *bottom_type() const { return TypeRawPtr::BOTTOM; }
   virtual uint ideal_reg() const { return Op_RegP; }
   virtual Node* Identity(PhaseGVN* phase);
+  virtual uint rule() const { return 9999999; }
+#ifndef PRODUCT
+  virtual const char *Name() const { return "BoxLock"; }
+#endif
 
   static OptoReg::Name reg(Node* box_node);
   static BoxLockNode* box_node(Node* box_node);
