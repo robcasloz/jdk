@@ -24,10 +24,11 @@
 package com.sun.hotspot.igv.graph;
 
 import com.sun.hotspot.igv.data.InputLiveRange;
+import com.sun.hotspot.igv.data.Properties;
 import com.sun.hotspot.igv.layout.Segment;
 import java.awt.Point;
 
-public class LiveRangeSegment implements Segment {
+public class LiveRangeSegment extends Properties.Entity implements Segment {
 
     private InputLiveRange liveRange;
     private Block block;
@@ -109,9 +110,27 @@ public class LiveRangeSegment implements Segment {
         if (!(o instanceof LiveRangeSegment)) {
             return false;
         }
+        LiveRangeSegment other = (LiveRangeSegment)o;
+        if (getStart() == null && other.getStart() != null) {
+            return false;
+        }
+        if (getStart() != null && other.getStart() == null) {
+            return false;
+        }
+        if (getEnd() == null && other.getEnd() != null) {
+            return false;
+        }
+        if (getEnd() != null && other.getEnd() == null) {
+            return false;
+        }
         return getLiveRange().equals(((LiveRangeSegment)o).getLiveRange())
-            && getStart().equals(((LiveRangeSegment)o).getStart())
-            && getEnd().equals(((LiveRangeSegment)o).getEnd());
+            && (getStart() == null || getStart().equals(((LiveRangeSegment)o).getStart()))
+            && (getEnd() == null || getEnd().equals(((LiveRangeSegment)o).getEnd()));
+    }
+
+    @Override
+    public Properties getProperties() {
+        return liveRange.getProperties();
     }
 
 }

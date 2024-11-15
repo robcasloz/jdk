@@ -25,6 +25,7 @@
 package com.sun.hotspot.igv.view;
 
 import com.sun.hotspot.igv.data.ChangedEvent;
+import com.sun.hotspot.igv.data.InputLiveRange;
 import com.sun.hotspot.igv.data.InputNode;
 import java.awt.*;
 import java.util.Collection;
@@ -77,9 +78,13 @@ public interface DiagramViewer {
 
     void centerSelectedFigures();
 
+    void centerSelectedLiveRanges();
+
     void addSelectedNodes(Collection<InputNode> nodes, boolean showIfHidden);
 
-    void clearSelectedNodes();
+    void addSelectedLiveRanges(Collection<InputLiveRange> liveRanges, boolean showIfHidden);
+
+    void clearSelectedElements();
 
     void setInteractionMode(InteractionMode mode);
 

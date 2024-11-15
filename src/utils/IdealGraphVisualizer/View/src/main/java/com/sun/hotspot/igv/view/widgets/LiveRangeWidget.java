@@ -29,6 +29,7 @@ import com.sun.hotspot.igv.util.PropertiesConverter;
 import com.sun.hotspot.igv.util.PropertiesSheet;
 import com.sun.hotspot.igv.view.DiagramScene;
 import java.awt.*;
+import org.netbeans.api.visual.model.ObjectState;
 import org.netbeans.api.visual.widget.Widget;
 import org.openide.nodes.AbstractNode;
 import org.openide.nodes.Children;
@@ -39,41 +40,45 @@ public class LiveRangeWidget extends Widget implements Properties.Provider {
 
     private final LiveRangeSegment liveRangeSegment;
     private final DiagramScene scene;
-    private final Point start;
-    private final Point end;
+    private final int length;
+    private LiveRangeWidget next;
     private final Rectangle clientArea;
     private final Node node;
+    private static final float NORMAL_THICKNESS = 1.4f;
+    private static final float SELECTED_THICKNESS = 2.2f;
+    private boolean highlighted;
+    private boolean selected;
+    private static final Color NORMAL_COLOR = Color.BLACK;
+    private static final Color HIGHLIGHTED_COLOR = Color.BLUE;
 
     private static final int RANGE_WIDTH = 4;
 
-    public LiveRangeWidget(LiveRangeSegment liveRangeSegment, DiagramScene scene, Point start, Point end) {
+    public LiveRangeWidget(LiveRangeSegment liveRangeSegment, DiagramScene scene, int length, LiveRangeWidget next) {
         super(scene);
         this.liveRangeSegment = liveRangeSegment;
         this.scene = scene;
-        this.start = start;
-        this.end = end;
+        this.length = length;
+        this.next = next;
 
-        int x = start.x;
-        int minY = start.y;
-        int maxY = end.y;
-
-        setBackground(Color.BLACK);
-
-        clientArea = new Rectangle(x, minY, 1, maxY - minY + 1);
-        clientArea.grow(RANGE_WIDTH * 2, 5);
+        clientArea = new Rectangle(RANGE_WIDTH * 2, length);
+        clientArea.grow(RANGE_WIDTH * 2, RANGE_WIDTH * 2);
 
         // Initialize node for property sheet
         node = new AbstractNode(Children.LEAF) {
             @Override
             protected Sheet createSheet() {
                 Sheet s = super.createSheet();
-                PropertiesSheet.initializeSheet(getProperties(), s);
+                PropertiesSheet.initializeSheet(liveRangeSegment.getProperties(), s);
                 return s;
             }
         };
         node.setDisplayName("L" + liveRangeSegment.getLiveRange().getId());
 
-        this.setToolTipText(PropertiesConverter.convertToHTML(getProperties()));
+        this.setToolTipText(PropertiesConverter.convertToHTML(liveRangeSegment.getProperties()));
+    }
+
+    public void setNext(LiveRangeWidget next) {
+        this.next = next;
     }
 
     @Override
@@ -86,20 +91,52 @@ public class LiveRangeWidget extends Widget implements Properties.Provider {
         if (scene.getZoomFactor() < 0.1) {
             return;
         }
-
         Graphics2D g = getScene().getGraphics();
         g.setPaint(this.getBackground());
+        g.setStroke(new BasicStroke(selected ? SELECTED_THICKNESS : NORMAL_THICKNESS));
+        g.setColor(highlighted ? HIGHLIGHTED_COLOR : NORMAL_COLOR);
+        g.drawLine(- RANGE_WIDTH, 0, RANGE_WIDTH, 0);
+        if (length != 0) {
+            g.drawLine(0, 0, 0, length);
+            g.drawLine(- RANGE_WIDTH, length, RANGE_WIDTH, length);
+        }
+    }
 
-        g.setStroke(new BasicStroke(1.4f));
-        g.drawLine(start.x - RANGE_WIDTH, start.y, start.x + RANGE_WIDTH, start.y);
-        if (start.y != end.y) {
-            g.drawLine(start.x, start.y, end.x, end.y);
-            g.drawLine(end.x - RANGE_WIDTH, end.y, end.x + RANGE_WIDTH, end.y);
+    @Override
+    protected void notifyStateChanged(ObjectState previousState, ObjectState state) {
+        super.notifyStateChanged(previousState, state);
+        if (previousState.isSelected() != state.isSelected()) {
+            setSelected(state.isSelected());
+        }
+        if (previousState.isHighlighted() != state.isHighlighted()) {
+            setHighlighted(state.isHighlighted());
+        }
+    }
+
+    private void setSelected(boolean enable) {
+        if (enable == selected) {
+            return; // end recursion
+        }
+        selected = enable;
+        revalidate(true);
+        if (next != null) {
+            next.setSelected(enable);
+        }
+    }
+
+    private void setHighlighted(boolean enable) {
+        if (enable == highlighted) {
+            return; // end recursion
+        }
+        highlighted = enable;
+        revalidate(true);
+        if (next != null) {
+            next.setHighlighted(enable);
         }
     }
 
     @Override
     public Properties getProperties() {
-        return liveRangeSegment.getLiveRange().getProperties();
+        return liveRangeSegment.getProperties();
     }
 }

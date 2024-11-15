@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,16 @@
  */
 package com.sun.hotspot.igv.view;
 
-import com.sun.hotspot.igv.data.InputBlock;
 import com.sun.hotspot.igv.data.InputGraph;
+import com.sun.hotspot.igv.data.InputLiveRange;
 import com.sun.hotspot.igv.data.Properties.RegexpPropertyMatcher;
 import com.sun.hotspot.igv.data.services.InputGraphProvider;
 import com.sun.hotspot.igv.util.LookupHistory;
 import com.sun.hotspot.igv.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.netbeans.spi.quicksearch.SearchProvider;
 import org.netbeans.spi.quicksearch.SearchRequest;
@@ -39,7 +41,7 @@ import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.NotifyDescriptor.Message;
 
-public class BlockQuickSearch implements SearchProvider {
+public class LiveRangeQuickSearch implements SearchProvider {
 
     @Override
     public void evaluate(SearchRequest request, SearchResponse response) {
@@ -56,7 +58,7 @@ public class BlockQuickSearch implements SearchProvider {
 
         InputGraph matchGraph = p.getGraph();
         // Search the current graph
-        List<InputBlock> matches = findMatches(value, p.getGraph(), response);
+        List<InputLiveRange> matches = findMatches(value, p.getGraph(), response);
         if (matches == null) {
             // See if the it hits in a later graph
             for (InputGraph graph : p.searchForward()) {
@@ -79,38 +81,40 @@ public class BlockQuickSearch implements SearchProvider {
         }
         if (matches != null) {
             // Rank the matches.
-            matches.sort((InputBlock a, InputBlock b) ->
+            matches.sort((InputLiveRange a, InputLiveRange b) ->
                          compareByRankThenNumVal(rawValue,
-                                                 "B" + a.getName(),
-                                                 "B" + b.getName()));
+                                                 "L" + a.getId(),
+                                                 "L" + b.getId()));
 
             final InputGraph theGraph = p.getGraph() != matchGraph ? matchGraph : null;
-            for (final InputBlock b : matches) {
+            for (final InputLiveRange liveRange : matches) {
                 if (!response.addResult(() -> {
                             final EditorTopComponent editor = EditorTopComponent.getActive();
                             assert(editor != null);
                             if (theGraph != null) {
                                 editor.getModel().selectGraph(theGraph);
                             }
+                            Set<InputLiveRange> liveRangeSingleton = new HashSet<>();
+                            liveRangeSingleton.add(liveRange);
                             editor.clearSelectedElements();
-                            editor.addSelectedNodes(b.getNodes(), true);
-                            editor.centerSelectedNodes();
+                            editor.addSelectedLiveRanges(liveRangeSingleton, true);
+                            editor.centerSelectedLiveRanges();
                             editor.requestActive();
                         },
-                        "B" + b.getName() + (theGraph != null ? " in " + theGraph.getName() : ""))) {
+                        "L" + liveRange.getId() + (theGraph != null ? " in " + theGraph.getName() : ""))) {
                     return;
                 }
             }
         }
     }
 
-    private List<InputBlock> findMatches(String blockName, InputGraph inputGraph, SearchResponse response) {
+    private List<InputLiveRange> findMatches(String liveRangeName, InputGraph inputGraph, SearchResponse response) {
         try {
-            RegexpPropertyMatcher matcher = new RegexpPropertyMatcher("", blockName, Pattern.CASE_INSENSITIVE);
-            List<InputBlock> matches = new ArrayList<>();
-            for (InputBlock b : inputGraph.getBlocks()) {
-                if (matcher.match("B" + b.getName())) {
-                    matches.add(b);
+            RegexpPropertyMatcher matcher = new RegexpPropertyMatcher("", liveRangeName, Pattern.CASE_INSENSITIVE);
+            List<InputLiveRange> matches = new ArrayList<>();
+            for (InputLiveRange liveRange : inputGraph.getLiveRanges()) {
+                if (matcher.match("L" + liveRange.getId())) {
+                    matches.add(liveRange);
                 }
             }
             return matches.size() == 0 ? null : matches;

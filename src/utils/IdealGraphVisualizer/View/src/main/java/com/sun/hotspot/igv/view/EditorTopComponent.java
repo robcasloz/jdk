@@ -26,6 +26,7 @@ package com.sun.hotspot.igv.view;
 import com.sun.hotspot.igv.data.GraphDocument;
 import com.sun.hotspot.igv.data.Group;
 import com.sun.hotspot.igv.data.InputGraph;
+import com.sun.hotspot.igv.data.InputLiveRange;
 import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.data.services.InputGraphProvider;
 import com.sun.hotspot.igv.graph.Figure;
@@ -359,12 +360,20 @@ public final class EditorTopComponent extends TopComponent implements TopCompone
         scene.colorSelectedFigures(color);
     }
 
+    public void addSelectedLiveRanges(Collection<InputLiveRange> liveRanges, boolean showIfHidden) {
+        scene.addSelectedLiveRanges(liveRanges, showIfHidden);
+    }
+
     public void centerSelectedNodes() {
         scene.centerSelectedFigures();
     }
 
-    public void clearSelectedNodes() {
-        scene.clearSelectedNodes();
+    public void centerSelectedLiveRanges() {
+        scene.centerSelectedLiveRanges();
+    }
+
+    public void clearSelectedElements() {
+        scene.clearSelectedElements();
     }
 
     public Rectangle getSceneBounds() {
