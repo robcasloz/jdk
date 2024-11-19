@@ -85,10 +85,11 @@ void PhaseCFG::move_into(Node* n, Block* b) {
   // Check for Mach projections that also need to be moved.
   for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
     Node* out = n->fast_out(i);
-    if (out->is_MachProj()) {
-      assert(!n->is_MachProj(), "nested projections are not allowed");
-      move_into(out, b);
+    if (!out->is_MachProj()) {
+      continue;
     }
+    assert(!n->is_MachProj(), "nested projections are not allowed");
+    move_into(out, b);
   }
 }
 
