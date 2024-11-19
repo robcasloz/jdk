@@ -35,6 +35,7 @@
 #include "runtime/vm_version.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/pair.hpp"
 
 class AbstractCompiler;
 class Arena;
@@ -104,6 +105,10 @@ private:
   Block*                 _block;
   uint                   _index;
 
+  // List of <exception PC offset, corresponding test block> entries recorded
+  // during emission, to be translated into implicit exception table entries.
+  GrowableArray<Pair<int, Block*>> _inct_starts;
+
   void perform_mach_node_analysis();
   void pd_perform_mach_node_analysis();
 
@@ -153,6 +158,10 @@ public:
 
   // Write out basic block data to code buffer
   void fill_buffer(C2_MacroAssembler* masm, uint* blk_starts);
+
+  // Record an exception PC offset within the code emitted for 'node', to
+  // be registered in the implicit exception table.
+  void record_exception_pc_offset(const Node* node, int pc_offset);
 
   // Compute the information for the exception tables
   void FillExceptionTables(uint cnt, uint *call_returns, uint *inct_starts, Label *blk_labels);

@@ -91,6 +91,7 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
                       $tmp2$$Register /* pre_val */,
                       $tmp3$$Register /* tmp */,
                       RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
+    __ record_exception_pc_offset(this);
     __ movq(Address($tmp1$$Register, 0), $src$$Register);
     write_barrier_post(masm, this,
                        $tmp1$$Register /* store_addr */,
@@ -115,6 +116,7 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
                       $tmp2$$Register /* pre_val */,
                       $tmp3$$Register /* tmp */,
                       RegSet::of($tmp1$$Register, $src$$Register) /* preserve */);
+    __ record_exception_pc_offset(this);
     __ movl(Address($tmp1$$Register, 0), $src$$Register);
     if ((barrier_data() & G1C2BarrierPost) != 0) {
       __ movl($tmp2$$Register, $src$$Register);
@@ -154,6 +156,7 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
     } else {
       __ encode_heap_oop_not_null($tmp2$$Register);
     }
+    __ record_exception_pc_offset(this);
     __ movl(Address($tmp1$$Register, 0), $tmp2$$Register);
     write_barrier_post(masm, this,
                        $tmp1$$Register /* store_addr */,

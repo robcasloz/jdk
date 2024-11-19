@@ -109,8 +109,8 @@ Label* BarrierStubC2::continuation() {
   return &_continuation;
 }
 
-uint8_t BarrierStubC2::barrier_data() const {
-  return _node->barrier_data();
+const MachNode* BarrierStubC2::node() const {
+  return _node;
 }
 
 void BarrierStubC2::preserve(Register r) {

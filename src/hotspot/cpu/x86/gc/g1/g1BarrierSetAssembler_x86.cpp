@@ -191,15 +191,18 @@ static void generate_pre_barrier_fast_path(MacroAssembler* masm,
   }
 }
 
+template <typename CallBack>
 static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            const Register obj,
                                            const Register pre_val,
                                            const Register thread,
                                            const Register tmp,
                                            Label& done,
-                                           Label& runtime) {
+                                           Label& runtime,
+                                           CallBack before_load) {
   // Do we need to load the previous value?
   if (obj != noreg) {
+    before_load();
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
   // Is the previous value null?
@@ -241,7 +244,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   generate_pre_barrier_fast_path(masm, thread);
   // If marking is not active (*(mark queue active address) == 0), jump to done
   __ jcc(Assembler::equal, done);
-  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime,
+                                 [](){} /* do nothing before emitting a load */);
 
   __ bind(runtime);
 
@@ -412,8 +416,15 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
   Register tmp = stub->tmp1();
   assert(stub->tmp2() == noreg, "not needed in this platform");
 
+  auto record_exception_pc_offset = [&](){
+    // Record potential exception address for implicit null checks.
+    C2_MacroAssembler* c2_masm = static_cast<C2_MacroAssembler*>(masm);
+    c2_masm->record_exception_pc_offset(stub->node());
+  };
+
   __ bind(*stub->entry());
-  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime,
+                                 record_exception_pc_offset);
 
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
@@ -433,7 +444,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
 
   stub->initialize_registers(thread, tmp, tmp2);
 
-  bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
+  bool new_val_may_be_null = (stub->node()->barrier_data() & G1C2BarrierPostNotNull) == 0;
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), new_val_may_be_null);
   // If card is not young, jump to stub (slow path)
   __ jcc(Assembler::notEqual, *stub->entry());

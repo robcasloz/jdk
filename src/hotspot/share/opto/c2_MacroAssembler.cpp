@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,9 @@
  *
  */
 
-#ifndef SHARE_OPTO_C2_MACROASSEMBLER_HPP
-#define SHARE_OPTO_C2_MACROASSEMBLER_HPP
+#include "opto/c2_MacroAssembler.hpp"
+#include "opto/output.hpp"
 
-#include "asm/macroAssembler.hpp"
-#include "asm/macroAssembler.inline.hpp"
-#include "utilities/globalDefinitions.hpp"
-#include "utilities/macros.hpp"
-
-class MachNode;
-
-class C2_MacroAssembler: public MacroAssembler {
- public:
-  // creation
-  C2_MacroAssembler(CodeBuffer* code) : MacroAssembler(code) {}
-
-  // Record an exception PC offset within the code emitted for 'node', to
-  // support implicit null checks.
-  void record_exception_pc_offset(const MachNode* node) const;
-
-#include CPU_HEADER(c2_MacroAssembler)
-
-};
-
-#endif // SHARE_OPTO_C2_MACROASSEMBLER_HPP
+void C2_MacroAssembler::record_exception_pc_offset(const MachNode* node) const {
+  Compile::current()->output()->record_exception_pc_offset(node, offset());
+}
