@@ -38,7 +38,7 @@ const int G1C2BarrierPostNotNull = 4;
 class G1BarrierStubC2 : public BarrierStubC2 {
 public:
   G1BarrierStubC2(const MachNode* node);
-  virtual void emit_code(MacroAssembler& masm) = 0;
+  virtual void emit_code(C2_MacroAssembler& masm) = 0;
 };
 
 class G1PreBarrierStubC2 : public G1BarrierStubC2 {
@@ -61,7 +61,7 @@ public:
   Register thread() const;
   Register tmp1() const;
   Register tmp2() const;
-  virtual void emit_code(MacroAssembler& masm);
+  virtual void emit_code(C2_MacroAssembler& masm);
 };
 
 class G1PostBarrierStubC2 : public G1BarrierStubC2 {
@@ -82,7 +82,7 @@ public:
   Register tmp1() const;
   Register tmp2() const;
   Register tmp3() const;
-  virtual void emit_code(MacroAssembler& masm);
+  virtual void emit_code(C2_MacroAssembler& masm);
 };
 
 class G1BarrierSetC2: public CardTableBarrierSetC2 {

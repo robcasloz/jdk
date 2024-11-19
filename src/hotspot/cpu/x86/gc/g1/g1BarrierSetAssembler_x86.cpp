@@ -245,7 +245,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   // If marking is not active (*(mark queue active address) == 0), jump to done
   __ jcc(Assembler::equal, done);
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime,
-                                 [](){} /* do nothing before emitting a load */);
+                                 [] () {} /* do nothing before emitting a load */);
 
   __ bind(runtime);
 
@@ -406,7 +406,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   __ bind(*stub->continuation());
 }
 
-void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
+void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(C2_MacroAssembler* masm,
                                                          G1PreBarrierStubC2* stub) const {
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;
@@ -416,15 +416,9 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
   Register tmp = stub->tmp1();
   assert(stub->tmp2() == noreg, "not needed in this platform");
 
-  auto record_exception_pc_offset = [&](){
-    // Record potential exception address for implicit null checks.
-    C2_MacroAssembler* c2_masm = static_cast<C2_MacroAssembler*>(masm);
-    c2_masm->record_exception_pc_offset(stub->node());
-  };
-
   __ bind(*stub->entry());
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime,
-                                 record_exception_pc_offset);
+                                 [&] () { masm->record_exception_pc_offset(stub->node()); });
 
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));
@@ -452,7 +446,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   __ bind(*stub->continuation());
 }
 
-void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
+void G1BarrierSetAssembler::generate_c2_post_barrier_stub(C2_MacroAssembler* masm,
                                                           G1PostBarrierStubC2* stub) const {
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;

@@ -444,7 +444,7 @@ Register G1PreBarrierStubC2::tmp2() const {
   return _tmp2;
 }
 
-void G1PreBarrierStubC2::emit_code(MacroAssembler& masm) {
+void G1PreBarrierStubC2::emit_code(C2_MacroAssembler& masm) {
   G1BarrierSetAssembler* bs = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
   bs->generate_c2_pre_barrier_stub(&masm, this);
 }
@@ -486,7 +486,7 @@ Register G1PostBarrierStubC2::tmp3() const {
   return _tmp3;
 }
 
-void G1PostBarrierStubC2::emit_code(MacroAssembler& masm) {
+void G1PostBarrierStubC2::emit_code(C2_MacroAssembler& masm) {
   G1BarrierSetAssembler* bs = static_cast<G1BarrierSetAssembler*>(BarrierSet::barrier_set()->barrier_set_assembler());
   bs->generate_c2_post_barrier_stub(&masm, this);
 }
@@ -535,7 +535,7 @@ void G1BarrierSetC2::late_barrier_analysis() const {
 }
 
 void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
-  MacroAssembler masm(&cb);
+  C2_MacroAssembler masm(&cb);
   GrowableArray<G1BarrierStubC2*>* const stubs = barrier_set_state()->stubs();
   for (int i = 0; i < stubs->length(); i++) {
     // Make sure there is enough space in the code buffer
