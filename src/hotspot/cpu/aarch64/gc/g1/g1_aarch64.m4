@@ -32,6 +32,7 @@ instruct g1StoreP$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   predicate(UseG1GC && ifelse($1,Volatile,'needs_releasing_store(n)`,'!needs_releasing_store(n)`) && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreP mem src));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+  ins_inner_exceptions(true);
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,INSN_COST));
   format %{ "$2  $src, $mem\t# ptr" %}
   ins_encode %{
@@ -41,6 +42,7 @@ instruct g1StoreP$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
                       $tmp2$$Register /* tmp1 */,
                       $tmp3$$Register /* tmp2 */,
                       RegSet::of($mem$$Register, $src$$Register) /* preserve */);
+    __ record_exception_pc_offset(this);
     __ $2($src$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
@@ -62,6 +64,7 @@ instruct g1StoreN$1(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
   predicate(UseG1GC && ifelse($1,Volatile,'needs_releasing_store(n)`,'!needs_releasing_store(n)`) && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreN mem src));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+  ins_inner_exceptions(true);
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,INSN_COST));
   format %{ "$2  $src, $mem\t# compressed ptr" %}
   ins_encode %{
@@ -79,6 +82,7 @@ instruct g1StoreN$1(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
         __ decode_heap_oop_not_null($tmp1$$Register, $src$$Register);
       }
     }
+    __ record_exception_pc_offset(this);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
@@ -99,6 +103,7 @@ instruct g1EncodePAndStoreN$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp
   predicate(UseG1GC && ifelse($1,Volatile,'needs_releasing_store(n)`,'!needs_releasing_store(n)`) && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreN mem (EncodeP src)));
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
+  ins_inner_exceptions(true);
   ins_cost(ifelse($1,Volatile,VOLATILE_REF_COST,INSN_COST));
   format %{ "encode_heap_oop $tmp1, $src\n\t"
             "$2  $tmp1, $mem\t# compressed ptr" %}
@@ -114,6 +119,7 @@ instruct g1EncodePAndStoreN$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp
     } else {
       __ encode_heap_oop_not_null($tmp1$$Register, $src$$Register);
     }
+    __ record_exception_pc_offset(this);
     __ $2($tmp1$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,

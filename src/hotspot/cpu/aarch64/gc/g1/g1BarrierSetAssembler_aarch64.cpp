@@ -124,6 +124,7 @@ static void generate_pre_barrier_fast_path(MacroAssembler* masm,
   }
 }
 
+template <typename CallBack>
 static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            const Register obj,
                                            const Register pre_val,
@@ -131,9 +132,11 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            const Register tmp1,
                                            const Register tmp2,
                                            Label& done,
-                                           Label& runtime) {
+                                           Label& runtime,
+                                           CallBack before_load) {
   // Do we need to load the previous value?
   if (obj != noreg) {
+    before_load();
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
   // Is the previous value null?
@@ -169,7 +172,8 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   generate_pre_barrier_fast_path(masm, thread, tmp1);
   // If marking is not active (*(mark queue active address) == 0), jump to done
   __ cbzw(tmp1, done);
-  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp1, tmp2, done, runtime);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp1, tmp2, done, runtime,
+                                 [] () {} /* do nothing before emitting a load */);
 
   __ bind(runtime);
 
@@ -317,7 +321,8 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(C2_MacroAssembler* masm
   Register tmp2 = stub->tmp2();
 
   __ bind(*stub->entry());
-  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp1, tmp2, *stub->continuation(), runtime);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp1, tmp2, *stub->continuation(), runtime,
+                                 [&] () { masm->record_exception_pc_offset(stub->node()); });
 
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));

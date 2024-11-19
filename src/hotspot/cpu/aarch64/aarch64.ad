@@ -3885,6 +3885,8 @@ ins_attrib ins_alignment(4);    // Required alignment attribute (must
                                 // start) requires.  If > 1, a
                                 // compute_padding() function must be
                                 // provided for the instruction
+ins_attrib                      // Whether the instruction has inner exception
+  ins_inner_exceptions(false);  // PC offsets for implicit null checking
 
 //----------OPERANDS-----------------------------------------------------------
 // Operand definitions must precede instruction definitions for correct parsing

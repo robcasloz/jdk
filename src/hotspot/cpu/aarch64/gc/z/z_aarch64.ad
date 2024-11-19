@@ -106,6 +106,7 @@ instruct zLoadP(iRegPNoSp dst, memory8 mem, rFlagsReg cr)
   match(Set dst (LoadP mem));
   predicate(UseZGC && !needs_acquiring_load(n) && n->as_Load()->barrier_data() != 0);
   effect(TEMP dst, KILL cr);
+  ins_inner_exceptions(true);
 
   ins_cost(4 * INSN_COST);
 
@@ -119,6 +120,7 @@ instruct zLoadP(iRegPNoSp dst, memory8 mem, rFlagsReg cr)
       assert_different_registers(rscratch2, $dst$$Register);
       ref_addr = __ legitimize_address(ref_addr, 8, rscratch2);
     }
+    __ record_exception_pc_offset(this);
     __ ldr($dst$$Register, ref_addr);
     z_load_barrier(masm, this, ref_addr, $dst$$Register, rscratch1);
   %}
@@ -152,12 +154,14 @@ instruct zStoreP(memory mem, iRegP src, iRegPNoSp tmp, rFlagsReg cr)
   predicate(UseZGC && !needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreP mem src));
   effect(TEMP tmp, KILL cr);
+  ins_inner_exceptions(true);
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
     const Address ref_addr = mem2address($mem->opcode(), as_Register($mem$$base), $mem$$index, $mem$$scale, $mem$$disp);
     z_store_barrier(masm, this, ref_addr, $src$$Register, $tmp$$Register, rscratch2, false /* is_atomic */);
+    __ record_exception_pc_offset(this);
     __ str($tmp$$Register, ref_addr);
   %}
   ins_pipe(pipe_serial);
@@ -169,12 +173,14 @@ instruct zStorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp, rFlagsReg cr)
   predicate(UseZGC && needs_releasing_store(n) && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreP mem src));
   effect(TEMP tmp, KILL cr);
+  ins_inner_exceptions(true);
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
     const Address ref_addr = Address($mem$$Register);
     z_store_barrier(masm, this, ref_addr, $src$$Register, $tmp$$Register, rscratch2, false /* is_atomic */);
+    __ record_exception_pc_offset(this);
     __ stlr($tmp$$Register, $mem$$Register);
   %}
   ins_pipe(pipe_serial);
