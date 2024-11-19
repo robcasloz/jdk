@@ -153,6 +153,7 @@ instruct zStoreP(memory mem, any_RegP src, rRegP tmp, rFlagsReg cr)
   predicate(UseZGC && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreP mem src));
   effect(TEMP tmp, KILL cr);
+  ins_inner_exceptions(true);
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
@@ -170,6 +171,7 @@ instruct zStorePNull(memory mem, immP0 zero, rRegP tmp, rFlagsReg cr)
   predicate(UseZGC && n->as_Store()->barrier_data() != 0);
   match(Set mem (StoreP mem zero));
   effect(TEMP tmp, KILL cr);
+  ins_inner_exceptions(true);
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, 0\t# ptr" %}

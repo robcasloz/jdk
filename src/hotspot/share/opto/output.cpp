@@ -1513,8 +1513,6 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 
     uint last_inst = block->number_of_nodes();
 
-    bool registered_null_check = false;
-
     // Emit block normally, except for last instruction.
     // Emit means "dump code bits into code buffer".
     for (uint j = 0; j<last_inst; j++) {
@@ -1618,11 +1616,12 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
           Process_OopMap_Node(mach, current_offset);
         } // End if safepoint
 
-          // If this is a null check, and no null check point has been
-          // registered dynamically for the corresponding memory access in the
-          // same block, add to the list.
         else if (mach->is_MachNullCheck()) {
-          if (!registered_null_check) {
+          assert(mach->in(1)->is_Mach(),
+                 "implicit null checks should be implemented by Mach memory accesses");
+          // If the memory access implementing the null check does not have
+          // inner exceptions, record the start offset of the memory access.
+          if (!mach->in(1)->as_Mach()->has_inner_exceptions()) {
             _inct_starts.append(Pair<int, Block*>(previous_offset, block));
           }
         }
@@ -1726,12 +1725,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 
       // "Normal" instruction case
       DEBUG_ONLY(uint instr_offset = masm->offset());
-
-      int null_checks_before = _inct_starts.length();
       n->emit(masm, C->regalloc());
-      if (_inct_starts.length() > null_checks_before) {
-        registered_null_check = true;
-      }
       current_offset = masm->offset();
 
       // Above we only verified that there is enough space in the instruction section.
@@ -1961,8 +1955,8 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 #endif
 }
 
-void PhaseOutput::record_exception_pc_offset(const Node* node, int pc_offset) {
-  if (_in_scratch_emit_size) {
+void PhaseOutput::record_exception_pc_offset(const MachNode* node, int pc_offset) {
+  if (_in_scratch_emit_size || !node->has_inner_exceptions()) {
     return;
   }
   Block* b = C->cfg()->get_block_for_node(node);

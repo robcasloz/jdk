@@ -377,6 +377,11 @@ public:
 
   // Returns true if this node is a check that can be implemented with a trap.
   virtual bool is_TrapBasedCheckNode() const { return false; }
+
+  // Whether the code emitted for the node records inner exception PC offsets
+  // for implicit null checks.
+  virtual bool has_inner_exceptions() const { return false; }
+
   void set_removed() { add_flag(Flag_is_removed_by_peephole); }
   bool get_removed() { return (flags() & Flag_is_removed_by_peephole) != 0; }
 

@@ -161,7 +161,7 @@ public:
 
   // Record an exception PC offset within the code emitted for 'node', to
   // be registered in the implicit exception table.
-  void record_exception_pc_offset(const Node* node, int pc_offset);
+  void record_exception_pc_offset(const MachNode* node, int pc_offset);
 
   // Compute the information for the exception tables
   void FillExceptionTables(uint cnt, uint *call_returns, uint *inct_starts, Label *blk_labels);
