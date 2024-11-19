@@ -1614,11 +1614,11 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
           Process_OopMap_Node(mach, current_offset);
         } // End if safepoint
 
+        // If this is a null check, and the corresponding memory access does not
+        // have inner exceptions, record the start offset of the memory access.
         else if (mach->is_MachNullCheck()) {
           assert(mach->in(1)->is_Mach(),
                  "implicit null checks should be implemented by Mach memory accesses");
-          // If the memory access implementing the null check does not have
-          // inner exceptions, record the start offset of the memory access.
           if (!mach->in(1)->as_Mach()->has_inner_exceptions()) {
             _implicit_exceptions.append(ImplicitExceptionEntry(previous_offset, block));
           }
