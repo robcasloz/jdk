@@ -1961,14 +1961,12 @@ void PhaseOutput::record_exception_pc_offset(const MachNode* node, int pc_offset
   // given exception PC offset and the node's block.
   for (DUIterator_Fast imax, i = node->fast_outs(imax); i < imax; i++) {
     Node* out = node->fast_out(i);
-    if (out->is_MachNullCheck()) {
-      Block* block = C->cfg()->get_block_for_node(node);
-      if (UseNewCode) {
-        tty->print_cr("register_implicit_null_check of %d %s (B%d) at pc_offset %d", node->_idx, node->Name(), block->_pre_order, pc_offset);
-      }
-      _implicit_exceptions.append(ImplicitExceptionEntry(pc_offset, block));
-      return;
+    if (!out->is_MachNullCheck()) {
+      continue;
     }
+    Block* block = C->cfg()->get_block_for_node(node);
+    _implicit_exceptions.append(ImplicitExceptionEntry(pc_offset, block));
+    return;
   }
 }
 
