@@ -1537,7 +1537,6 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 
       // Special handling for SafePoint/Call Nodes
       bool is_mcall = false;
-
       if (n->is_Mach()) {
         MachNode *mach = n->as_Mach();
         is_mcall = n->is_MachCall();
@@ -1617,6 +1616,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         // If this is a null check, and the corresponding memory access does not
         // have inner exceptions, record the start offset of the memory access.
         else if (mach->is_MachNullCheck()) {
+          inct_starts[inct_cnt++] = previous_offset;
           assert(mach->in(1)->is_Mach(),
                  "implicit null checks should be implemented by Mach memory accesses");
           if (!mach->in(1)->as_Mach()->has_inner_exceptions()) {
@@ -1702,6 +1702,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         // Not an else-if!
         // If this is a trap based cmp then add its offset to the list.
         if (mach->is_TrapBasedCheckNode()) {
+          inct_starts[inct_cnt++] = current_offset;
           _implicit_exceptions.append(ImplicitExceptionEntry(current_offset, block));
         }
       }
