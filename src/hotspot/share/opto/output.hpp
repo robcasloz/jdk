@@ -75,6 +75,8 @@ public:
   { };
 };
 
+typedef Pair<int, Block*> ImplicitExceptionEntry;
+
 class PhaseOutput : public Phase {
 private:
   // Instruction bits passed off to the VM
@@ -105,9 +107,9 @@ private:
   Block*                 _block;
   uint                   _index;
 
-  // List of <exception PC offset, corresponding test block> entries recorded
+  // List of <exception PC offset, corresponding test block> pairs recorded
   // during emission, to be translated into implicit exception table entries.
-  GrowableArray<Pair<int, Block*>> _inct_starts;
+  GrowableArray<ImplicitExceptionEntry> _implicit_exceptions;
 
   void perform_mach_node_analysis();
   void pd_perform_mach_node_analysis();

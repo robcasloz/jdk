@@ -244,7 +244,7 @@ PhaseOutput::PhaseOutput()
     _buf_sizes(),
     _block(nullptr),
     _index(0),
-    _inct_starts() {
+    _implicit_exceptions() {
   C->set_output(this);
   if (C->stub_name() == nullptr) {
     _orig_pc_slot = C->fixed_slots() - (sizeof(address) / VMRegImpl::stack_slot_size);
@@ -1538,8 +1538,6 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
       // Special handling for SafePoint/Call Nodes
       bool is_mcall = false;
 
-      // TBD
-      Pair<int, Block*> implicit_null_check(-1, nullptr);
       if (n->is_Mach()) {
         MachNode *mach = n->as_Mach();
         is_mcall = n->is_MachCall();
@@ -1622,7 +1620,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
           // If the memory access implementing the null check does not have
           // inner exceptions, record the start offset of the memory access.
           if (!mach->in(1)->as_Mach()->has_inner_exceptions()) {
-            _inct_starts.append(Pair<int, Block*>(previous_offset, block));
+            _implicit_exceptions.append(ImplicitExceptionEntry(previous_offset, block));
           }
         }
 
@@ -1704,7 +1702,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         // Not an else-if!
         // If this is a trap based cmp then add its offset to the list.
         if (mach->is_TrapBasedCheckNode()) {
-          _inct_starts.append(Pair<int, Block*>(current_offset, block));
+          _implicit_exceptions.append(ImplicitExceptionEntry(current_offset, block));
         }
       }
 
@@ -1959,25 +1957,19 @@ void PhaseOutput::record_exception_pc_offset(const MachNode* node, int pc_offset
   if (_in_scratch_emit_size || !node->has_inner_exceptions()) {
     return;
   }
-  Block* b = C->cfg()->get_block_for_node(node);
-  if (UseNewCode) {
-    tty->print_cr("register_implicit_null_check of %d %s (B%d) at pc_offset %d", node->_idx, node->Name(), b->_pre_order, pc_offset);
+  // If node is used to implement an implicit null check, add an entry with the
+  // given exception PC offset and the node's block.
+  for (DUIterator_Fast imax, i = node->fast_outs(imax); i < imax; i++) {
+    Node* out = node->fast_out(i);
+    if (out->is_MachNullCheck()) {
+      Block* block = C->cfg()->get_block_for_node(node);
+      if (UseNewCode) {
+        tty->print_cr("register_implicit_null_check of %d %s (B%d) at pc_offset %d", node->_idx, node->Name(), block->_pre_order, pc_offset);
+      }
+      _implicit_exceptions.append(ImplicitExceptionEntry(pc_offset, block));
+      return;
+    }
   }
-  uint i = b->find_node(node) + 1;
-  Node* next;
-  do {
-    next = b->get_node(i);
-    i++;
-  } while (next->is_MachProj());
-  i++;
-  if (!next->is_MachNullCheck()) {
-    return;
-  }
-  tty->print_cr("  null check: %d %s", next->_idx, next->Name());
-  assert(next->in(1) == node, "the immediate predecessor of a Mach null check must be the memory access");
-  // TBD: find if it is an implicit null check by simply examining n's outputs (check for loads)
-  _inct_starts.append(Pair<int, Block*>(pc_offset, b));
-
 }
 
 void PhaseOutput::FillExceptionTables(uint cnt, uint *call_returns, uint *inct_starts, Label *blk_labels) {
@@ -2067,9 +2059,9 @@ void PhaseOutput::FillExceptionTables(uint cnt, uint *call_returns, uint *inct_s
     }
   } // End of for all blocks fill in exception table entries
   if (UseNewCode) {
-    for (int i = 0; i < _inct_starts.length(); i++) {
-      int offset = _inct_starts.at(i).first;
-      uint block_num = _inct_starts.at(i).second->non_connector_successor(0)->_pre_order;
+    for (int i = 0; i < _implicit_exceptions.length(); i++) {
+      int offset = _implicit_exceptions.at(i).first;
+      uint block_num = _implicit_exceptions.at(i).second->non_connector_successor(0)->_pre_order;
       _inc_table.append(offset, blk_labels[block_num].loc_pos());
     }
   }
