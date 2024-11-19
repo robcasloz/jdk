@@ -295,7 +295,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   __ bind(*stub->continuation());
 }
 
-void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
+void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(C2_MacroAssembler* masm,
                                                          G1PreBarrierStubC2* stub) const {
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;
@@ -336,7 +336,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   __ bind(*stub->continuation());
 }
 
-void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
+void G1BarrierSetAssembler::generate_c2_post_barrier_stub(C2_MacroAssembler* masm,
                                                           G1PostBarrierStubC2* stub) const {
   Assembler::InlineSkippedInstructionsCounter skip_counter(masm);
   Label runtime;

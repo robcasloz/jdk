@@ -166,7 +166,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre_c2(MacroAssembler* masm,
   BLOCK_COMMENT("} g1_write_barrier_pre_c2");
 }
 
-void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
+void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(C2_MacroAssembler* masm,
                                                          G1PreBarrierStubC2* stub) const {
 
   BLOCK_COMMENT("generate_c2_pre_barrier_stub {");
@@ -259,7 +259,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   BLOCK_COMMENT("} g1_write_barrier_post_c2");
 }
 
-void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
+void G1BarrierSetAssembler::generate_c2_post_barrier_stub(C2_MacroAssembler* masm,
                                                           G1PostBarrierStubC2* stub) const {
 
   BLOCK_COMMENT("generate_c2_post_barrier_stub {");

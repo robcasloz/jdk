@@ -38,6 +38,7 @@ class G1PreBarrierStub;
 class G1PostBarrierStub;
 class G1PreBarrierStubC2;
 class G1PostBarrierStubC2;
+class C2_MacroAssembler;
 
 class G1BarrierSetAssembler: public ModRefBarrierSetAssembler {
 protected:
@@ -82,7 +83,7 @@ public:
                                Register tmp1,
                                Register tmp2,
                                G1PreBarrierStubC2* c2_stub);
-  void generate_c2_pre_barrier_stub(MacroAssembler* masm,
+  void generate_c2_pre_barrier_stub(C2_MacroAssembler* masm,
                                     G1PreBarrierStubC2* stub) const;
   void g1_write_barrier_post_c2(MacroAssembler* masm,
                                 Register store_addr,
@@ -91,7 +92,7 @@ public:
                                 Register tmp1,
                                 Register tmp2,
                                 G1PostBarrierStubC2* c2_stub);
-  void generate_c2_post_barrier_stub(MacroAssembler* masm,
+  void generate_c2_post_barrier_stub(C2_MacroAssembler* masm,
                                      G1PostBarrierStubC2* stub) const;
 #endif
 
