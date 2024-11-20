@@ -22,6 +22,7 @@
  *
  */
 
+#include "precompiled.hpp"
 #include "opto/c2_MacroAssembler.hpp"
 #include "opto/output.hpp"
 
