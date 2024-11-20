@@ -431,7 +431,7 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
   // Move any MachTemp inputs to the end of the test block.
   for (uint i = 0; i < best->req(); i++) {
     Node* n = best->in(i);
-    if (!n->is_MachTemp()) {
+    if (n == nullptr || !n->is_MachTemp()) {
       continue;
     }
     maybe_hoist_into(n, block);
