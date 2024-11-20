@@ -33,15 +33,24 @@
 class MachNode;
 
 class C2_MacroAssembler: public MacroAssembler {
- public:
-  // creation
-  C2_MacroAssembler(CodeBuffer* code) : MacroAssembler(code) {}
+ private:
+  MachNode* _current;
 
-  // Record an exception PC offset within the code emitted for a node, to
-  // support implicit null checks. The node must be annotated with the ADL
-  // attribute 'ins_inner_exceptions' set to true, and at least one exception PC
-  // offset needs to be registered during emission.
-  void record_exception_pc_offset(const MachNode* node) const;
+ public:
+  C2_MacroAssembler(CodeBuffer* code)
+    : MacroAssembler(code),
+      _current(nullptr) {}
+
+  // Set current node for which exception PC offsets should be recorded.
+  void set_current(MachNode* current) {
+    _current = current;
+  }
+
+  // Record an exception PC offset within a Mach node emit() call, to support
+  // implicit null checks. For nodes annotated with the ADL attribute
+  // 'ins_inner_exceptions(true)', at least one exception PC offset needs to be
+  // registered during emission.
+  void record_exception_pc_offset() const;
 
 #include CPU_HEADER(c2_MacroAssembler)
 

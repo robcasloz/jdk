@@ -159,7 +159,7 @@ instruct zStoreP(memory mem, any_RegP src, rRegP tmp, rFlagsReg cr)
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
     z_store_barrier(masm, this, $mem$$Address, $src$$Register, $tmp$$Register, false /* is_atomic */);
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ movq($mem$$Address, $tmp$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -178,7 +178,7 @@ instruct zStorePNull(memory mem, immP0 zero, rRegP tmp, rFlagsReg cr)
   ins_encode %{
     z_store_barrier(masm, this, $mem$$Address, noreg, $tmp$$Register, false /* is_atomic */);
     // Store a colored null - barrier code above does not need to color
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ movq($mem$$Address, barrier_Relocation::unpatched);
     // The relocation cant be fully after the mov, as that is the beginning of a random subsequent
     // instruction, which violates assumptions made by unrelated code. Hence the end() - 1

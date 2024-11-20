@@ -25,8 +25,10 @@
 #include "opto/c2_MacroAssembler.hpp"
 #include "opto/output.hpp"
 
-void C2_MacroAssembler::record_exception_pc_offset(const MachNode* node) const {
-  assert(node->has_inner_exceptions(),
-         "recording of exception PC offsets is only allowed for inner-exception instructions");
-  Compile::current()->output()->record_exception_pc_offset(node, offset());
+void C2_MacroAssembler::record_exception_pc_offset() const {
+  assert(_current != nullptr, "current node must be set");
+  if (!_current->has_inner_exceptions()) {
+    return;
+  }
+  Compile::current()->output()->record_exception_pc_offset(_current, offset());
 }

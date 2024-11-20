@@ -1731,6 +1731,9 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
       uint instr_offset = masm->offset();
       int implicit_exceptions_before = _implicit_exceptions.length();
 #endif // ASSERT
+      if (n->is_Mach()) {
+        masm->set_current(n->as_Mach());
+      }
       n->emit(masm, C->regalloc());
       current_offset = masm->offset();
 

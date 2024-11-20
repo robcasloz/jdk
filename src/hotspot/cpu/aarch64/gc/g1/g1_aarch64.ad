@@ -95,7 +95,7 @@ instruct g1StoreP(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
                       $tmp2$$Register /* tmp1 */,
                       $tmp3$$Register /* tmp2 */,
                       RegSet::of($mem$$Register, $src$$Register) /* preserve */);
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ str($src$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
@@ -123,7 +123,7 @@ instruct g1StorePVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp
                       $tmp2$$Register /* tmp1 */,
                       $tmp3$$Register /* tmp2 */,
                       RegSet::of($mem$$Register, $src$$Register) /* preserve */);
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ stlr($src$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
@@ -159,7 +159,7 @@ instruct g1StoreN(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRegP
         __ decode_heap_oop_not_null($tmp1$$Register, $src$$Register);
       }
     }
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
@@ -194,7 +194,7 @@ instruct g1StoreNVolatile(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp
         __ decode_heap_oop_not_null($tmp1$$Register, $src$$Register);
       }
     }
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
@@ -227,7 +227,7 @@ instruct g1EncodePAndStoreN(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp t
     } else {
       __ encode_heap_oop_not_null($tmp1$$Register, $src$$Register);
     }
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ strw($tmp1$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
@@ -261,7 +261,7 @@ instruct g1EncodePAndStoreNVolatile(indirect mem, iRegP src, iRegPNoSp tmp1, iRe
     } else {
       __ encode_heap_oop_not_null($tmp1$$Register, $src$$Register);
     }
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ stlrw($tmp1$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,

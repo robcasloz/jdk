@@ -42,7 +42,7 @@ instruct g1StoreP$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
                       $tmp2$$Register /* tmp1 */,
                       $tmp3$$Register /* tmp2 */,
                       RegSet::of($mem$$Register, $src$$Register) /* preserve */);
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ $2($src$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
@@ -82,7 +82,7 @@ instruct g1StoreN$1(indirect mem, iRegN src, iRegPNoSp tmp1, iRegPNoSp tmp2, iRe
         __ decode_heap_oop_not_null($tmp1$$Register, $src$$Register);
       }
     }
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
                        $tmp1$$Register /* new_val */,
@@ -119,7 +119,7 @@ instruct g1EncodePAndStoreN$1(indirect mem, iRegP src, iRegPNoSp tmp1, iRegPNoSp
     } else {
       __ encode_heap_oop_not_null($tmp1$$Register, $src$$Register);
     }
-    __ record_exception_pc_offset(this);
+    __ record_exception_pc_offset();
     __ $2($tmp1$$Register, $mem$$Register);
     write_barrier_post(masm, this,
                        $mem$$Register /* store_addr */,
