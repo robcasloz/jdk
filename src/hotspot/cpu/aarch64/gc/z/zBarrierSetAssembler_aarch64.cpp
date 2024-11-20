@@ -164,6 +164,15 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
   __ bind(done);
 }
 
+static bool is_c2_compilation() {
+#ifdef COMPILER2
+  CompileTask* task = ciEnv::current()->task();
+  return task != nullptr && is_c2_compile(task->comp_level());
+#else
+  return false;
+#endif
+}
+
 void ZBarrierSetAssembler::store_barrier_fast(MacroAssembler* masm,
                                               Address ref_addr,
                                               Register rnew_zaddress,
@@ -178,6 +187,12 @@ void ZBarrierSetAssembler::store_barrier_fast(MacroAssembler* masm,
   assert_different_registers(rnew_zaddress, rnew_zpointer, rtmp);
 
   if (in_nmethod) {
+#ifdef COMPILER2
+    if (is_c2_compilation()) {
+      C2_MacroAssembler* c2_masm = static_cast<C2_MacroAssembler*>(masm);
+      c2_masm->record_exception_pc_offset();
+    }
+#endif
     if (is_atomic) {
       __ ldrh(rtmp, ref_addr);
       // Atomic operations must ensure that the contents of memory are store-good before
