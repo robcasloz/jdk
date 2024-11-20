@@ -312,7 +312,7 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
 
 static void emit_store_fast_path_check(MacroAssembler* masm, Address ref_addr, bool is_atomic, Label& medium_path) {
 #ifdef COMPILER2
-  if (is_c2_compilation()) {
+  if (is_c2_compilation() && !masm->code_section()->scratch_emit()) {
     C2_MacroAssembler* c2_masm = static_cast<C2_MacroAssembler*>(masm);
     c2_masm->record_exception_pc_offset();
   }
