@@ -1412,6 +1412,10 @@ CodeBuffer* PhaseOutput::init_buffer() {
   return cb;
 }
 
+static bool implements_null_check(const Node* node) {
+  return node->has_out_with(Op_MachNullCheck);
+}
+
 //------------------------------fill_buffer------------------------------------
 void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
   // blk_starts[] contains offsets calculated during short branches processing,
@@ -1723,7 +1727,10 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
       assert(!C->failing_internal() || C->failure_is_artificial(), "Should not reach here if failing.");
 
       // "Normal" instruction case
-      DEBUG_ONLY(uint instr_offset = masm->offset());
+#ifdef ASSERT
+      uint instr_offset = masm->offset();
+      int implicit_exceptions_before = _implicit_exceptions.length();
+#endif // ASSERT
       n->emit(masm, C->regalloc());
       current_offset = masm->offset();
 
@@ -1736,6 +1743,12 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 
       assert(!is_mcall || (call_returns[block->_pre_order] <= (uint)current_offset),
              "ret_addr_offset() not within emitted code");
+      assert(!n->is_Mach() ||
+             !n->as_Mach()->has_inner_exceptions() ||
+             !implements_null_check(n) ||
+             _implicit_exceptions.length() > implicit_exceptions_before,
+             "nodes with inner exceptions (%d %s) must record at least one exception PC offset",
+             n->_idx, n->Name());
 
 #ifdef ASSERT
       uint n_size = n->size(C->regalloc());
@@ -1955,20 +1968,16 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 }
 
 void PhaseOutput::record_exception_pc_offset(const MachNode* node, int pc_offset) {
-  if (_in_scratch_emit_size || !node->has_inner_exceptions()) {
+  if (_in_scratch_emit_size) {
     return;
   }
-  // If node is used to implement an implicit null check, add an entry with the
+  if (!implements_null_check(node)) {
+    return;
+  }
+  // The node is used to implement an implicit null check: add an entry with the
   // given exception PC offset and the node's block.
-  for (DUIterator_Fast imax, i = node->fast_outs(imax); i < imax; i++) {
-    Node* out = node->fast_out(i);
-    if (!out->is_MachNullCheck()) {
-      continue;
-    }
-    Block* block = C->cfg()->get_block_for_node(node);
-    _implicit_exceptions.append(ImplicitExceptionEntry(pc_offset, block));
-    return;
-  }
+  Block* block = C->cfg()->get_block_for_node(node);
+  _implicit_exceptions.append(ImplicitExceptionEntry(pc_offset, block));
 }
 
 void PhaseOutput::FillExceptionTables(uint cnt, uint *call_returns, uint *inct_starts, Label *blk_labels) {

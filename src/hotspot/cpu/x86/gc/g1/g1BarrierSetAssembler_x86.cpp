@@ -418,7 +418,11 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(C2_MacroAssembler* masm
 
   __ bind(*stub->entry());
   generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime,
-                                 [&] () { masm->record_exception_pc_offset(stub->node()); });
+                                 [&] () {
+                                   if (stub->node()->has_inner_exceptions()) {
+                                     masm->record_exception_pc_offset(stub->node());
+                                   }
+                                 });
 
   __ bind(runtime);
   generate_c2_barrier_runtime_call(masm, stub, pre_val, CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_field_pre_entry));

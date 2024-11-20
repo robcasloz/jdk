@@ -37,8 +37,10 @@ class C2_MacroAssembler: public MacroAssembler {
   // creation
   C2_MacroAssembler(CodeBuffer* code) : MacroAssembler(code) {}
 
-  // Record an exception PC offset within the code emitted for 'node', to
-  // support implicit null checks.
+  // Record an exception PC offset within the code emitted for a node, to
+  // support implicit null checks. The node must be annotated with the ADL
+  // attribute 'ins_inner_exceptions' set to true, and at least one exception PC
+  // offset needs to be registered during emission.
   void record_exception_pc_offset(const MachNode* node) const;
 
 #include CPU_HEADER(c2_MacroAssembler)
