@@ -352,7 +352,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
 
   stub->initialize_registers(thread, tmp1, tmp2, tmp3);
 
-  bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
+  bool new_val_may_be_null = (stub->node()->barrier_data() & G1C2BarrierPostNotNull) == 0;
   generate_post_barrier_fast_path(masm, store_addr, new_val, tmp1, tmp2, *stub->continuation(), new_val_may_be_null);
   // If card is not young, jump to stub (slow path)
   __ b(*stub->entry(), ne);

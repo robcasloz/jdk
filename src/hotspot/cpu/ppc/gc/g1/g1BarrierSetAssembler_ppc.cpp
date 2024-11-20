@@ -465,7 +465,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
 
   stub->initialize_registers(R16_thread, tmp1, tmp2);
 
-  bool null_check_required = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
+  bool null_check_required = (stub->node()->barrier_data() & G1C2BarrierPostNotNull) == 0;
   Register new_val_decoded = new_val;
 
   if (decode_new_val) {

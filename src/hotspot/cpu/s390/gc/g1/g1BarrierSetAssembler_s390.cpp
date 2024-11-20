@@ -234,7 +234,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   BLOCK_COMMENT("} generate_region_crossing_test");
 
   // crosses regions, storing null?
-  if ((stub->barrier_data() & G1C2BarrierPostNotNull) == 0) {
+  if ((stub->node()->barrier_data() & G1C2BarrierPostNotNull) == 0) {
     __ z_ltgr(new_val, new_val);
     __ branch_optimized(Assembler::bcondEqual, *stub->continuation());
   }
