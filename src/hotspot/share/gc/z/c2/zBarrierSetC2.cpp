@@ -309,7 +309,7 @@ void ZBarrierSetC2::late_barrier_analysis() const {
 }
 
 void ZBarrierSetC2::emit_stubs(CodeBuffer& cb) const {
-  MacroAssembler masm(&cb);
+  C2_MacroAssembler masm(&cb);
   GrowableArray<ZBarrierStubC2*>* const stubs = barrier_set_state()->stubs();
   barrier_set_state()->set_stubs_start_offset(masm.offset());
 
@@ -320,7 +320,10 @@ void ZBarrierSetC2::emit_stubs(CodeBuffer& cb) const {
       return;
     }
 
-    stubs->at(i)->emit_code(masm);
+    ZBarrierStubC2* stub = stubs->at(i);
+    masm.set_current(stub->node()->as_Mach());
+    stub->emit_code(masm);
+    masm.set_current(nullptr);
   }
 
   masm.flush();

@@ -1735,6 +1735,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         masm->set_current(n->as_Mach());
       }
       n->emit(masm, C->regalloc());
+      masm->set_current(nullptr);
       current_offset = masm->offset();
 
       // Above we only verified that there is enough space in the instruction section.

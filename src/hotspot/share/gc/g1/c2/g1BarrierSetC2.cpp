@@ -543,7 +543,10 @@ void G1BarrierSetC2::emit_stubs(CodeBuffer& cb) const {
       ciEnv::current()->record_failure("CodeCache is full");
       return;
     }
-    stubs->at(i)->emit_code(masm);
+    G1BarrierStubC2* stub = stubs->at(i);
+    masm.set_current(stub->node()->as_Mach());
+    stub->emit_code(masm);
+    masm.set_current(nullptr);
   }
   masm.flush();
 }

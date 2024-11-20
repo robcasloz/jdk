@@ -216,6 +216,15 @@ static void call_vm(MacroAssembler* masm,
   __ MacroAssembler::call_VM_leaf_base(entry_point, 2);
 }
 
+static bool is_c2_compilation() {
+#ifdef COMPILER2
+  CompileTask* task = ciEnv::current()->task();
+  return task != nullptr && is_c2_compile(task->comp_level());
+#else
+  return false;
+#endif
+}
+
 void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
                                    DecoratorSet decorators,
                                    BasicType type,
@@ -302,6 +311,12 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
 }
 
 static void emit_store_fast_path_check(MacroAssembler* masm, Address ref_addr, bool is_atomic, Label& medium_path) {
+#ifdef COMPILER2
+  if (is_c2_compilation()) {
+    C2_MacroAssembler* c2_masm = static_cast<C2_MacroAssembler*>(masm);
+    c2_masm->record_exception_pc_offset();
+  }
+#endif
   if (is_atomic) {
     // Atomic operations must ensure that the contents of memory are store-good before
     // an atomic operation can execute.
@@ -359,15 +374,6 @@ static void emit_store_fast_path_check_c2(MacroAssembler* masm, Address ref_addr
   IntelJccErratumAlignment intel_alignment(masm, size);
   // Emit the JCC erratum mitigation guarded code
   emit_store_fast_path_check(masm, ref_addr, is_atomic, medium_path);
-#endif
-}
-
-static bool is_c2_compilation() {
-#ifdef COMPILER2
-  CompileTask* task = ciEnv::current()->task();
-  return task != nullptr && is_c2_compile(task->comp_level());
-#else
-  return false;
 #endif
 }
 

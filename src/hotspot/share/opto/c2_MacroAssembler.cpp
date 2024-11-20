@@ -26,9 +26,14 @@
 #include "opto/output.hpp"
 
 void C2_MacroAssembler::record_exception_pc_offset() const {
-  assert(_current != nullptr, "current node must be set");
+  PhaseOutput* output = Compile::current()->output();
+  if (_current == nullptr) {
+    assert(output->in_scratch_emit_size(),
+           "current must be set in final emission pass");
+    return;
+  }
   if (!_current->has_inner_exceptions()) {
     return;
   }
-  Compile::current()->output()->record_exception_pc_offset(_current, offset());
+  output->record_exception_pc_offset(_current, offset());
 }
