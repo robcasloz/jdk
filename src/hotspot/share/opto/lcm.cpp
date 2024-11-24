@@ -352,8 +352,13 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
       }
       if (UseNewCode && mach->in(j)->is_MachTemp()) {
         assert(mach->in(j)->outcnt() == 1, "MachTemp nodes should not be shared");
-        // Ignore MachTemp inputs which can be hoisted with the candidate.
-        continue;
+        if (mach->ideal_Opcode() == Op_LoadP) {
+          // Ignore MachTemp inputs which can be hoisted with a LoadP implementation.
+          continue;
+        } else if (UseNewCode2) {
+          // Ignore MachTemp inputs which can be hoisted with any candidate.
+          continue;
+        }
       }
       // Block of memory-op input
       Block *inb = get_block_for_node(mach->in(j));
