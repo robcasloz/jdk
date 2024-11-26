@@ -651,7 +651,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         updateFigureWidths();
         rebuildMainLayer();
         rebuildBlockLayer();
-        segmentLayer.removeChildren();
+        rebuildSegmentLayer();
         relayout();
         setLiveRangeSegmentSelection(model.getSelectedLiveRangeSegments());
         setFigureSelection(model.getSelectedFigures());
@@ -1111,9 +1111,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         segmentLayer.removeChildren();
         Map<Integer, Set<LiveRangeSegment>> segments = new HashMap<>();
         for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
-            if (!isVisible(segment)) {
-                continue;
-            }
             int liveRangeId = segment.getLiveRange().getId();
             if (!segments.containsKey(liveRangeId)) {
                 segments.put(liveRangeId, new HashSet<>());
@@ -1124,10 +1121,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
             LiveRangeWidget firstSegmentWidget = null;
             LiveRangeWidget nextSegmentWidget = null;
             for (LiveRangeSegment segment : segmentSet) {
-                assert segment.getStartPoint().x == segment.getEndPoint().x;
-                int length = segment.getEndPoint().y - segment.getStartPoint().y;
+                // Segments are not yet laid out.
+                assert segment.getStartPoint() == null && segment.getEndPoint() == null;
                 LiveRangeWidget segmentWidget =
-                    new LiveRangeWidget(segment, this, length, nextSegmentWidget);
+                    new LiveRangeWidget(segment, this, 0, nextSegmentWidget);
+                segmentWidget.setVisible(false);
                 if (firstSegmentWidget == null) {
                     firstSegmentWidget = segmentWidget;
                 }
@@ -1182,6 +1180,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
             FigureWidget figureWidget = getWidget(figure);
             figureWidget.setBoundary(false);
             figureWidget.setVisible(!model.getHiddenNodes().contains(figure.getInputNode().getId()));
+        }
+    }
+
+    private void updateVisibleLiveRangeWidgets() {
+        for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
+            LiveRangeWidget liveRangeWidget = getWidget(segment);
+            liveRangeWidget.setVisible(!model.getHiddenLiveRanges().contains(segment.getLiveRange().getId()));
         }
     }
 
@@ -1385,6 +1390,18 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
     }
 
+    private void repaintLiveRangeWidgets() {
+        for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
+            LiveRangeWidget liveRangeWidget = getWidget(segment);
+            if (liveRangeWidget.isVisible()) {
+                assert segment.getStartPoint().x == segment.getEndPoint().x;
+                int length = segment.getEndPoint().y - segment.getStartPoint().y;
+                liveRangeWidget.setLength(length);
+                liveRangeWidget.repaint();
+            }
+        }
+    }
+
     private void relayout() {
         rebuilding = true;
         Set<FigureWidget> oldVisibleFigureWidgets = getVisibleFigureWidgets();
@@ -1394,6 +1411,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         updateVisibleFigureWidgets();
         updateNodeHull();
         updateVisibleBlockWidgets();
+        updateVisibleLiveRangeWidgets();
 
         HashSet<Figure> visibleFigures = getVisibleFigures();
         HashSet<Connection> visibleConnections = getVisibleConnections();
@@ -1410,8 +1428,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
         }
         rebuildConnectionLayer();
         if (getModel().getShowCFG()) {
-            rebuildSegmentLayer();
             updateLiveRangeIdsInBlockWidgets();
+            repaintLiveRangeWidgets();
         }
 
         updateFigureWidgetLocations(oldVisibleFigureWidgets);

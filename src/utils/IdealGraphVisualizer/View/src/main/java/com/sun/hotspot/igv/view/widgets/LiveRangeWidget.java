@@ -40,9 +40,9 @@ public class LiveRangeWidget extends Widget implements Properties.Provider {
 
     private final LiveRangeSegment liveRangeSegment;
     private final DiagramScene scene;
-    private final int length;
+    private int length;
     private LiveRangeWidget next;
-    private final Rectangle clientArea;
+    private Rectangle clientArea;
     private final Node node;
     private static final float NORMAL_THICKNESS = 1.4f;
     private static final float SELECTED_THICKNESS = 2.2f;
@@ -60,8 +60,7 @@ public class LiveRangeWidget extends Widget implements Properties.Provider {
         this.length = length;
         this.next = next;
 
-        clientArea = new Rectangle(RANGE_WIDTH * 2, length);
-        clientArea.grow(RANGE_WIDTH * 2, RANGE_WIDTH * 2);
+        updateClientArea();
 
         // Initialize node for property sheet
         node = new AbstractNode(Children.LEAF) {
@@ -75,6 +74,16 @@ public class LiveRangeWidget extends Widget implements Properties.Provider {
         node.setDisplayName("L" + liveRangeSegment.getLiveRange().getId());
 
         this.setToolTipText(PropertiesConverter.convertToHTML(liveRangeSegment.getProperties()));
+    }
+
+    public void setLength(int length) {
+        this.length = length;
+        updateClientArea();
+    }
+
+    private void updateClientArea() {
+        clientArea = new Rectangle(RANGE_WIDTH * 2, length);
+        clientArea.grow(RANGE_WIDTH * 2, RANGE_WIDTH * 2);
     }
 
     public void setNext(LiveRangeWidget next) {

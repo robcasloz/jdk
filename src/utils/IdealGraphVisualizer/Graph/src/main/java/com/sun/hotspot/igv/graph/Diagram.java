@@ -41,6 +41,7 @@ public class Diagram {
     private final String nodeText;
     private final String shortNodeText;
     private final String tinyNodeText;
+    private final InputGraph inputGraph;
     public static final Font FONT = new Font("Arial", Font.PLAIN, 12);
     public static final Font SLOT_FONT = new Font("Arial", Font.PLAIN, 10);
     public static final Font BOLD_FONT = FONT.deriveFont(Font.BOLD);
@@ -71,6 +72,7 @@ public class Diagram {
         this.liveRangeSegments = new ArrayList<>();
         this.blockConnections = new HashSet<>();
         this.cfg = false;
+        this.inputGraph = graph;
         int curId = 0;
 
         for (InputBlock b : graph.getBlocks()) {
@@ -237,6 +239,10 @@ public class Diagram {
 
     public List<Figure> getFigures() {
         return Collections.unmodifiableList(figures);
+    }
+
+    public InputGraph getInputGraph() {
+        return inputGraph;
     }
 
     public List<LiveRangeSegment> getLiveRangeSegments() {
