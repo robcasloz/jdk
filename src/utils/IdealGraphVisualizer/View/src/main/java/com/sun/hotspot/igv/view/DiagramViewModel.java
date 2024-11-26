@@ -55,7 +55,6 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
     private ArrayList<InputGraph> graphs;
     private Set<Integer> hiddenNodes;
     private Set<Integer> selectedNodes;
-    private Set<Integer> hiddenLiveRanges;
     private Set<Integer> selectedLiveRanges;
     private FilterChain filterChain;
     private final FilterChain customFilterChain;
@@ -224,7 +223,6 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
 
         hiddenNodes = new HashSet<>(model.getHiddenNodes());
         selectedNodes = new HashSet<>();
-        hiddenLiveRanges = new HashSet<>(model.getHiddenLiveRanges());
         selectedLiveRanges = new HashSet<>();
         changed(this);
     }
@@ -251,7 +249,6 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
 
         hiddenNodes = new HashSet<>();
         selectedNodes = new HashSet<>();
-        hiddenLiveRanges = new HashSet<>();
         selectedLiveRanges = new HashSet<>();
         selectGraph(graph);
     }
@@ -323,18 +320,6 @@ public class DiagramViewModel extends RangeSliderModel implements ChangedListene
 
     public Set<Integer> getSelectedLiveRanges() {
         return selectedLiveRanges;
-    }
-
-    public Set<Integer> getHiddenLiveRanges() {
-        Set<Integer> hidden = new HashSet<>();
-        for (InputLiveRange inputLiveRange : diagram.getInputGraph().getLiveRanges()) {
-            for (InputNode n : diagram.getInputGraph().getRelatedNodes(inputLiveRange.getId())) {
-                if (getHiddenNodes().contains(n.getId())) {
-                    hidden.add(inputLiveRange.getId());
-                }
-            }
-        }
-        return hidden;
     }
 
     public void setSelectedLiveRanges(Set<Integer> liveRanges) {

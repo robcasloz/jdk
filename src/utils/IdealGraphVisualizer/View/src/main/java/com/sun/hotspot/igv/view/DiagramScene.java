@@ -1184,9 +1184,19 @@ public class DiagramScene extends ObjectScene implements DiagramViewer, DoubleCl
     }
 
     private void updateVisibleLiveRangeWidgets() {
+        // TBD: pre-compute visibility for each live range, to avoid
+        // re-computing it for each segment in each live range.
         for (LiveRangeSegment segment : getModel().getDiagram().getLiveRangeSegments()) {
             LiveRangeWidget liveRangeWidget = getWidget(segment);
-            liveRangeWidget.setVisible(!model.getHiddenLiveRanges().contains(segment.getLiveRange().getId()));
+            boolean visible = true;
+            for (InputNode n : getModel().getDiagram().getInputGraph().getRelatedNodes(segment.getLiveRange().getId())) {
+                FigureWidget f = getWidget(getModel().getDiagram().getFigure(n));
+                if (!f.isVisible()) {
+                    visible = false;
+                    break;
+                }
+            }
+            liveRangeWidget.setVisible(visible);
         }
     }
 
