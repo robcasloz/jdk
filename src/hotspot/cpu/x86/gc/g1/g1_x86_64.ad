@@ -80,6 +80,9 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+    }
     // Materialize the store address internally (as opposed to defining 'mem' as
     // an indirect memory operand) to reduce the overhead of LCM when processing
     // large basic blocks with many stores. Such basic blocks arise, for
@@ -109,6 +112,9 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+    }
     __ lea($tmp1$$Register, $mem$$Address);
     write_barrier_pre(masm, this,
                       $tmp1$$Register /* obj */,
@@ -142,6 +148,9 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
   format %{ "encode_heap_oop $src\n\t"
             "movl   $mem, $src\t# ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+    }
     __ lea($tmp1$$Register, $mem$$Address);
     write_barrier_pre(masm, this,
                       $tmp1$$Register /* obj */,
@@ -172,6 +181,9 @@ instruct g1CompareAndExchangeP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp
   format %{ "lock\n\t"
             "cmpxchgq $newval, $mem" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::atomic_counter_offset()));
+    }
     assert_different_registers($oldval$$Register, $mem$$Register);
     // Pass $oldval to the pre-barrier (instead of loading from $mem), because
     // $oldval is the only value that can be overwritten.
@@ -201,6 +213,9 @@ instruct g1CompareAndExchangeN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp
   format %{ "lock\n\t"
             "cmpxchgq $newval, $mem" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::atomic_counter_offset()));
+    }
     assert_different_registers($oldval$$Register, $mem$$Register);
     write_barrier_pre(masm, this,
                       $mem$$Register /* obj */,
@@ -231,6 +246,9 @@ instruct g1CompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp1, rR
             "sete     $res\n\t"
             "movzbl   $res, $res" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::atomic_counter_offset()));
+    }
     assert_different_registers($oldval$$Register, $mem$$Register);
     write_barrier_pre(masm, this,
                       noreg /* obj */,
@@ -263,6 +281,9 @@ instruct g1CompareAndSwapN(rRegI res, indirect mem, rRegN newval, rRegP tmp1, rR
             "sete     $res\n\t"
             "movzbl   $res, $res" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::atomic_counter_offset()));
+    }
     assert_different_registers($oldval$$Register, $mem$$Register);
     write_barrier_pre(masm, this,
                       $mem$$Register /* obj */,
@@ -292,6 +313,9 @@ instruct g1GetAndSetP(indirect mem, rRegP newval, rRegP tmp1, rRegP tmp2, rRegP 
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::atomic_counter_offset()));
+    }
     assert_different_registers($mem$$Register, $newval$$Register);
     write_barrier_pre(masm, this,
                       $mem$$Register /* obj */,
@@ -316,6 +340,9 @@ instruct g1GetAndSetN(indirect mem, rRegN newval, rRegP tmp1, rRegP tmp2, rRegP 
   effect(TEMP tmp1, TEMP tmp2, TEMP tmp3, KILL cr);
   format %{ "xchgq    $newval, $mem" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::atomic_counter_offset()));
+    }
     assert_different_registers($mem$$Register, $newval$$Register);
     write_barrier_pre(masm, this,
                       $mem$$Register /* obj */,
@@ -342,6 +369,9 @@ instruct g1LoadP(rRegP dst, memory mem, rRegP tmp, rFlagsReg cr)
   ins_cost(125); // XXX
   format %{ "movq    $dst, $mem\t# ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::load_counter_offset()));
+    }
     __ movq($dst$$Register, $mem$$Address);
     write_barrier_pre(masm, this,
                       noreg /* obj */,
@@ -359,6 +389,9 @@ instruct g1LoadN(rRegN dst, memory mem, rRegP tmp1, rRegP tmp2, rFlagsReg cr)
   ins_cost(125); // XXX
   format %{ "movl    $dst, $mem\t# compressed ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::load_counter_offset()));
+    }
     __ movl($dst$$Register, $mem$$Address);
     __ movl($tmp1$$Register, $dst$$Register);
     __ decode_heap_oop($tmp1$$Register);
