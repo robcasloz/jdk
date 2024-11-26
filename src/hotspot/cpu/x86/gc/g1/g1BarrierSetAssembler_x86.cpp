@@ -197,7 +197,8 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
                                            const Register thread,
                                            const Register tmp,
                                            Label& done,
-                                           Label& runtime) {
+                                           Label& runtime,
+                                           bool c2) {
   // Do we need to load the previous value?
   if (obj != noreg) {
     __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
@@ -206,7 +207,7 @@ static void generate_pre_barrier_slow_path(MacroAssembler* masm,
   __ cmpptr(pre_val, NULL_WORD);
   __ jcc(Assembler::equal, done);
 
-  if (G1ProfileBarrierTests) {
+  if (G1ProfileBarrierTests && c2) {
     __ incrementq(Address(r15_thread, JavaThread::pre_notnull_counter_offset()));
   }
 
@@ -246,7 +247,7 @@ void G1BarrierSetAssembler::g1_write_barrier_pre(MacroAssembler* masm,
   generate_pre_barrier_fast_path(masm, thread);
   // If marking is not active (*(mark queue active address) == 0), jump to done
   __ jcc(Assembler::equal, done);
-  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, done, runtime, false);
 
   __ bind(runtime);
 
@@ -294,7 +295,8 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
                                             const Register tmp,
                                             const Register tmp2,
                                             Label& done,
-                                            bool new_val_may_be_null) {
+                                            bool new_val_may_be_null,
+                                            bool c2) {
   CardTableBarrierSet* ct = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
   // Does store cross heap regions?
   __ movptr(tmp, store_addr);                                    // tmp := store address
@@ -302,7 +304,7 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
   __ shrptr(tmp, G1HeapRegion::LogOfHRGrainBytes);               // ((store address ^ new value) >> LogOfHRGrainBytes) == 0?
   __ jcc(Assembler::equal, done);
 
-  if (G1ProfileBarrierTests) {
+  if (G1ProfileBarrierTests && c2) {
     __ incrementq(Address(r15_thread, JavaThread::post_inter_counter_offset()));
   }
 
@@ -312,7 +314,7 @@ static void generate_post_barrier_fast_path(MacroAssembler* masm,
     __ jcc(Assembler::equal, done);
   }
 
-  if (G1ProfileBarrierTests) {
+  if (G1ProfileBarrierTests && c2) {
     __ incrementq(Address(r15_thread, JavaThread::post_notnull_counter_offset()));
   }
 
@@ -331,12 +333,13 @@ static void generate_post_barrier_slow_path(MacroAssembler* masm,
                                             const Register tmp,
                                             const Register tmp2,
                                             Label& done,
-                                            Label& runtime) {
+                                            Label& runtime,
+                                            bool c2) {
   __ membar(Assembler::Membar_mask_bits(Assembler::StoreLoad));  // StoreLoad membar
   __ cmpb(Address(tmp, 0), G1CardTable::dirty_card_val());       // *(card address) == dirty_card_val?
   __ jcc(Assembler::equal, done);
 
-  if (G1ProfileBarrierTests) {
+  if (G1ProfileBarrierTests && c2) {
     __ incrementq(Address(r15_thread, JavaThread::post_clean_counter_offset()));
   }
 
@@ -364,10 +367,10 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   Label done;
   Label runtime;
 
-  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, true /* new_val_may_be_null */);
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, done, true /* new_val_may_be_null */, false);
   // If card is young, jump to done
   __ jcc(Assembler::equal, done);
-  generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime);
+  generate_post_barrier_slow_path(masm, thread, tmp, tmp2, done, runtime, false);
 
   __ bind(runtime);
   // save the live input values
@@ -442,7 +445,7 @@ void G1BarrierSetAssembler::generate_c2_pre_barrier_stub(MacroAssembler* masm,
     __ incrementq(Address(r15_thread, JavaThread::pre_marking_counter_offset()));
   }
 
-  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime);
+  generate_pre_barrier_slow_path(masm, obj, pre_val, thread, tmp, *stub->continuation(), runtime, true);
 
   __ bind(runtime);
 
@@ -472,7 +475,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post_c2(MacroAssembler* masm,
   }
 
   bool new_val_may_be_null = (stub->barrier_data() & G1C2BarrierPostNotNull) == 0;
-  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), new_val_may_be_null);
+  generate_post_barrier_fast_path(masm, store_addr, new_val, tmp, tmp2, *stub->continuation(), new_val_may_be_null, true);
   // If card is not young, jump to stub (slow path)
   __ jcc(Assembler::notEqual, *stub->entry());
 
@@ -494,7 +497,7 @@ void G1BarrierSetAssembler::generate_c2_post_barrier_stub(MacroAssembler* masm,
     __ incrementq(Address(r15_thread, JavaThread::post_young_counter_offset()));
   }
 
-  generate_post_barrier_slow_path(masm, thread, tmp, tmp2, *stub->continuation(), runtime);
+  generate_post_barrier_slow_path(masm, thread, tmp, tmp2, *stub->continuation(), runtime, true);
 
   __ bind(runtime);
 
