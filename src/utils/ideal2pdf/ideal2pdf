@@ -1,0 +1,1366 @@
+#!/usr/bin/python3
+#
+# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+
+import sys
+import argparse
+import xml.etree.ElementTree as et
+import networkx as nx
+import os
+import io
+from pathlib import *
+import multiprocessing
+import concurrent
+import subprocess
+import tempfile
+import shutil
+import re
+import colorsys
+import graphviz # 0.8.4
+import html
+import matplotlib
+import matplotlib.cm as cm
+from itertools import chain
+from pdfrw import PdfReader, PdfWriter
+
+# Common helper functions.
+
+def find(predicate, list):
+    return next((e for e in list if predicate(e)), None)
+
+# Helper functions for traversing the XML graph.
+
+def find_node(graph, idx):
+    for node in graph.find('nodes'):
+        if int(node.attrib['id']) == idx:
+            return node
+    assert False
+
+def find_node_properties(graph, idx):
+    node = find_node(graph, idx)
+    assert node != None
+    ps = {}
+    for p in node.find('properties'):
+        ps[p.attrib['name']] = p.text.strip()
+    return ps
+
+def xml2graphs(xml_root, args):
+    graphs = []
+    graph_id = 0
+    for group in xml_root:
+        method = group.find('method')
+        method_name = method.attrib['name']
+        short_method_name = method.attrib['shortName'].strip()
+        bci = int(method.attrib['bci'])
+        for graph in group.findall('graph'):
+            graph_name = graph.attrib['name']
+            if not matches((graph_id, short_method_name, graph_name),
+                           args.filter):
+                graph_id += 1
+                continue
+            # Load the entire graph first.
+            G = nx.MultiDiGraph()
+            G.graph['id'] = graph_id
+            G.graph['method'] = short_method_name
+            G.graph['phase'] = graph_name
+            G.graph['context'] = {'args' : args}
+            if not args.list:
+                for node in graph.find('nodes'):
+                    idx = int(node.attrib['id'])
+                    properties = find_node_properties(graph, idx)
+                    G.add_node(idx, **properties)
+                for edge in graph.find('edges'):
+                    src = int(edge.attrib['from'])
+                    dst = int(edge.attrib['to'])
+                    ind = int(edge.attrib['index'])
+                    # The XML file sometimes contains (src,dst,ind) duplicates.
+                    if not G.has_edge(src, dst, key=ind):
+                        G.add_edge(src, dst, key=ind)
+            # Load the control-flow graph, if available.
+            CFG = None
+            if graph.find('controlFlow'):
+                CFG = nx.DiGraph()
+                if not args.list:
+                    for xmlblock in graph.find('controlFlow'):
+                        block = int(xmlblock.attrib['name'])
+                        # The node order reflects the local schedule.
+                        nodes = []
+                        for xmlnode in xmlblock.find('nodes'):
+                            node = int(xmlnode.attrib['id'])
+                            nodes.append(node)
+                        CFG.add_node(block, **{'nodes' : nodes})
+                        for xmlsucc in xmlblock.find('successors'):
+                            succ = int(xmlsucc.attrib['name'])
+                            CFG.add_edge(block, succ)
+            G.graph['cfg'] = CFG
+            graphs.append(G)
+            graph_id += 1
+    return graphs
+
+def to_rgb(hex):
+    return tuple(int(hex.lstrip('#')[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+
+def to_hex(rgb):
+    return '#%02x%02x%02x' % tuple([int(c * 255.0) for c in rgb])
+
+def scale(hex, f):
+    """
+    Scales the lightness of a hex color by a factor.
+    """
+    h, l, s = colorsys.rgb_to_hls(*to_rgb(hex))
+    return to_hex(colorsys.hls_to_rgb(h, min(1, l * f), s = s))
+
+def blend(hex1, w, hex2):
+    """
+    Blends w percent of a color with (1 - w) percent of another one.
+    """
+    blended = [(c1 * w + c2 * (1.0 - w))
+               for (c1, c2) in zip(to_rgb(hex1), to_rgb(hex2))]
+    return to_hex(blended)
+
+def adjust(color, distance, background_color='#ffffff'):
+    if distance == 0:
+        return color
+    else:
+        return blend(color, 0.2, background_color)
+
+# Color-blind friendly palette.
+colorblind = ['#bbcc33',
+              scale('#aaaa00', 1.1),
+              scale('#77aadd', 1.2),
+              '#ee8866',
+              '#eedd88',
+              '#ffaabb',
+              '#99ddff',
+              '#44bb99',
+              '#dddddd']
+
+node_color = {
+    'mixed'   : colorblind[5],
+    'control' : colorblind[3],
+    'other'   : colorblind[4],
+    'data'    : colorblind[2],
+    'memory'  : colorblind[1],
+    'region'  : adjust(colorblind[3], 1)
+    }
+
+dark_factor = {
+    colorblind[1] : 0.7,
+    colorblind[2] : 0.6,
+    colorblind[3] : 0.8,
+    colorblind[4] : 0.7,
+    colorblind[5] : 0.9
+}
+
+edge_color = {
+    'mixed'   : scale(node_color['mixed'], dark_factor[node_color['mixed']]),
+    'control' : scale(node_color['control'], dark_factor[node_color['control']]),
+    'other'   : scale(node_color['other'], dark_factor[node_color['other']]),
+    'data'    : scale(node_color['data'], dark_factor[node_color['data']]),
+    'memory'  : scale(node_color['memory'], dark_factor[node_color['memory']]),
+    'region'  : scale(node_color['control'], dark_factor[node_color['control']])
+    }
+
+region_text_color = blend(node_color['control'], 0.6, '#000000')
+
+def frontcolor(backcolor):
+    """
+    Whether to use black or white front color, based on background color.
+    """
+    rgb = [int(backcolor.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)]
+    y = 0.2126 * (rgb[0]/255)**2.2 + \
+        0.7151 * (rgb[1]/255)**2.2 + \
+        0.0721 * (rgb[2]/255)**2.2
+    if y < 0.20:
+        return '#ffffff'
+    else:
+        return '#000000'
+
+def draw(G):
+    if G.graph['cfg']:
+        draw_cfg(G)
+    draw_sea(G)
+
+def process(G):
+    if G.graph['cfg']:
+        process_cfg(G)
+    process_sea(G)
+    return G
+
+filter_symbols = {'id' : 'id: int',
+                  'method' : 'method: str',
+                  'phase' : 'phase: str'}
+def matches(graph_tuple, filter):
+    (id, method, phase) = graph_tuple
+    loc = locals()
+    filter_locals = dict([(sym, loc[sym]) for sym in filter_symbols.keys()])
+    return eval(filter, {}, filter_locals)
+
+def has_two_or_less_inputs(G, n):
+    return G.nodes[n]['name'] in \
+        ['Proj', 'Bool', 'If', 'CreateEx', 'CountedLoopEnd', 'Catch']
+
+def remove_nodes_if(G, p):
+    G.remove_nodes_from([n for n in G.nodes if p(G, n)])
+
+def is_inline(G, n):
+    name = G.nodes[n]['name']
+    if name in ['Parm', 'MachProj'] and \
+       G.nodes[n]['type'] != 'control' and \
+       all([G.nodes[p]['name'] == 'Start' for p in G.predecessors(n)]):
+        return True
+    if name in ['Con', 'ConI', 'ConL', 'ThreadLocal', 'loadConI']:
+        return True
+    return False
+
+def is_projection(G, n):
+    preds = list(G.predecessors(n))
+    if len(preds) == 1 and G.nodes[preds[0]]['type'] == 'tuple:':
+        return True
+    if G.nodes[n]['name'] in ['Bool', 'jmpDir']:
+        return True
+    return False
+
+def add_node_alias(G, n):
+    if is_inline(G, n):
+        name = G.nodes[n]['name']
+        type = G.nodes[n]['type']
+        dump_spec = G.nodes[n]['dump_spec']
+        alias = None
+        if 'is_con' in G.nodes[n] and dump_spec:
+            if type == 'top':
+                alias = '⊤'
+            else:
+                if ':' in dump_spec:
+                    # Example: ConI
+                    alias = dump_spec.split(':')[1]
+                else:
+                    # Example: loadConI
+                    alias = dump_spec.split('/')[0].replace('#', '')
+                if type == 'long:':
+                    alias += 'L'
+        elif name == 'Parm' and 'short_name' in G.nodes[n]:
+            alias = G.nodes[n]['short_name']
+        elif name == 'MachProj':
+            alias = dump_spec.split('/')[0]
+        if alias:
+            G.nodes[n]['alias'] = alias
+
+p_call_trap = re.compile("uncommon_trap\(reason=\'(\w*)\'")
+def add_extra_info(G, n):
+    name = G.nodes[n]['name']
+    dump_spec = G.nodes[n]['dump_spec']
+    dump_components = dump_spec.split()
+    extra = None
+    if name == 'CallStaticJava':
+        if len(dump_components) >= 3:
+            tm = p_call_trap.match(dump_components[2])
+            if tm:
+                extra = 'trap: ' + tm.group(1)
+            else:
+                extra = dump_components[2]
+    elif name == 'CreateEx':
+        if len(dump_components) >= 1:
+            ex_components = dump_components[0].split(':')
+            if len(ex_components) >= 2:
+                extra = ex_components[1]
+    if extra:
+        G.nodes[n]['extra'] = extra
+
+def simple_projection_label(G, n):
+    name = G.nodes[n]['name']
+    if name == 'IfTrue':
+        return 'T'
+    if name == 'IfFalse':
+        return 'F'
+    if name == 'CatchProj':
+        con = G.nodes[n]['con']
+        if con == '0':
+            return 'F'
+        else:
+            return 'T'
+    return ''
+
+def is_pin(G, e):
+    (src, dst, _ind) = e
+    return G.edges[e]['category'] == 'control' and not 'cfg' in G.nodes[dst]
+
+def is_cfg(G, n):
+    if G.nodes[n]['category'] in ['control', 'mixed']:
+        # Example: If, IfTrue, CallStaticJava.
+        return True
+    if G.nodes[n]['type'] == 'bottom':
+        # Example: Halt, Return, Rethrow.
+        for (_, __, ind, attrs) in G.in_edges(n, data=True, keys=True):
+            if ind == 0 and attrs['category'] == 'control':
+                return True
+    if G.nodes[n]['name'] == 'Root':
+        return True
+    return False
+
+def is_region(G, n):
+    return G.nodes[n].get('region', False)
+
+def is_collapsed(G, n):
+    return G.nodes[n].get('collapsed', False)
+
+def is_expanded_region(G, n):
+    return is_region(G, n) and not is_collapsed(G, n)
+
+def is_collapsed_region(G, n):
+    return is_region(G, n) and is_collapsed(G, n)
+
+def process_sea(G):
+    """
+    Process the graph, applying analysis and simplifications to make it more
+    understandable.
+    """
+    args = G.graph['context']['args']
+    # Mark CFG nodes and edges.
+    for n in G.nodes:
+        if is_cfg(G, n):
+            G.nodes[n]['cfg'] = True
+    for e in G.edges:
+        (src, dst, _) = e
+        if 'cfg' in G.nodes[src] and 'cfg' in G.nodes[dst]:
+            G.edges[e]['cfg'] = True
+    if args.remove_secondary:
+        # Hide root node.
+        remove_nodes_if(G, lambda G, n: G.nodes[n]['name'] == 'Root')
+        # Hide frame pointer, return address, and I/O nodes.
+        for type in ['return_address', 'rawptr:', 'abIO']:
+            remove_nodes_if(G, lambda G, n: G.nodes[n]['type'] == type)
+    # Mark source node.
+    root =  find(lambda n: G.nodes[n]['name'] == 'Root', G.nodes)
+    start = find(lambda n: G.nodes[n]['name'] == 'Start', G.nodes)
+    if root != None:
+        G.nodes[root]['source'] = True
+    elif start != None:
+        G.nodes[start]['source'] = True
+    # Remove self-loops.
+    if args.remove_self:
+        for e in list(G.edges):
+            (src, dst, _) = e
+            if src == dst:
+                G.remove_edge(src, dst)
+    # Add input port information.
+    if args.positional:
+        for n in G.nodes:
+            ports = max([ind for (_, __, ind) in G.in_edges(n, keys=True)],
+                        default=-1) + 1
+            G.nodes[n]['ports'] = ports
+        for e in G.edges(keys=True):
+            (_, __, ind) = e
+            G.edges[e]['port'] = ind
+    # Decide whether each edge needs a port label.
+    for e in G.edges:
+        (src, dst, ind) = e
+        requires_index_label = False
+        if not args.positional:
+            requires_index_label = G.edges[e]['category'] != 'control' and \
+                not has_two_or_less_inputs(G, dst)
+        G.edges[e]['requires_index_label'] = requires_index_label
+    # Inline constant and parameter nodes.
+    if args.inline:
+        for n in list(G.nodes):
+            if not is_inline(G, n):
+                continue
+            # Duplicate n as a predecessor of s.
+            for s in G.successors(n):
+                i = str(n) + 'x' + str(s)
+                G.add_node(i, **G.nodes[n])
+                G.nodes[i]['inlined'] = True
+            # Duplicate edges.
+            for e in G.edges([n], keys=True):
+                (_, s, ind) = e
+                i = str(n) + 'x' + str(s)
+                G.add_edge(i, s, key=ind, **G.edges[e])
+            # Remove original node.
+            G.remove_node(n)
+    # Increase weight of backbone edges.
+    # Merge edges between same source and destination node, where only their
+    # input port numbers change.
+    if args.collapse_edges:
+        duplicated = {}
+        for e in G.edges(keys=True):
+            (src, dst, ind) = e
+            if not (src, dst) in duplicated:
+                duplicated[(src, dst)] = []
+            duplicated[(src, dst)].append(ind)
+        for ((src, dst), inds) in duplicated.items():
+            if len(inds) <= 1:
+                continue
+            edges = G.get_edge_data(src, dst)
+            # Pick a representative edge, we assume all are equal.
+            (ind, attrs) = next(iter(edges.items()))
+            attrs['indices'] = sorted(edges.keys())
+            while G.has_edge(src, dst):
+                G.remove_edge(src, dst)
+            # The index becomes irrelevant if it has an 'indices' attribute.
+            G.add_edge(src, dst, ind, **attrs)
+    # Compute node name aliases.
+    if args.use_aliases:
+        for n in G.nodes():
+            add_node_alias(G, n)
+    # Show extra node information on a per-node basis.
+    if args.extend_node_info:
+        for n in G.nodes():
+            add_extra_info(G, n)
+    # Fold projection-like nodes into edges.
+    if args.fold_projs:
+        # Fold projection-like nodes into edges.
+        for n in list(G.nodes()):
+            if not is_projection(G, n):
+                continue
+            # Draw edges from the only predecessor to each of the successors,
+            # copying the attributes of the outgoing edges.
+            pred = list(G.predecessors(n))
+            assert(len(pred) == 1)
+            p = pred[0]
+            for s in list(G.successors(n)):
+                for (ind, attrs) in list(G.get_edge_data(n, s).items()):
+                    G.add_edge(p, s, ind, **attrs)
+                    simple_label = simple_projection_label(G, n)
+                    if len(simple_label) > 0:
+                        G.edges[(p, s, ind)]['simple_label'] = simple_label
+                    G.remove_edge(n, s, ind)
+            G.remove_node(n)
+    # Fold constant and parameter nodes.
+    if args.fold_constants:
+        is_inlined = lambda n : 'inlined' in G.nodes[n]
+        for n in G.nodes():
+            folded_inputs = \
+                sorted([(attrs.get('indices', [ind]),
+                         G.nodes[p].get('alias', G.nodes[p]['name']))
+                        for (p, _, ind, attrs)
+                        in G.in_edges(n, data=True, keys=True)
+                        if is_inlined(p)])
+            if len(folded_inputs) > 0:
+                G.nodes[n]['folded_inputs'] = folded_inputs
+        G.remove_nodes_from(list(filter(is_inlined, G.nodes())))
+    # Mark pin edges.
+    for e in G.edges(keys=True):
+        if is_pin(G, e):
+            G.edges[e]['pin'] = True
+    # Mark pinned nodes with their corresponding region.
+    if args.cluster_pinned:
+        for n in G.nodes():
+            for (src, _, attrs) in G.in_edges(n, data=True):
+                if 'pin' in attrs:
+                    G.nodes[n]['pinned_region'] = src
+    # Define region nodes.
+    if args.hierarchical and G.graph['cfg'] != None:
+        CFG = G.graph['cfg']
+        for b in CFG.nodes():
+            bidx = 'B' + str(b)
+            nodes = [n for n in CFG.nodes[b]['nodes'] if n in G]
+            G.add_node(bidx, **{'name' : bidx,
+                                'region' : True,
+                                'nodes' : nodes})
+
+collapse_symbols = {'id' : 'id: int',
+                    'property' : 'property: str -> var'}
+def collapse(G):
+    """
+    Collapse region nodes according to the specification.
+    """
+    CFG = G.graph['cfg']
+    args = G.graph['context']['args']
+    # Define a few convenience methods for users.
+    visited = set()
+    for r in [n for n in G.nodes if is_region(G, n)]:
+        id       = r
+        property = lambda p : G.nodes[r].get(p)
+        loc = locals()
+        collapse_locals = dict([(sym, loc[sym]) for sym in collapse_symbols])
+        if eval(args.collapse, {}, collapse_locals):
+            rnodes = set(G.nodes[r]['nodes'])
+            for n in rnodes:
+                # Add external incoming edges of n to r.
+                for (src, __, ind, attrs) in G.in_edges(n, data=True, keys=True):
+                    attrs['requires_index_label'] = False
+                    attrs.pop('port', None)
+                    if not src in rnodes:
+                        G.add_edge(src, r, key=ind, **attrs)
+                # Add external outgoing edges of n to r.
+                for (_, dst, ind, attrs) in G.out_edges(n, data=True, keys=True):
+                    if not dst in rnodes:
+                        G.add_edge(r, dst, key=ind, **attrs)
+                # If r contains a source, mark the region as source.
+                if 'source' in G.nodes[n]:
+                    G.nodes[r]['source'] = True
+            # Mark r as a collapsed node.
+            G.nodes[r]['collapsed'] = True
+            # TODO: perhaps derived type from all outgoing edges.
+            G.nodes[r]['type'] = 'region'
+            G.nodes[r]['category'] = 'region'
+            G.nodes[r]['id'] = r
+            G.nodes[r]['cfg'] = True
+            # Remove all nodes within r.
+            G.remove_nodes_from(rnodes)
+    return G
+
+highlight_symbols = {'id' : 'id: int',
+                     'name' : 'name: str',
+                     'type' : 'type: str',
+                     'category' : 'category: str',
+                     'is_cfg' : 'is_cfg: bool',
+                     'property' : 'property: str -> var'}
+def highlight(G):
+    """
+    Filter the graph nodes according to the highlighting specification. Compute
+    the status of each node (selected, neighbor n, external). If args.stable is
+    false, directly removee external nodes.
+    """
+    CFG = G.graph['cfg']
+    args = G.graph['context']['args']
+    # Define a few convenience methods for users.
+    visited = set()
+    for n in [n for n in G.nodes if not is_expanded_region(G, n)]:
+        id       = n
+        name     = G.nodes[n]['name']
+        type     = G.nodes[n]['type']
+        category = G.nodes[n]['category']
+        is_cfg   = 'cfg' in G.nodes[n]
+        property = lambda p : G.nodes[n].get(p)
+        loc = locals()
+        highlight_locals = dict([(sym, loc[sym]) for sym in highlight_symbols])
+        if eval(args.highlight, {}, highlight_locals):
+            status = 'selected'
+            G.nodes[n]['distance'] = 0
+            visited.add(n)
+        else:
+            status = 'external'
+        G.nodes[n]['status'] = status
+    # Compute neighborhood and mark status of neighbors with their distance.
+    queue = list(visited)
+    while queue:
+        n = queue.pop(0)
+        distance = G.nodes[n]['distance']
+        if args.neighborhood == 'inf' or \
+           distance < int(args.neighborhood):
+            for s in chain(G.predecessors(n), G.successors(n)):
+                if s not in visited:
+                    visited.add(s)
+                    queue.append(s)
+                    G.nodes[s]['distance'] = distance + 1
+                    G.nodes[s]['status'] = 'neighbor'
+    # If args.stable is false, directly remove external nodes.
+    if not args.stable:
+        remove_nodes_if(G, lambda _, n:
+                        not (n in visited) and not is_region(G, n))
+        for n in G.nodes:
+            r = G.nodes[n].get('pinned_region')
+            if r != None and not r in visited:
+                del G.nodes[n]['pinned_region']
+        if CFG != None:
+            for b in CFG.nodes():
+                nodelist = [(n, ins) for (n, ins) in CFG.nodes[b]['nodelist']
+                            if n['id'] in visited]
+                CFG.nodes[b]['nodelist'] = nodelist
+    return G
+
+def format_inputs(folded_inputs):
+    return ' '.join([('[' + ','.join(map(str, indices)) + ']=' + name)
+                     for (indices, name) in folded_inputs])
+
+def label(G, n, color, fillcolor, args):
+    name = G.nodes[n].get('alias', G.nodes[n]['name'])
+    max_cols = 1
+    input_line = ''
+    if 'ports' in G.nodes[n]:
+        nports = max(G.nodes[n]['ports'], 1)
+        ports = ""
+        for p in range(0, nports):
+            ports += '<TD PORT="pin' + str(p) + '"></TD>'
+        input_line = '<TR><TD></TD>' + ports + '<TD></TD></TR>'
+        max_cols = 2 + nports
+    elif args.show_folded and 'folded_inputs' in G.nodes[n]:
+        input_line = \
+            '<TR><TD><FONT POINT-SIZE="10">' + \
+            format_inputs(G.nodes[n]['folded_inputs']) + '</FONT></TD></TR>'
+    if is_collapsed_region(G, n):
+        sign = '<FONT COLOR="' + region_text_color + '"><B>' + name + '</B></FONT>'
+    else:
+        sign = str(G.nodes[n]['idx']) + ' ' + name
+    node_text = '<TR><TD COLSPAN="' + str(max_cols) + '">' + sign + '</TD></TR>'
+    extra_text = ''
+    if 'extra' in G.nodes[n]:
+        extra_text = '<TR><TD>(' + G.nodes[n]['extra'] + ')</TD></TR>'
+    output_line = ''
+    border = 2
+    if 'ports' in G.nodes[n]:
+        center = '<TD PORT="pout" COLSPAN="' + str(max_cols - 2) + '"></TD>'
+        output_line = '<TR><TD></TD>' + center + '<TD></TD></TR>'
+    if args.igv_style:
+        border = 1
+    cellspacing = 0
+    if args.igv_style and not args.positional and not args.show_folded:
+        cellspacing = 2
+    return '<<TABLE COLOR="' + color + '" BGCOLOR="' + fillcolor + \
+        '" BORDER="' + str(border) + \
+        '" CELLBORDER="0" CELLSPACING="' + str(cellspacing) + \
+        '" CELLPADDING="2">' + \
+        input_line + node_text + extra_text + output_line + \
+        '</TABLE>>'
+
+def cfg_preorder(G, sources):
+    visited = set()
+    dfs = []
+    stack = list(reversed(sources))
+    while stack:
+        n = stack.pop()
+        if n in visited:
+            continue
+        visited.add(n)
+        dfs.append(n)
+        # Visit the successors in a fixed order for stability across phases.
+        for s in sorted(G.successors(n), key=str, reverse=True):
+            if 'cfg' in G.nodes[s]:
+                stack.append(s)
+    return dfs
+
+def translate_sea(G, Gdot):
+    """
+    Translates the graph from its generic graph format into its GraphViz form.
+    """
+    args = G.graph['context']['args']
+    # Find source(s).
+    sources = sorted([n for n in G.nodes() if 'source' in G.nodes[n]])
+    primitive = [n for n in G.nodes() if not is_expanded_region(G, n)]
+    if args.control_centric and len(sources) > 0:
+        # The node declaration order affects GraphViz's ranking algorithm.
+        # Declare first CFG nodes in DFS order to lead GraphViz towards a
+        # natural CFG structure (with back-edges flowing upwards).
+        nodelist = []
+        visited = set()
+        dfs = cfg_preorder(G, sources)
+        nodelist.extend(dfs)
+        visited.update(dfs)
+        rest = []
+        for n in primitive:
+            if not n in visited:
+                rest.append(n)
+        # Emit nodes in a fixed order for stability across phases.
+        nodelist.extend(sorted(rest, key=str))
+    else:
+        nodelist = sorted(primitive, key=str)
+    for n in nodelist:
+        distance = 0
+        if G.nodes[n]['status'] == 'neighbor':
+            distance = G.nodes[n]['distance']
+        category  = G.nodes[n]['category']
+        fillcolor = adjust(node_color[category], distance)
+        color     = adjust(edge_color[category], distance)
+        if args.igv_style:
+            color = adjust('#000000', distance)
+        fontcolor = adjust(frontcolor(fillcolor), distance)
+        if G.nodes[n]['status'] == 'external':
+            style = 'invis'
+        else:
+            style = ''
+        inlined_attrs = {}
+        if 'inlined' in G.nodes[n]:
+            inlined_attrs = {
+                'fontsize' : '9',
+                'penwidth' : '1'
+            }
+        else:
+            inlined_attrs = {
+                'penwidth' : '2'
+            }
+        margin = '0.0'
+        if args.positional and not is_collapsed_region(G, n):
+            margin = '0.08'
+        Gdot.node(str(n),
+                  shape='plaintext',
+                  margin=margin,
+                  height='0.0',
+                  width='0.0',
+                  style=style,
+                  label=label(G, n, color, fillcolor, args),
+                  fontcolor=fontcolor,
+                  **inlined_attrs)
+    # Emit edges in a fixed order for stability across phases.
+    for e in sorted(G.edges, key=str):
+        (src, dst, ind) = e
+        distance = 0
+        if G.nodes[src]['status'] == 'neighbor' or \
+           G.nodes[dst]['status'] == 'neighbor':
+            distance = max([G.nodes[n].get('distance', 0) for n in [src, dst]])
+        category  = G.edges[e]['category']
+        color     = adjust(edge_color[category], distance)
+        penwidth  = '1'
+        if category in ['mixed', 'control'] and not args.igv_style:
+            penwidth = '2'
+        style = 'solid'
+        dir = 'forward'
+        if 'pin' in G.edges[e]:
+            if args.cluster_pinned or args.hierarchical:
+                style = 'invis'
+            else:
+                style = 'dashed'
+            if not args.positional:
+                dir = 'back'
+            penwidth = '1'
+        if G.edges[e].get('status') == 'external' or \
+           'external' in [G.nodes[src]['status'], G.nodes[dst]['status']]:
+            style = 'invis'
+        index_label_attrs = {}
+        if G.edges[e]['requires_index_label']:
+            index = str(ind)
+            if 'indices' in G.edges[e]:
+                index = ','.join(map(str, G.edges[e]['indices']))
+            headfontcolor = adjust('#000000', distance)
+            hlab = '<<font color="' + headfontcolor + '">' + index + '</font>>'
+            index_label_attrs = {
+                'headlabel'     : hlab,
+                'labeldistance' : '2',
+                'labelangle'    : str(-20.0 - len(str(ind)) * 3),
+                'fontsize'      : '12'
+            }
+        simple_label_attrs = {}
+        if 'simple_label' in G.edges[e]:
+            simple_label = G.edges[e]['simple_label']
+            if not 'pin' in G.edges[e] and not args.igv_style:
+                simple_label = '<<B> ' + simple_label + '</B>>'
+            simple_label_attrs = {
+                'label' : simple_label,
+                'fontcolor' : color
+            }
+        other_attrs = {}
+        if args.control_centric and 'cfg' in G.edges[e]:
+            other_attrs['weight'] = '100000'
+        if args.positional:
+            other_attrs['arrowhead'] = 'none'
+        src_str = str(src)
+        dst_str = str(dst)
+        if 'port' in G.edges[e]:
+            if not is_region(G, src):
+                src_str += ':pout'
+            dst_str += ':pin' + str(G.edges[e]['port'])
+        Gdot.edge(src_str, dst_str,
+                  color=color,
+                  penwidth=penwidth,
+                  style=style,
+                  dir=dir,
+                  **index_label_attrs,
+                  **simple_label_attrs,
+                  **other_attrs)
+    if args.control_centric and len(sources) > 0:
+        # Mark graph source(s).
+        with Gdot.subgraph(name='source') as s:
+            for source in sources:
+                s.node(str(source))
+            s.attr(rank='source')
+    # TODO: produce stable graph sequences in the presence of nodes that are
+    # pinned to different regions in different phases.
+    if args.cluster_pinned and not args.stable:
+        # Force vertical alignment of pinned nodes and their regions.
+        pinned = {}
+        for n in G.nodes():
+            r = G.nodes[n].get('pinned_region')
+            if r != None:
+                if not r in pinned:
+                    pinned[r] = set()
+                pinned[r].add(n)
+        # Emit subgraphs in a fixed order for stability across phases.
+        for r, ps in sorted(pinned.items()):
+            with Gdot.subgraph(name='cluster_' + str(r)) as s:
+                s.node(str(r))
+                for p in ps:
+                     s.node(str(p))
+                s.attr(rank='same')
+                s.attr(style='filled')
+                fillcolor = adjust(node_color['control'], 1)
+                s.attr(fillcolor=fillcolor)
+                s.attr(color=fillcolor)
+    if args.hierarchical:
+        for r in G.nodes:
+            if is_expanded_region(G, r):
+                with Gdot.subgraph(name='cluster_' + G.nodes[r]['name']) as c:
+                    c.attr(label=str(r))
+                    c.attr(style='filled')
+                    fillcolor = node_color['region']
+                    c.attr(fillcolor=fillcolor)
+                    c.attr(color=node_color['control'])
+                    c.attr(fontcolor=region_text_color)
+                    c.attr(penwidth='2')
+                    c.attr(labeljust='l')
+                    for n in G.nodes[r]['nodes']:
+                        c.node(str(n))
+    if args.show_title:
+        Gdot.attr(label='\n\n(' + G.graph['method'] + ' - ' + \
+                  G.graph['phase'] + ')')
+        Gdot.attr(fontsize='16')
+    if args.igv_style:
+        Gdot.attr(splines='polyline')
+        if not args.stable and not args.hierarchical:
+            # dot crashes with clusters and edge concentration
+            Gdot.attr(concentrate='true')
+    Gdot.attr(newrank='true')
+
+def global_attr(args):
+    fontname = 'helvetica'
+    if args.igv_style:
+        fontname = 'arial'
+    return {'fontname' : fontname}
+
+def draw_sea(G):
+    """
+    Draw a sea-of-nodes graph by translating it into a Graphviz graph, and
+    invoking 'dot' to produce a PDF file.
+    """
+    args = G.graph['context']['args']
+    # Translate the graph into the Graphviz format.
+    Gdot = graphviz.Digraph(strict=False, engine='dot', format='pdf',
+                            graph_attr=global_attr(args),
+                            node_attr=global_attr(args),
+                            edge_attr=global_attr(args))
+    translate_sea(G, Gdot)
+    # Produce a PDF file.
+    tempdir = G.graph['context']['tempdir']
+    args    = G.graph['context']['args']
+    emit_graph('sea', G.graph['id'], Gdot, tempdir, args)
+
+def find_root_block(CFG):
+    # Try to find block containing 'Root' node.
+    for b in CFG.nodes():
+        for (n, _) in CFG.nodes[b]['nodelist']:
+            if n['name'] == 'Root':
+                return b
+    return 0
+
+def schedule(nodelist):
+    # Map from node id to nodelist item.
+    nodelist_item = {}
+    for (n, ins) in nodelist:
+        nodelist_item[n['id']] = (n, ins)
+    # Set of nodes that contribute dependencies.
+    local = set([n['id'] for (n, _) in nodelist])
+    # Create local dependency graph.
+    DG = nx.DiGraph()
+    for (n, ins) in nodelist:
+        idx = n['id']
+        DG.add_node(idx)
+        DG.nodes[idx]['name'] = n['name']
+        preds = set(ins).intersection(local)
+        preds.discard(idx)
+        if n['name'] == 'Phi':
+            preds = set()
+        for p in preds:
+            DG.add_edge(p, idx)
+    scheduled_nodelist = []
+    for n in nx.lexicographical_topological_sort(DG):
+        scheduled_nodelist.append(nodelist_item[n])
+    return scheduled_nodelist
+
+def process_cfg(G):
+    """
+    Process the CFG, applying analysis and simplifications to make it more
+    understandable.
+    """
+    CFG = G.graph['cfg']
+    args = G.graph['context']['args']
+    # Mark CFG nodes.
+    for n in G.nodes:
+        if is_cfg(G, n):
+            G.nodes[n]['cfg'] = True
+    # Show extra node information on a per-node basis.
+    if args.extend_node_info:
+        for n in G.nodes():
+            add_extra_info(G, n)
+    # Compute list of nodes in each block.
+    for b in list(CFG.nodes()):
+        nodelist = []
+        for n in CFG.nodes[b]['nodes']:
+            node   = G.nodes[n]
+            inputs = {}
+            for p in G.predecessors(n):
+                for ind in G.get_edge_data(p, n).keys():
+                    inputs[ind] = p
+            pos_inputs = []
+            for i in range(0, max(inputs.keys(), default=0) + 1):
+                pos_inputs.append(inputs.get(i, -1))
+            nodelist.append((node, pos_inputs))
+        # TODO: schedule the node list of each block.
+        CFG.nodes[b]['nodelist'] = nodelist
+    # Find relative frequency of each block.
+    for b in list(CFG.nodes()):
+        nodelist = CFG.nodes[b]['nodelist']
+        if len(nodelist) > 0:
+            CFG.nodes[b]['frequency'] = float(nodelist[0][0]['frequency'])
+        else:
+            CFG.nodes[b]['frequency'] = 0.0
+    # Remove root block.
+    root = find_root_block(CFG)
+    CFG.remove_node(root)
+    return
+
+def pred_str(p):
+    if p == -1:
+        return '_'
+    else:
+        return str(p)
+
+def block_label(CFG, b, backcolor, args):
+    textcolor = '#000000'
+    def font_color(text, color=textcolor):
+        return '<FONT COLOR="' + color + '">' + text + '</FONT>'
+    block_color = adjust(textcolor, block_distance(CFG, b), backcolor)
+    begin = '<' + \
+        '<TABLE border="0"><TR><TD>' + \
+        font_color('<B>B' + str(b) + ':</B>', block_color) + '</TD></TR>'
+    end = '</TABLE>>'
+    nodes = ''
+    for (n, ins) in CFG.nodes[b]['nodelist']:
+        distance = 0
+        if n['status'] == 'neighbor':
+            distance = n['distance']
+        color = adjust(textcolor, distance, backcolor)
+        extra_text = ''
+        if 'extra' in n:
+            extra_text = '<br align="left"/>(' + n['extra'] + \
+                ')<br align="left"/>'
+        location = ''
+        loc_info = []
+        if args.show_bcis and 'bci' in n:
+            loc_info.append('b' + n['bci'])
+        if args.show_lines and 'line' in n:
+            loc_info.append('l' + n['line'])
+        if len(loc_info) > 0:
+            location = '<TD  valign="top">@' + ','.join(loc_info) + '</TD>'
+        nodeid = str(n['id'])
+        if args.show_regs and 'reg' in n and \
+           not 'OptoReg' in n['reg'] and not 'Special' in n['reg']:
+            nodeid += ' (' + html.escape(n['reg']) + ')'
+        nodeline = \
+            '<TD align="right" valign="top">' + \
+            font_color(nodeid + ':', color) + '</TD>' + \
+            '<TD align="left">' + \
+            font_color(html.escape(n['name']) + ' ' + \
+                       ' '.join([pred_str(p) for p in ins]) + extra_text,
+                       color) + '</TD>' + \
+            location
+        nodes += '<TR>' + nodeline + '</TR>'
+    return begin + nodes + end
+
+def block_distance(CFG, b):
+    return min([n.get('distance', 0) for (n, _) in CFG.nodes[b]['nodelist']],
+               default=1)
+
+def translate_cfg(G, CFGdot):
+    """
+    Translates the CFG from its generic graph format into its GraphViz form.
+    """
+    CFG = G.graph['cfg']
+    args = G.graph['context']['args']
+    # Do not use the full color scale, the extremes are too dark.
+    slack = 0.2
+    norm = matplotlib.colors.Normalize(vmin=(-slack), vmax=(1 + slack))
+    mapper = cm.ScalarMappable(norm=norm, cmap=cm.coolwarm)
+    for b in CFG.nodes:
+        distance = block_distance(CFG, b)
+        freq = CFG.nodes[b]['frequency']
+        fillcolor = '#ffffff'
+        color = adjust('#000000', distance)
+        if args.color:
+            fillcolor = adjust(matplotlib.colors.to_hex(mapper.to_rgba(freq)),
+                               distance)
+            color = fillcolor
+        CFGdot.node(str(b),
+                    shape='rectangle',
+                    style='filled',
+                    fillcolor=fillcolor,
+                    color=color,
+                    label=block_label(CFG, b, fillcolor, args))
+    for e in CFG.edges:
+        (src, dst) = e
+        distance = max([block_distance(CFG, b) for b in [src, dst]])
+        color = adjust('#000000', distance)
+        CFGdot.edge(str(src), str(dst), color=color)
+    if args.show_title:
+        CFGdot.attr(label='\n\n(' + G.graph['method'] + ' - ' + \
+                    G.graph['phase'] + ')')
+        CFGdot.attr(fontsize='16')
+
+def draw_cfg(G):
+    """
+    Draw a control-flow-graph by translating it into a Graphviz graph, and
+    invoking 'dot' to produce a PDF file.
+    """
+    args = G.graph['context']['args']
+    # Translate the graph into the Graphviz format.
+    CFGdot = graphviz.Digraph(strict=True, engine='dot', format='pdf',
+                              graph_attr=global_attr(args),
+                              node_attr=global_attr(args),
+                              edge_attr=global_attr(args))
+    translate_cfg(G, CFGdot)
+    # Produce a PDF file.
+    tempdir = G.graph['context']['tempdir']
+    args    = G.graph['context']['args']
+    emit_graph('cfg', G.graph['id'], CFGdot, tempdir, args)
+
+def emit_graph(graph_type, graph_id, Gdot, tempdir, args):
+    basename = str(graph_id) + '-' + graph_type
+    # Produce a PDF file.
+    dot = Path.joinpath(dotdir(args, tempdir), basename).with_suffix('.dot')
+    outdir = Path(args.outdir)
+    pdf = Path.joinpath(outdir, basename).with_suffix('.pdf')
+    if args.verbose:
+        if args.dot:
+            print("creating DOT file " + os.fspath(dot) + " ...")
+        print("creating PDF file " + os.fspath(pdf) + " ...")
+    Gdot.render(filename=dot)
+    # Graphviz produces a PDF with the DOT file name suffixed with '.pdf'.
+    dot.with_suffix('.dot.pdf').rename(pdf)
+
+def union(graphs):
+    # TODO: approximate and add max node dimensions as attributes.
+    return nx.compose_all(graphs)
+
+def equal(G1, G2):
+    if sorted(G1.nodes(data=True)) != sorted(G2.nodes(data=True)):
+        return False
+    return True
+
+def stabilize(st_args):
+    """
+    Complement G with placeholder nodes that appear in other graphs and adjust
+    node dimensions to obtain stable graphs across different phases.
+    """
+    (G, unionG) = st_args
+    for n in unionG.nodes:
+        if not G.has_node(n):
+            G.add_node(n, **unionG.nodes[n])
+            G.nodes[n]['status'] = 'external'
+    for e in unionG.edges(keys=True):
+        if not G.has_edge(*e):
+            G.add_edge(*e, **unionG.edges[e])
+            G.edges[e]['status'] = 'external'
+    return G
+
+def dotdir(args, tempdir):
+    """
+    Directory where the DOT files should be stored.
+    """
+    if args.dot:
+        return Path(args.outdir)
+    else:
+        return tempdir
+
+def add_feature_argument(parser, feature, help_msg, default):
+    """
+    Add a Boolean, mutually-exclusive feature argument to a parser.
+    """
+    if default:
+        default_option = '--' + feature
+    else:
+        default_option = '--no-' + feature
+    help_string = help_msg + " (default: " + default_option + ")"
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_lower = feature.replace('-', '_')
+    feature_parser.add_argument('--' + feature,
+                                dest=feature_lower,
+                                action='store_true',
+                                help=help_string)
+    feature_parser.add_argument('--no-' + feature,
+                                dest=feature_lower,
+                                action='store_false',
+                                help=argparse.SUPPRESS)
+    parser.set_defaults(**{feature_lower:default})
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Draws graphs in XML graph files as PDF documents.",
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False,
+        usage='%(prog)s [options] XML_FILE')
+
+    io = parser.add_argument_group('input/output options')
+    io.add_argument('XML_FILE',
+                    help="XML graph file emitted by the HotSpot JVM")
+    io.add_argument('--outdir',
+                    metavar='DIR',
+                    default=os.getcwd(),
+                    help="output directory (default: %(default)s)")
+    add_feature_argument(io,
+                         'animate',
+                         "create single PDF document with all graphs",
+                         False)
+    add_feature_argument(io,
+                         'dot',
+                         "output DOT files for each graph",
+                         False)
+    add_feature_argument(io,
+                         'log',
+                         "output log files (.out and .err) for each graph",
+                         False)
+    add_feature_argument(io,
+                         'clean',
+                         "remove intermediate files",
+                         True)
+    add_feature_argument(io,
+                         'verbose',
+                         "print debug information to the standard output",
+                         False)
+    io.add_argument('--jobs',
+                    metavar='N',
+                    type=int,
+                    default=multiprocessing.cpu_count(),
+                    help="maximum number of parallel jobs (default: %(default)s)")
+    io.add_argument('--help',
+                    action='help',
+                    default=argparse.SUPPRESS,
+                    help='Show this help message and exit')
+    list_filter = parser.add_argument_group('listing and filtering options')
+    add_feature_argument(list_filter,
+                         'list',
+                         "list properties of each graph and terminate",
+                         False)
+    list_filter.add_argument('--filter',
+                             metavar='EXP',
+                             default='True',
+                             help=
+"""predicate telling whether to process a graph (default: %(default)s)
+-- arbitrary Python expression on the following graph properties:
+""" + '\n'.join(filter_symbols.values()))
+    list_filter.add_argument('--highlight',
+                             metavar='EXP',
+                             default='True',
+                             help=
+"""predicate telling whether to highlight node n (default: %(default)s)
+-- arbitrary Python expression on the following node properties:
+""" + '\n'.join(highlight_symbols.values()))
+    list_filter.add_argument('--neighborhood',
+                             metavar='N',
+                             default='1',
+                             help="distance of the highlighted neighborhood (default: %(default)s)")
+    list_filter.add_argument('--collapse',
+                             metavar='EXP',
+                             default='False',
+                             help=
+"""predicate telling whether to collapse region r (default: %(default)s)
+-- arbitrary Python expression on the following region properties:
+""" + '\n'.join(collapse_symbols.values()))
+    layout = parser.add_argument_group('graph layout and style options')
+    add_feature_argument(layout,
+                         'igv-style',
+                         "follow IGV's look",
+                         False)
+    add_feature_argument(layout,
+                         'positional',
+                         "use input and output ports",
+                         False)
+    add_feature_argument(layout,
+                         'stable',
+                         "preserve node position in highlighting and phase animation",
+                         False)
+    add_feature_argument(layout,
+                         'hierarchical',
+                         "draw a region-based, hierarchical graph",
+                         False)
+    add_feature_argument(layout,
+                         'remove-secondary',
+                         "remove root, FP, RA, and I/O nodes",
+                         True)
+    add_feature_argument(layout,
+                         'inline',
+                         "inline constants and parameter nodes",
+                         True)
+    add_feature_argument(layout,
+                         'remove-self',
+                         "remove self-loops",
+                         True)
+    add_feature_argument(layout,
+                         'collapse-edges',
+                         "merge edges between same source and destination",
+                         True)
+    add_feature_argument(layout,
+                         'use-aliases',
+                         "use shorter names for some nodes",
+                         True)
+    add_feature_argument(layout,
+                         'cluster-pinned',
+                         "cluster pinned nodes",
+                         True)
+    add_feature_argument(layout,
+                         'fold-projs',
+                         "fold projection nodes into edges",
+                         True)
+    add_feature_argument(layout,
+                         'fold-constants',
+                         "fold constant nodes into their users",
+                         True)
+    add_feature_argument(layout,
+                         'control-centric',
+                         "increase weight of control edges",
+                         True)
+    add_feature_argument(layout,
+                         'color',
+                         "color nodes and edges",
+                         True)
+    info = parser.add_argument_group('graph information options')
+    add_feature_argument(info,
+                         'show-title',
+                         "show graph title (method and phase)",
+                         True)
+    add_feature_argument(info,
+                         'extend-node-info',
+                         "show additional node information",
+                         True)
+    add_feature_argument(info,
+                         'show-bcis',
+                         "show node BCIs",
+                         False)
+    add_feature_argument(info,
+                         'show-lines',
+                         "show node location lines",
+                         False)
+    add_feature_argument(info,
+                         'show-regs',
+                         "show node registers",
+                         False)
+    add_feature_argument(info,
+                         'show-folded',
+                         "show folded constants inside nodes",
+                         True)
+
+    args = parser.parse_args()
+
+    # Implement option dependencies.
+    if args.igv_style:
+        args.use_aliases = False
+        args.extend_node_info = False
+        args.collapse_edges = False
+    if args.hierarchical:
+        args.cluster_pinned = False
+
+    # Create temporary directory to store all intermediate files.
+    if not args.list:
+        tempdir = Path(tempfile.mkdtemp(prefix = 'ideal2pdf-'))
+        if args.verbose:
+            print("creating temporary directory " + os.fspath(tempdir) + " ...")
+
+    try:
+        # Parse XML file.
+        if args.verbose:
+            print("parsing input file " + args.XML_FILE + " ...")
+        tree = et.parse(args.XML_FILE)
+        root = tree.getroot()
+
+        # Convert XML to a map from id to ((method, phase), NetworkX graph,
+        # maybe CFG) tuples.
+        if args.verbose:
+            print("converting XML to graphs ...")
+        graphs = xml2graphs(root, args)
+
+        # If asked for, list the graphs (id, method, phase).
+        if args.verbose or args.list:
+            table = [('id', 'method', 'phase')] + \
+                [(G.graph['id'], G.graph['method'], G.graph['phase'])
+                 for G in graphs]
+            ws = [max(map(len, map(str, c))) for c in zip(*table)]
+            for r in table:
+                print('  '.join((str(v).ljust(w) for v, w in zip(r, ws))))
+        # If asked explicitly or the list is empty, terminate at this point.
+        if args.list or not graphs:
+            return
+
+        # Complete the basic attributes in the parsed graphs.
+        for G in graphs:
+            # Complete context with temporary directory.
+            G.graph['context']['tempdir'] = tempdir
+            # Add id as an attribute (can be decoupled e.g. after inlining).
+            for node in G.nodes:
+                G.nodes[node]['id'] = node
+            # Add category attribute to each edge. This needs to be kept for
+            # each edge, as it might otherwise get lost when e.g. folding projs.
+            for (src, dst, ind) in G.edges:
+                G.edges[src, dst, ind]['category'] = G.nodes[src]['category']
+
+        # Create outdir if it does not exist.
+        outdir = Path(args.outdir)
+        if not outdir.is_dir():
+            if args.verbose:
+                print("creating output directory " + args.outdir + " ...")
+            outdir.mkdir(parents=True)
+
+        if args.verbose:
+            print("palette definition (IGV filter format):")
+            for (cat, color) in node_color.items():
+                print("var " + cat + \
+                      "NodeColor = java.awt.Color.decode(\"" + color + "\");")
+            for (cat, color) in edge_color.items():
+                print("var " + cat + \
+                      "EdgeColor = java.awt.Color.decode(\"" + color + "\");")
+
+        # Do the rest of the work in parallel, as much as possible.
+        ex = concurrent.futures.ProcessPoolExecutor(max_workers=int(args.jobs))
+        processed_graphs = ex.map(process, graphs)
+        collapsed_graphs = list(ex.map(collapse, processed_graphs))
+        highlighted_graphs = list(ex.map(highlight, collapsed_graphs))
+        if args.stable:
+            unionG = union(highlighted_graphs)
+            stabilize_jobs = [(G, unionG) for G in highlighted_graphs]
+            stable_graphs = list(ex.map(stabilize, stabilize_jobs))
+        else:
+            unionG = None
+            stable_graphs = highlighted_graphs
+        # The list conversion is just to force evaluation. This is the most
+        # expensive parallel phase.
+        list(ex.map(draw, stable_graphs))
+
+        if args.animate:
+            sea_writer = PdfWriter()
+            cfg_writer = PdfWriter()
+            def add_graph(graph_id, graph_type, pdf_writer):
+                basename = str(graph_id) + '-' + graph_type
+                pdf = Path.joinpath(outdir, basename).with_suffix('.pdf')
+                pdf_writer.addpages(PdfReader(pdf).pages)
+            i = 0
+            while i < len(stable_graphs):
+                G = stable_graphs[i]
+                if i > 1 and equal(G, stable_graphs[i - 1]):
+                    i += 1
+                    continue
+                add_graph(G.graph['id'], 'sea', sea_writer)
+                if G.graph['cfg'] != None:
+                    add_graph(G.graph['id'], 'cfg', cfg_writer)
+                i += 1
+            seapdf = Path.joinpath(outdir, 'sea').with_suffix('.pdf')
+            cfgpdf = Path.joinpath(outdir, 'cfg').with_suffix('.pdf')
+            if args.verbose:
+                print("creating PDF file " + os.fspath(seapdf) + " ...")
+                print("creating PDF file " + os.fspath(cfgpdf) + " ...")
+            sea_writer.write(seapdf)
+            cfg_writer.write(cfgpdf)
+
+    finally:
+        # Clean up.
+        if args.clean and not args.list:
+            if args.verbose:
+                print("cleaning temporary directory " + os.fspath(tempdir))
+            shutil.rmtree(tempdir)
+
+if __name__ == '__main__':
+    main()
