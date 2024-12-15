@@ -29,7 +29,7 @@ import os
 import io
 from pathlib import *
 import multiprocessing
-import concurrent
+import concurrent.futures
 import subprocess
 import tempfile
 import shutil
@@ -85,6 +85,12 @@ def xml2graphs(xml_root, args):
                 for node in graph.find('nodes'):
                     idx = int(node.attrib['id'])
                     properties = find_node_properties(graph, idx)
+                    if not 'category' in properties:
+                        properties['category'] = 'unknown'
+                    if not 'type' in properties:
+                        properties['type'] = 'unknown'
+                    if not 'dump_spec' in properties:
+                        properties['dump_spec'] = 'unknown'
                     G.add_node(idx, **properties)
                 for edge in graph.find('edges'):
                     src = int(edge.attrib['from'])
@@ -142,7 +148,8 @@ node_color = {
     'control' : colorblind[3],
     'other'   : colorblind[4],
     'data'    : colorblind[2],
-    'memory'  : colorblind[1]
+    'memory'  : colorblind[1],
+    'unknown' : '#ffffff'
     }
 
 dark_factor = {
@@ -158,7 +165,8 @@ edge_color = {
     'control' : scale(node_color['control'], dark_factor[node_color['control']]),
     'other'   : scale(node_color['other'], dark_factor[node_color['other']]),
     'data'    : scale(node_color['data'], dark_factor[node_color['data']]),
-    'memory'  : scale(node_color['memory'], dark_factor[node_color['memory']])
+    'memory'  : scale(node_color['memory'], dark_factor[node_color['memory']]),
+    'unknown' : scale('#000000', 1)
     }
 
 def frontcolor(backcolor):
@@ -496,7 +504,7 @@ def label(G, n):
             '<FONT POINT-SIZE="10">' + \
             format_inputs(G.nodes[n]['folded_inputs']) + '</FONT>' + \
             '<br/><FONT POINT-SIZE="6"><br/></FONT>'
-    node_text = str(G.nodes[n]['id']) + ' ' + name + '<br/>'
+    node_text = str(G.nodes[n]['id']) + ' ' + html.escape(name) + '<br/>'
     extra_text = ''
     if 'extra' in G.nodes[n]:
         extra_text = '(' + G.nodes[n]['extra'] + ')' + '<br/>'
