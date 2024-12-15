@@ -29,7 +29,7 @@ import os
 import io
 from pathlib import *
 import multiprocessing
-import concurrent
+import concurrent.futures
 import subprocess
 import tempfile
 import shutil
@@ -95,6 +95,12 @@ def xml2graphs(xml_root, args):
                 for node in graph.find('nodes'):
                     idx = int(node.attrib['id'])
                     properties = find_node_properties(graph, idx)
+                    if not 'category' in properties:
+                        properties['category'] = 'unknown'
+                    if not 'type' in properties:
+                        properties['type'] = 'unknown'
+                    if not 'dump_spec' in properties:
+                        properties['dump_spec'] = 'unknown'
                     G.add_node(idx, **properties)
                 for edge in graph.find('edges'):
                     src = int(edge.attrib['from'])
@@ -168,7 +174,8 @@ node_color = {
     'other'   : colorblind[4],
     'data'    : colorblind[2],
     'memory'  : colorblind[1],
-    'region'  : adjust(colorblind[3], 1)
+    'region'  : adjust(colorblind[3], 1),
+    'unknown' : '#ffffff'
     }
 
 dark_factor = {
@@ -185,7 +192,8 @@ edge_color = {
     'other'   : scale(node_color['other'], dark_factor[node_color['other']]),
     'data'    : scale(node_color['data'], dark_factor[node_color['data']]),
     'memory'  : scale(node_color['memory'], dark_factor[node_color['memory']]),
-    'region'  : scale(node_color['control'], dark_factor[node_color['control']])
+    'region'  : scale(node_color['control'], dark_factor[node_color['control']]),
+    'unknown' : scale('#000000', 1)
     }
 
 region_text_color = blend(node_color['control'], 0.6, '#000000')
@@ -607,9 +615,9 @@ def label(G, n, color, fillcolor, args):
             '<TR><TD><FONT POINT-SIZE="10">' + \
             format_inputs(G.nodes[n]['folded_inputs']) + '</FONT></TD></TR>'
     if is_collapsed_region(G, n):
-        sign = '<FONT COLOR="' + region_text_color + '"><B>' + name + '</B></FONT>'
+        sign = '<FONT COLOR="' + region_text_color + '"><B>' + html.escape(name) + '</B></FONT>'
     else:
-        sign = str(G.nodes[n]['idx']) + ' ' + name
+        sign = str(G.nodes[n]['idx']) + ' ' + html.escape(name)
     node_text = '<TR><TD COLSPAN="' + str(max_cols) + '">' + sign + '</TD></TR>'
     extra_text = ''
     if 'extra' in G.nodes[n]:
