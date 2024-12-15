@@ -63,9 +63,17 @@ def xml2graphs(xml_root, args):
     graph_id = 0
     for group in xml_root:
         method = group.find('method')
-        group_name = method.attrib['name']
-        short_group_name = method.attrib['shortName'].strip()
-        bci = int(method.attrib['bci'])
+        if method is None:
+            ps = {}
+            for p in group.find('properties'):
+                ps[p.attrib['name']] = p.text.strip()
+            group_name = ps['name']
+            short_group_name = group_name
+            bci = -1
+        else:
+            group_name = method.attrib['name']
+            short_group_name = method.attrib['shortName'].strip()
+            bci = int(method.attrib['bci'])
         for graph in group.findall('graph'):
             graph_name = graph.attrib['name']
             if not matches((graph_id, short_group_name, graph_name), args.filter):
@@ -236,7 +244,7 @@ def add_node_alias(G, n):
         if alias:
             G.nodes[n]['alias'] = alias
 
-p_call_trap = re.compile("uncommon_trap\(reason=\'(\w*)\'")
+p_call_trap = re.compile(r"uncommon_trap\(reason=\'(\w*)\'")
 def add_extra_info(G, n):
     name = G.nodes[n]['name']
     dump_spec = G.nodes[n]['dump_spec']
