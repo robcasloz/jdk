@@ -254,10 +254,14 @@ class JavaThread: public Thread {
  public:                                                        // Expose _thread_state for SafeFetchInt()
   volatile JavaThreadState _thread_state;
   unsigned long long _store_counter;
+  unsigned long long _store_with_barrier_counter;
+  unsigned long long _store_with_elision_counter;
   unsigned long long _atomic_counter;
   unsigned long long _load_counter;
 
   static unsigned long long _total_store;
+  static unsigned long long _total_store_with_barrier;
+  static unsigned long long _total_store_with_elision;
   static unsigned long long _total_atomic;
   static unsigned long long _total_load;
   ThreadSafepointState*          _safepoint_state;              // Holds information about a thread during a safepoint
@@ -852,6 +856,8 @@ private:
   static ByteSize saved_exception_pc_offset()    { return byte_offset_of(JavaThread, _saved_exception_pc); }
   static ByteSize osthread_offset()              { return byte_offset_of(JavaThread, _osthread); }
   static ByteSize store_counter_offset()         { return byte_offset_of(JavaThread, _store_counter);}
+  static ByteSize store_with_barrier_counter_offset() { return byte_offset_of(JavaThread, _store_with_barrier_counter);}
+  static ByteSize store_with_elision_counter_offset() { return byte_offset_of(JavaThread, _store_with_elision_counter);}
   static ByteSize atomic_counter_offset()        { return byte_offset_of(JavaThread, _atomic_counter);}
   static ByteSize load_counter_offset()          { return byte_offset_of(JavaThread, _load_counter);}
 

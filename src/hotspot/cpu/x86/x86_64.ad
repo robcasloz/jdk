@@ -5092,6 +5092,9 @@ instruct storeP(memory mem, any_RegP src)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+    }
     __ movq($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5133,6 +5136,9 @@ instruct storeN(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed ptr" %}
   ins_encode %{
+    if (G1ProfileBarriers) {
+      __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+    }
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);

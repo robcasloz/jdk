@@ -82,6 +82,11 @@ instruct g1StoreP(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rRegP tmp3, 
   ins_encode %{
     if (G1ProfileBarriers) {
       __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+      if (barrier_data() != 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_with_barrier_counter_offset()));
+      } else {
+        __ incrementq(Address(r15_thread, JavaThread::store_with_elision_counter_offset()));
+      }
     }
     // Materialize the store address internally (as opposed to defining 'mem' as
     // an indirect memory operand) to reduce the overhead of LCM when processing
@@ -114,6 +119,11 @@ instruct g1StoreN(memory mem, rRegN src, rRegP tmp1, rRegP tmp2, rRegP tmp3, rFl
   ins_encode %{
     if (G1ProfileBarriers) {
       __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+      if (barrier_data() != 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_with_barrier_counter_offset()));
+      } else {
+        __ incrementq(Address(r15_thread, JavaThread::store_with_elision_counter_offset()));
+      }
     }
     __ lea($tmp1$$Register, $mem$$Address);
     write_barrier_pre(masm, this,
@@ -150,6 +160,11 @@ instruct g1EncodePAndStoreN(memory mem, any_RegP src, rRegP tmp1, rRegP tmp2, rR
   ins_encode %{
     if (G1ProfileBarriers) {
       __ incrementq(Address(r15_thread, JavaThread::store_counter_offset()));
+      if (barrier_data() != 0) {
+        __ incrementq(Address(r15_thread, JavaThread::store_with_barrier_counter_offset()));
+      } else {
+        __ incrementq(Address(r15_thread, JavaThread::store_with_elision_counter_offset()));
+      }
     }
     __ lea($tmp1$$Register, $mem$$Address);
     write_barrier_pre(masm, this,

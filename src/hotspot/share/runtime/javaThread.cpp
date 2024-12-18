@@ -115,6 +115,8 @@
 size_t      JavaThread::_stack_size_at_create = 0;
 
 unsigned long long JavaThread::_total_store;
+unsigned long long JavaThread::_total_store_with_barrier;
+unsigned long long JavaThread::_total_store_with_elision;
 unsigned long long JavaThread::_total_atomic;
 unsigned long long JavaThread::_total_load;
 
@@ -682,6 +684,8 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz, MemTag mem_t
 JavaThread::~JavaThread() {
 
   _total_store += _store_counter;
+  _total_store_with_barrier += _store_with_barrier_counter;
+  _total_store_with_elision += _store_with_elision_counter;
   _total_atomic += _atomic_counter;
   _total_load += _load_counter;
 
