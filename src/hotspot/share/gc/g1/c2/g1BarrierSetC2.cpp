@@ -541,6 +541,9 @@ void G1BarrierSetC2::elide_dominated_barrier(MachNode* mach) const {
 }
 
 void G1BarrierSetC2::analyze_dominating_barriers() const {
+  if (!UseNewCode) {
+    return;
+  }
   ResourceMark rm;
   PhaseCFG* const cfg = Compile::current()->cfg();
 
