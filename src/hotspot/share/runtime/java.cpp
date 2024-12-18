@@ -247,46 +247,16 @@ public:
   unsigned long long _total_store;
   unsigned long long _total_atomic;
   unsigned long long _total_load;
-  unsigned long long _total_pre_entry;
-  unsigned long long _total_pre_marking;
-  unsigned long long _total_pre_notnull;
-  unsigned long long _total_pre_runtime;
-  unsigned long long _total_post_entry;
-  unsigned long long _total_post_inter;
-  unsigned long long _total_post_notnull;
-  unsigned long long _total_post_young;
-  unsigned long long _total_post_clean;
-  unsigned long long _total_post_runtime;
   CollectG1BarrierStatsClosure() :
     _total_store(0),
     _total_atomic(0),
-    _total_load(0),
-    _total_pre_entry(0),
-    _total_pre_marking(0),
-    _total_pre_notnull(0),
-    _total_pre_runtime(0),
-    _total_post_entry(0),
-    _total_post_inter(0),
-    _total_post_notnull(0),
-    _total_post_young(0),
-    _total_post_clean(0),
-    _total_post_runtime(0) {}
+    _total_load(0) {}
 
   void do_thread(Thread* thread) {
     const JavaThread* javaThread = JavaThread::cast(thread);
     _total_store += javaThread->_total_store;
     _total_atomic += javaThread->_total_atomic;
     _total_load += javaThread->_total_load;
-    _total_pre_entry += javaThread->_total_pre_entry;
-    _total_pre_marking += javaThread->_total_pre_marking;
-    _total_pre_notnull += javaThread->_total_pre_notnull;
-    _total_pre_runtime += javaThread->_total_pre_runtime;
-    _total_post_entry += javaThread->_total_post_entry;
-    _total_post_inter += javaThread->_total_post_inter;
-    _total_post_notnull += javaThread->_total_post_notnull;
-    _total_post_young += javaThread->_total_post_young;
-    _total_post_clean += javaThread->_total_post_clean;
-    _total_post_runtime += javaThread->_total_post_runtime;
   }
 };
 
@@ -314,7 +284,7 @@ void print_statistics() {
 #endif //COMPILER1
   }
 
-  if (G1ProfileBarriers || G1ProfileBarrierTests) {
+  if (G1ProfileBarriers) {
     CollectG1BarrierStatsClosure cl;
     Threads_lock->lock();
     Threads::java_threads_do(&cl);
@@ -322,12 +292,11 @@ void print_statistics() {
     double t = os::elapsedTime();
     int eltime = (int)t;  // elapsed time in seconds
     int eltimeFraction = (int) ((t - eltime) * 1000000);
-    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld",
+    tty->print_cr("g1-barrier-stats,%d.%06d,%lld,%lld,%lld",
                   eltime, eltimeFraction,
                   cl._total_store,
-                  cl._total_atomic, cl._total_load,
-                  cl._total_pre_entry, cl._total_pre_marking, cl._total_pre_notnull, cl._total_pre_runtime,
-                  cl._total_post_entry, cl._total_post_inter, cl._total_post_notnull, cl._total_post_young, cl._total_post_clean, cl._total_post_runtime);
+                  cl._total_atomic,
+                  cl._total_load);
   }
 
   if (PrintLockStatistics) {

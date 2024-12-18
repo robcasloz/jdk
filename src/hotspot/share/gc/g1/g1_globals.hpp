@@ -345,10 +345,6 @@
   product(bool, G1ProfileBarriers, false,                                   \
           "Profile and print C2 barrier statistics "                        \
           "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
-                                                                            \
-  product(bool, G1ProfileBarrierTests, false,                               \
-          "Profile and print C2 barrier test statistics "                   \
-          "(TEMPORARY, FOR EXPERIMENTATION ONLY)")                          \
 
 // end of GC_G1_FLAGS
 
