@@ -447,6 +447,8 @@ JavaThread::JavaThread(MemTag mem_tag) :
 
   _thread_state(_thread_new),
   _store_counter(0),
+  _store_with_barrier_counter(0),
+  _store_with_elision_counter(0),
   _atomic_counter(0),
   _load_counter(0),
   _saved_exception_pc(nullptr),
