@@ -258,11 +258,14 @@ PhaseOutput::~PhaseOutput() {
 }
 
 void PhaseOutput::perform_mach_node_analysis() {
+  Compile::TracePhase tp(_t_machNodeAnalysis);
   // Late barrier analysis must be done after schedule and bundle
   // Otherwise liveness based spilling will fail
   BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
-  bs->late_barrier_analysis();
-
+  {
+    Compile::TracePhase tp(_t_lateBarrierAnalysis);
+    bs->late_barrier_analysis();
+  }
   pd_perform_mach_node_analysis();
 
   C->print_method(CompilerPhaseType::PHASE_MACH_ANALYSIS, 3);

@@ -114,6 +114,9 @@ public:
     f(   _t_output,                  "output")                   \
     f(     _t_instrSched,            "isched")                   \
     f(     _t_shortenBranches,       "shorten branches")         \
+    f(     _t_machNodeAnalysis,      "machNodeAnalysis")         \
+    f(       _t_lateBarrierAnalysis, "lateBarrierAnalysis")      \
+    f(         _t_domBarrierAnalysis, "domBarrierAnalysis")      \
     f(     _t_buildOopMaps,          "bldOopMaps")               \
     f(     _t_fillBuffer,            "fill buffer")              \
     f(     _t_registerMethod,        "install_code")             \

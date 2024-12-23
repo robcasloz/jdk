@@ -479,6 +479,7 @@ void ZBarrierSetC2::elide_dominated_barrier(MachNode* mach) const {
 }
 
 void ZBarrierSetC2::analyze_dominating_barriers() const {
+  Compile::TracePhase tp(Phase::_t_domBarrierAnalysis);
   ResourceMark rm;
   Compile* const C = Compile::current();
   PhaseCFG* const cfg = C->cfg();

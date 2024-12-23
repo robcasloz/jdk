@@ -541,6 +541,7 @@ void G1BarrierSetC2::elide_dominated_barrier(MachNode* mach) const {
 }
 
 void G1BarrierSetC2::analyze_dominating_barriers() const {
+  Compile::TracePhase tp(Phase::_t_domBarrierAnalysis);
   if (!UseNewCode) {
     return;
   }
