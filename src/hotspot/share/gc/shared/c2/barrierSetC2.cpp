@@ -898,6 +898,9 @@ void BarrierSetC2::clone_at_expansion(PhaseMacroExpand* phase, ArrayCopyNode* ac
 #undef XTOP
 
 static bool block_has_safepoint(const Block* block, uint from, uint to) {
+  if (UseNewCode2) {
+    return false;
+  }
   for (uint i = from; i < to; i++) {
     if (block->get_node(i)->is_MachSafePoint()) {
       // Safepoint found
