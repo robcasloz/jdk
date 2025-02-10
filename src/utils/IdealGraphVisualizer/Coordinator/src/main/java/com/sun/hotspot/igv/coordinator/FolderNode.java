@@ -70,12 +70,11 @@ public class FolderNode extends AbstractNode {
     private static class FolderChildren extends Children.Keys<FolderElement> implements ChangedListener {
 
         private final Folder folder;
-        private Set<String> visited;
+        private static Set<String> visited = new HashSet<>();
 
         public FolderChildren(Folder folder) {
             this.folder = folder;
             folder.getChangedEvent().addListener(this);
-            visited = new HashSet<>();
         }
 
         public Folder getFolder() {
