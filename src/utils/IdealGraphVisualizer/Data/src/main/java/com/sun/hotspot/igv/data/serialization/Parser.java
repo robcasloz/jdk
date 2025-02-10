@@ -50,8 +50,9 @@ import org.xml.sax.XMLReader;
  */
 public class Parser implements GraphParser {
 
-    public static final int MIN_NODES = 500;
-    public static final int MAX_NODES = 1000;
+    static private boolean REGISTER_ALLOCATION_ONLY = true;
+    public static final int MIN_NODES = 1000;
+    public static final int MAX_NODES = 2000;
     public static final int MAX_GRAPHS = 10;
     private static int graphCount = 0;
 
@@ -475,7 +476,10 @@ public class Parser implements GraphParser {
             }
             blockConnections.clear();
 
-            if (graph.getNodes().size() < MIN_NODES || graph.getNodes().size() > MAX_NODES || graphCount >= MAX_GRAPHS) {
+            if (graph.getNodes().size() < MIN_NODES || graph.getNodes().size() > MAX_NODES || graphCount >= MAX_GRAPHS ||
+                (REGISTER_ALLOCATION_ONLY &&
+                 (!graph.getName().startsWith("Initial liveness") &&
+                  !graph.getName().startsWith("Fix up spills")))) {
                 return;
             }
             System.out.println(graphCount + ": " + parent.getName() + "::" + graph.getName() + " (" + graph.getNodes().size() + ")");
