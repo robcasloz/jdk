@@ -1340,6 +1340,105 @@ void PhaseCFG::verify_dominator_tree() const {
   }
 }
 
+void PhaseCFG::verify_memory_interference(Node* m1, Node* m2) const {
+  int m1_alias_idx = C->get_alias_index(m1->adr_type());
+  int m2_alias_idx = C->get_alias_index(m2->adr_type());
+  if (m1_alias_idx == Compile::AliasIdxTop ||
+      m2_alias_idx == Compile::AliasIdxTop) {
+    return;
+  }
+  if (m1_alias_idx == Compile::AliasIdxRaw ||
+      m2_alias_idx == Compile::AliasIdxRaw) {
+    return;
+  }
+  if (UseNewCode2) {
+    tty->print_cr("verify_memory_interference %d %s (%d) vs. %d %s (%d) ", m1->_idx, m1->Name(), m1_alias_idx, m2->_idx, m2->Name(), m2_alias_idx);
+  }
+  // m1 and m2 are Bot or specific alias indexes.
+  assert(m1_alias_idx != m2_alias_idx, "interfering memory definitions");
+}
+
+void PhaseCFG::verify_memory_interferences(Unique_Node_List& live) const {
+  for (uint i = 0; i < live.size(); i++) {
+    for (uint j = i + 1; j < live.size(); j++) {
+      verify_memory_interference(live.at(i), live.at(j));
+    }
+  }
+}
+
+void PhaseCFG::verify_memory_subgraph() const {
+  if (UseNewCode) {
+    tty->print_cr("PhaseCFG::verify_memory_subgraph()");
+  }
+  ResourceMark rm;
+
+  // Perform memory liveness analysis. The output is the live-in set of each
+  // basic block.
+
+  Block_List worklist;
+  Unique_Node_List** const livein = NEW_ARENA_ARRAY(C->comp_arena(), Unique_Node_List*, number_of_blocks());
+  memset(livein, 0, C->cfg()->number_of_blocks() * sizeof(Unique_Node_List*));
+  for (uint i = 0; i < number_of_blocks(); ++i) {
+    Block* block = get_block(i);
+    worklist.push(block);
+    livein[block->_pre_order] = new Unique_Node_List();
+  }
+  while (worklist.size() > 0) {
+    const Block* const block = worklist.pop();
+    if (UseNewCode) tty->print_cr("B%d: ", block->_pre_order);
+    Unique_Node_List block_live;
+    // Initiate live-in with the union of the successor's live-in sets.
+    for (uint i = 1; i < block->_num_succs; i++) {
+      Block* const succ = block->_succs[i];
+      for (uint i = 0; i < livein[succ->_pre_order]->size(); i++) {
+        block_live.push(livein[succ->_pre_order]->at(i));
+      }
+    }
+    if (UseNewCode) {
+      tty->print("  block_live (at exit): ");
+      block_live.dump_simple();
+      tty->cr();
+    }
+    verify_memory_interferences(block_live);
+    for (int i = block->number_of_nodes() - 1; i >= 0; i--) {
+      Node* node = block->get_node(i);
+      // Remove node's memory definitions (if any) from block_live
+      if (node->bottom_type()->base() == Type::Memory) {
+        block_live.remove(node);
+      }
+      // Add node's memory uses (if any) to block live
+      for (uint j = 0; j < node->req(); j++) {
+        Node* in = node->in(j);
+        if (in != nullptr && in->bottom_type()->base() == Type::Memory) {
+          block_live.push(in);
+        }
+      }
+      verify_memory_interferences(block_live);
+      if (UseNewCode) {
+        tty->print("  block_live (before %d %s): ", node->_idx, node->Name());
+        block_live.dump_simple();
+        tty->cr();
+      }
+    }
+    // If block_live is different from its live-in, update live in and add predecessors to work list
+    assert(block_live.size() >= livein[block->_pre_order]->size(),
+           "analysis should be monotonic");
+    if (block_live.size() > livein[block->_pre_order]->size()) {
+      livein[block->_pre_order]->copy(block_live);
+      for (uint i = 1; i < block->num_preds(); ++i) {
+        Block* const pred = get_block_for_node(block->pred(i));
+        worklist.push(pred);
+        if (UseNewCode) {
+          tty->print_cr("  enqueuing B%d", pred->_pre_order);
+        }
+      }
+    }
+  }
+  if (UseNewCode) {
+    tty->cr();
+  }
+}
+
 void PhaseCFG::verify() const {
   // Verify sane CFG
   for (uint i = 0; i < number_of_blocks(); i++) {
@@ -1419,6 +1518,7 @@ void PhaseCFG::verify() const {
     }
   }
   verify_dominator_tree();
+  verify_memory_subgraph();
 }
 #endif // ASSERT
 
