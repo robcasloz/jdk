@@ -1356,8 +1356,8 @@ void PhaseCFG::verify_memory_interference(Node* m1, Node* m2, const Block* block
   }
   // m1 and m2 are Bot or specific alias indexes.
   assert(m1_alias_idx != m2_alias_idx,
-         "interfering memory definitions for %d %s and %d %s in B%d",
-         m1->_idx, m1->Name(), m2->_idx, m2->Name(), block->_pre_order);
+         "interfering memory definitions for %d %s (%d) and %d %s (%d) in B%d",
+         m1->_idx, m1->Name(), m1_alias_idx, m2->_idx, m2->Name(), m2_alias_idx, block->_pre_order);
 }
 
 void PhaseCFG::verify_memory_interferences(Unique_Node_List& live, const Block* block) const {
@@ -1401,22 +1401,29 @@ void PhaseCFG::verify_memory_subgraph() const {
       tty->cr();
     }
     verify_memory_interferences(block_live, block);
+    bool verify = true;
     for (int i = block->number_of_nodes() - 1; i >= 0; i--) {
       Node* node = block->get_node(i);
+      bool is_used = block_live.member(node);
+      if (node->is_Phi()) {
+        verify = false;
+      }
       // Remove node's memory definitions (if any) from block_live
       if (node->bottom_type()->base() == Type::Memory) {
         block_live.remove(node);
       }
       if (node->is_Phi() && node->bottom_type()->base() == Type::Memory) {
-        // Add phi memory uses directly to the corresponding liveout sets.
-        Node* region = node->in(0);
-        for (uint j = 1; j < node->req(); j++) {
-          Node* in = node->in(j);
-          assert(in != nullptr, "");
-          assert(region->in(j) != nullptr, "");
-          liveout[get_block_for_node(region->in(j))->_pre_order]->push(in);
+        if (is_used) {
+          // Add phi memory uses directly to the corresponding liveout sets.
+          Node* region = node->in(0);
+          for (uint j = 1; j < node->req(); j++) {
+            Node* in = node->in(j);
+            assert(in != nullptr, "");
+            assert(region->in(j) != nullptr, "");
+            liveout[get_block_for_node(region->in(j))->_pre_order]->push(in);
+          }
         }
-      } else {
+      } else if (!node->is_MergeMem()) {
         // Add node's memory uses (if any) to block live
         for (uint j = 0; j < node->req(); j++) {
           Node* in = node->in(j);
@@ -1425,7 +1432,9 @@ void PhaseCFG::verify_memory_subgraph() const {
           }
         }
       }
-      verify_memory_interferences(block_live, block);
+      if (verify) {
+        verify_memory_interferences(block_live, block);
+      }
       if (UseNewCode) {
         tty->print("  block_live (before %d %s): ", node->_idx, node->Name());
         block_live.dump_simple();
