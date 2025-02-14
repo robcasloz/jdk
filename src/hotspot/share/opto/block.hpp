@@ -643,8 +643,8 @@ class PhaseCFG : public Phase {
 
   bool unrelated_load_in_store_null_block(Node* store, Node* load);
 
-  void verify_memory_interference(Node* m1, Node* m2) const NOT_DEBUG_RETURN;
-  void verify_memory_interferences(Unique_Node_List& live) const NOT_DEBUG_RETURN;
+  void verify_memory_interference(Node* m1, Node* m2, const Block* block) const NOT_DEBUG_RETURN;
+  void verify_memory_interferences(Unique_Node_List& live, const Block* block) const NOT_DEBUG_RETURN;
   // Check that block b is in the home loop (or an ancestor) of n, if n is a
   // memory writer.
   void verify_memory_writer_placement(const Block* b, const Node* n) const NOT_DEBUG_RETURN;

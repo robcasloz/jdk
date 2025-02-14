@@ -1340,7 +1340,7 @@ void PhaseCFG::verify_dominator_tree() const {
   }
 }
 
-void PhaseCFG::verify_memory_interference(Node* m1, Node* m2) const {
+void PhaseCFG::verify_memory_interference(Node* m1, Node* m2, const Block* block) const {
   int m1_alias_idx = C->get_alias_index(m1->adr_type());
   int m2_alias_idx = C->get_alias_index(m2->adr_type());
   if (m1_alias_idx == Compile::AliasIdxTop ||
@@ -1355,13 +1355,15 @@ void PhaseCFG::verify_memory_interference(Node* m1, Node* m2) const {
     tty->print_cr("verify_memory_interference %d %s (%d) vs. %d %s (%d) ", m1->_idx, m1->Name(), m1_alias_idx, m2->_idx, m2->Name(), m2_alias_idx);
   }
   // m1 and m2 are Bot or specific alias indexes.
-  assert(m1_alias_idx != m2_alias_idx, "interfering memory definitions");
+  assert(m1_alias_idx != m2_alias_idx,
+         "interfering memory definitions for %d %s and %d %s in B%d",
+         m1->_idx, m1->Name(), m2->_idx, m2->Name(), block->_pre_order);
 }
 
-void PhaseCFG::verify_memory_interferences(Unique_Node_List& live) const {
+void PhaseCFG::verify_memory_interferences(Unique_Node_List& live, const Block* block) const {
   for (uint i = 0; i < live.size(); i++) {
     for (uint j = i + 1; j < live.size(); j++) {
-      verify_memory_interference(live.at(i), live.at(j));
+      verify_memory_interference(live.at(i), live.at(j), block);
     }
   }
 }
@@ -1398,7 +1400,7 @@ void PhaseCFG::verify_memory_subgraph() const {
       block_live.dump_simple();
       tty->cr();
     }
-    verify_memory_interferences(block_live);
+    verify_memory_interferences(block_live, block);
     for (int i = block->number_of_nodes() - 1; i >= 0; i--) {
       Node* node = block->get_node(i);
       // Remove node's memory definitions (if any) from block_live
@@ -1423,7 +1425,7 @@ void PhaseCFG::verify_memory_subgraph() const {
           }
         }
       }
-      verify_memory_interferences(block_live);
+      verify_memory_interferences(block_live, block);
       if (UseNewCode) {
         tty->print("  block_live (before %d %s): ", node->_idx, node->Name());
         block_live.dump_simple();
