@@ -1378,21 +1378,20 @@ void PhaseCFG::verify_memory_subgraph() const {
   Block_List worklist;
   Unique_Node_List** const livein = NEW_ARENA_ARRAY(C->comp_arena(), Unique_Node_List*, number_of_blocks());
   memset(livein, 0, C->cfg()->number_of_blocks() * sizeof(Unique_Node_List*));
+  Unique_Node_List** const liveout = NEW_ARENA_ARRAY(C->comp_arena(), Unique_Node_List*, number_of_blocks());
+  memset(liveout, 0, C->cfg()->number_of_blocks() * sizeof(Unique_Node_List*));
   for (uint i = 0; i < number_of_blocks(); ++i) {
     Block* block = get_block(i);
     worklist.push(block);
     livein[block->_pre_order] = new Unique_Node_List();
+    liveout[block->_pre_order] = new Unique_Node_List();
   }
   while (worklist.size() > 0) {
     const Block* const block = worklist.pop();
-    if (UseNewCode) tty->print_cr("B%d: ", block->_pre_order);
+    if (UseNewCode || UseNewCode2) tty->print_cr("B%d: ", block->_pre_order);
     Unique_Node_List block_live;
-    // Initiate live-in with the union of the successor's live-in sets.
-    for (uint i = 1; i < block->_num_succs; i++) {
-      Block* const succ = block->_succs[i];
-      for (uint i = 0; i < livein[succ->_pre_order]->size(); i++) {
-        block_live.push(livein[succ->_pre_order]->at(i));
-      }
+    for (uint i = 0; i < liveout[block->_pre_order]->size(); i++) {
+      block_live.push(liveout[block->_pre_order]->at(i));
     }
     if (UseNewCode) {
       tty->print("  block_live (at exit): ");
@@ -1406,11 +1405,22 @@ void PhaseCFG::verify_memory_subgraph() const {
       if (node->bottom_type()->base() == Type::Memory) {
         block_live.remove(node);
       }
-      // Add node's memory uses (if any) to block live
-      for (uint j = 0; j < node->req(); j++) {
-        Node* in = node->in(j);
-        if (in != nullptr && in->bottom_type()->base() == Type::Memory) {
-          block_live.push(in);
+      if (node->is_Phi() && node->bottom_type()->base() == Type::Memory) {
+        // Add phi memory uses directly to the corresponding liveout sets.
+        Node* region = node->in(0);
+        for (uint j = 1; j < node->req(); j++) {
+          Node* in = node->in(j);
+          assert(in != nullptr, "");
+          assert(region->in(j) != nullptr, "");
+          liveout[get_block_for_node(region->in(j))->_pre_order]->push(in);
+        }
+      } else {
+        // Add node's memory uses (if any) to block live
+        for (uint j = 0; j < node->req(); j++) {
+          Node* in = node->in(j);
+          if (in != nullptr && in->bottom_type()->base() == Type::Memory) {
+            block_live.push(in);
+          }
         }
       }
       verify_memory_interferences(block_live);
@@ -1424,9 +1434,14 @@ void PhaseCFG::verify_memory_subgraph() const {
     assert(block_live.size() >= livein[block->_pre_order]->size(),
            "analysis should be monotonic");
     if (block_live.size() > livein[block->_pre_order]->size()) {
-      livein[block->_pre_order]->copy(block_live);
+      for (uint i = 0; i < block_live.size(); i++) {
+        livein[block->_pre_order]->push(block_live.at(i));
+      }
       for (uint i = 1; i < block->num_preds(); ++i) {
         Block* const pred = get_block_for_node(block->pred(i));
+        for (uint j = 0; j < block_live.size(); j++) {
+          liveout[pred->_pre_order]->push(block_live.at(j));
+        }
         worklist.push(pred);
         if (UseNewCode) {
           tty->print_cr("  enqueuing B%d", pred->_pre_order);
