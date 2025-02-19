@@ -643,9 +643,65 @@ class PhaseCFG : public Phase {
 
   bool unrelated_load_in_store_null_block(Node* store, Node* load);
 
+  // Search for a node n such that:
+  // - there exists a path P = (start, n_1, n_2, ..., n_k, end) in the CFG,
+  // - there exists i such that n_i = n, and
+  // - p(n) holds.
+  // Return n, if such a node is found, or nullptr otherwise.
+  // This function requires start to dominate end.
+  template <typename NodePredicate>
+  Node* find_in_between(const Node* start, const Node* end, NodePredicate p) const {
+    if (start == end) {
+      return nullptr;
+    }
+    ResourceMark rm;
+    Block* start_block = get_block_for_node(start);
+    Block* end_block   = get_block_for_node(end);
+
+    assert((start_block == end_block && start_block->find_node(start) < start_block->find_node(end))
+           || start_block->dominates(end_block),
+           "start should dominate end");
+
+    Block_List worklist;
+    worklist.push(end_block);
+    VectorSet visited;
+    ///int last = end_block->find_node(end) - 1;
+    bool initial_block = true;
+    while (worklist.size() > 0) {
+      const Block* const block = worklist.pop();
+      if (visited.test_set(block->_pre_order)) {
+        continue;
+      }
+      bool reached_start = false;
+      int last = block == end_block ? block->find_node(end) : block->number_of_nodes();
+      for (int i = last - 1; i >= 0; i--) {
+        Node* node = block->get_node(i);
+        if (node == start) {
+          reached_start = true;
+          break;
+        }
+        if (p(node)) {
+          return node;
+        }
+      }
+      if (reached_start) {
+        continue;
+      }
+      for (uint p = 1; p < block->num_preds(); ++p) {
+        Block* const pred = get_block_for_node(block->pred(p));
+        worklist.push(pred);
+      }
+    }
+    return nullptr;
+  }
+
   // Check that block b is in the home loop (or an ancestor) of n, if n is a
   // memory writer.
   void verify_memory_writer_placement(const Block* b, const Node* n) const NOT_DEBUG_RETURN;
+  // TODO: reuse from PhaseCFG::insert_anti_dependences.
+  bool is_non_interfering_call(const Node* load, const Node* store) const;
+  // Check that there is no store interfering with the memory read by the load.
+  void verify_no_interfering_stores(const Node* load) const NOT_DEBUG_RETURN;
   // Check local dominator tree invariants.
   void verify_dominator_tree() const NOT_DEBUG_RETURN;
   void verify() const NOT_DEBUG_RETURN;

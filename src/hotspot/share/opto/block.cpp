@@ -1323,6 +1323,87 @@ void PhaseCFG::verify_memory_writer_placement(const Block* b, const Node* n) con
   assert(found, "block b is not in n's home loop or an ancestor of it");
 }
 
+bool PhaseCFG::is_non_interfering_call(const Node* load, const Node* store) const {
+  if (!store->is_Mach()) {
+    return false;
+  }
+  MachNode* mstore = store->as_Mach();
+  if (C->get_alias_index(load->adr_type()) != Compile::AliasIdxRaw) {
+    // Check for call into the runtime using the Java calling
+    // convention (and from there into a wrapper); it has no
+    // _method.  Can't do this optimization for Native calls because
+    // they CAN write to Java memory.
+    if (mstore->ideal_Opcode() == Op_CallStaticJava) {
+      assert(mstore->is_MachSafePoint(), "");
+      MachSafePointNode* ms = (MachSafePointNode*) mstore;
+      assert(ms->is_MachCallJava(), "");
+      MachCallJavaNode* mcj = (MachCallJavaNode*) ms;
+      if (mcj->_method == nullptr) {
+        // These runtime calls do not write to Java visible memory
+        // (other than Raw) and so do not require anti-dependence edges.
+        return true;
+      }
+    }
+    // Same for SafePoints: they read/write Raw but only read otherwise.
+    // This is basically a workaround for SafePoints only defining control
+    // instead of control + memory.
+    if (mstore->ideal_Opcode() == Op_SafePoint) {
+      return true;
+    }
+  } else {
+    // Some raw memory, such as the load of "top" at an allocation,
+    // can be control dependent on the previous safepoint. See
+    // comments in GraphKit::allocate_heap() about control input.
+    // Inserting an anti-dep between such a safepoint and a use
+    // creates a cycle, and will cause a subsequent failure in
+    // local scheduling.  (BugId 4919904)
+    // (%%% How can a control input be a safepoint and not a projection??)
+    if (mstore->ideal_Opcode() == Op_SafePoint && load->in(0) == mstore) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void PhaseCFG::verify_no_interfering_stores(const Node* load) const {
+  assert(load->needs_anti_dependence_check(),
+         "load should be an anti-dependence check candidate");
+  const Node* initial_mem = load->in(MemNode::Memory);
+
+  // TODO: pass-through MergeMems if necessary (reuse code from
+  // PhaseCFG::insert_anti_dependences)
+
+  int load_alias_idx = C->get_alias_index(load->adr_type());
+  assert(!C->do_aliasing() || load_alias_idx != Compile::AliasIdxBot,
+         "loads should not use all of memory");
+
+  if (!C->alias_type(load_alias_idx)->is_rewritable()) {
+    // By construction, stores do not interfere with the used memory definition.
+    return;
+  }
+
+  const Node* interfering = find_in_between(initial_mem, load, [&](const Node* store) {
+    if (!store->is_memory_writer()) {
+      return false;
+    }
+    assert(!store->needs_anti_dependence_check(), "memory writers should not need anti-dependence checks");
+    if (!C->can_alias(store->adr_type(), load_alias_idx)) {
+      return false;
+    }
+    if (is_non_interfering_call(load, store)) {
+      return false;
+    }
+    // TODO: anything else we should skip?
+    return true;
+  });
+  if (interfering != nullptr && interfering->is_Mach() && interfering->as_Mach()->ideal_Opcode() == Op_MemBarStoreStore) {
+    return; // FIXME: investigate, e.g. java -Xcomp -XX:CompileOnly=java.lang.Thread::*
+  }
+  assert(interfering == nullptr,
+         "missing anti-dependence: %d %s interferes with the memory definition read by %d %s",
+         interfering->_idx, interfering->Name(), load->_idx, load->Name());
+}
+
 void PhaseCFG::verify_dominator_tree() const {
   for (uint i = 0; i < number_of_blocks(); i++) {
     Block* block = get_block(i);
@@ -1358,6 +1439,7 @@ void PhaseCFG::verify() const {
         if (C->failing()) {
           return;
         }
+        verify_no_interfering_stores(n);
       }
       for (uint k = 0; k < n->req(); k++) {
         Node *def = n->in(k);
