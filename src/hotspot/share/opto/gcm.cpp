@@ -544,7 +544,7 @@ static Block* memory_early_block(Node* load, Block* early, const PhaseCFG* cfg) 
 }
 
 // This function is used by insert_anti_dependences to find unrelated loads for stores in implicit null checks.
-bool PhaseCFG::unrelated_load_in_store_null_block(Node* store, Node* load) {
+bool PhaseCFG::unrelated_load_in_store_null_block(const Node* store, const Node* load) const {
   // We expect an anti-dependence edge from 'load' to 'store', except when
   // implicit_null_check() has hoisted 'store' above its early block to
   // perform an implicit null check, and 'load' is placed in the null

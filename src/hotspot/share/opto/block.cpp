@@ -1393,6 +1393,9 @@ void PhaseCFG::verify_no_interfering_stores(const Node* load) const {
     if (is_non_interfering_call(load, store)) {
       return false;
     }
+    if (unrelated_load_in_store_null_block(store, load)) {
+      return false;
+    }
     // TODO: anything else we should skip?
     return true;
   });

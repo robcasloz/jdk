@@ -641,7 +641,7 @@ class PhaseCFG : public Phase {
   bool trace_opto_pipelining() const { return false; }
 #endif
 
-  bool unrelated_load_in_store_null_block(Node* store, Node* load);
+  bool unrelated_load_in_store_null_block(const Node* store, const Node* load) const;
 
   // Search for a node n such that:
   // - there exists a path P = (start, n_1, n_2, ..., n_k, end) in the CFG,
