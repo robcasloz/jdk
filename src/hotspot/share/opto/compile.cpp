@@ -631,6 +631,7 @@ Compile::Compile(ciEnv* ci_env, ciMethod* target, int osr_bci,
 #ifndef PRODUCT
       _igv_idx(0),
       _trace_opto_output(directive->TraceOptoOutputOption),
+      _invalid_aliases(false),
 #endif
       _has_method_handle_invokes(false),
       _clinit_barrier_on_entry(false),
@@ -908,6 +909,7 @@ Compile::Compile(ciEnv* ci_env,
 #ifndef PRODUCT
       _igv_idx(0),
       _trace_opto_output(directive->TraceOptoOutputOption),
+      _invalid_aliases(false),
 #endif
       _has_method_handle_invokes(false),
       _clinit_barrier_on_entry(false),

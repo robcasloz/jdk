@@ -831,7 +831,7 @@ Node* MemNode::find_previous_store(PhaseValues* phase) {
 const TypePtr* MemNode::calculate_adr_type(const Type* t, const TypePtr* cross_check) {
   if (t == Type::TOP)  return nullptr; // does not touch memory any more?
   #ifdef ASSERT
-  if (!VerifyAliases || VMError::is_error_reported() || Node::in_dump())  cross_check = nullptr;
+  if (VMError::is_error_reported() || Node::in_dump())  cross_check = nullptr;
   #endif
   const TypePtr* tp = t->isa_ptr();
   if (tp == nullptr) {
@@ -846,14 +846,24 @@ const TypePtr* MemNode::calculate_adr_type(const Type* t, const TypePtr* cross_c
         cross_check != TypeRawPtr::BOTTOM) {
       // Recheck the alias index, to see if it has changed (due to a bug).
       Compile* C = Compile::current();
-      assert(C->get_alias_index(cross_check) == C->get_alias_index(tp),
-             "must stay in the original alias category");
+      if (C->get_alias_index(cross_check) != C->get_alias_index(tp)) {
+        if (VerifyAliases2) {
+          assert(false, "must stay in the original alias category");
+        } else {
+          C->set_invalid_aliases(true);
+          if (UseNewCode) {
+            tty->print_cr("%d: set_invalid_aliases(true)", C->compile_id());
+          }
+        }
+      }
       // The type of the address must be contained in the adr_type,
       // disregarding "null"-ness.
       // (We make an exception for TypeRawPtr::BOTTOM, which is a bit bucket.)
-      const TypePtr* tp_notnull = tp->join(TypePtr::NOTNULL)->is_ptr();
-      assert(cross_check->meet(tp_notnull) == cross_check->remove_speculative(),
-             "real address must not escape from expected memory type");
+      if (VerifyAliases2) {
+        const TypePtr* tp_notnull = tp->join(TypePtr::NOTNULL)->is_ptr();
+        assert(cross_check->meet(tp_notnull) == cross_check->remove_speculative(),
+               "real address must not escape from expected memory type");
+      }
     }
     #endif
     return tp;

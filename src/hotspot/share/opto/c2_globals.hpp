@@ -660,6 +660,9 @@
           "Scaling factor for branch frequencies (deprecated)")             \
           range(1, max_intx)                                                \
                                                                             \
+  develop(bool, VerifyAliases2, false,                                      \
+          "perform extra checks on the results of alias analysis")          \
+                                                                            \
   develop(bool, VerifyAliases, false,                                       \
           "perform extra checks on the results of alias analysis")          \
                                                                             \

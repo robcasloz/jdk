@@ -351,6 +351,7 @@ class Compile : public Phase {
   uint                  _igv_phase_iter[PHASE_NUM_TYPES]; // Counters for IGV phase iterations
   bool                  _trace_opto_output;
   bool                  _parsed_irreducible_loop; // True if ciTypeFlow detected irreducible loops during parsing
+  bool                  _invalid_aliases;
 #endif
   bool                  _has_irreducible_loop;  // Found irreducible loops
   // JSR 292
@@ -650,6 +651,8 @@ public:
   bool          should_print_ideal() const      { return _directive->PrintIdealOption; }
   bool              parsed_irreducible_loop() const { return _parsed_irreducible_loop; }
   void          set_parsed_irreducible_loop(bool z) { _parsed_irreducible_loop = z; }
+  bool          invalid_aliases() const { return _invalid_aliases; }
+  void          set_invalid_aliases(bool z) { _invalid_aliases = z; }
   int _in_dump_cnt;  // Required for dumping ir nodes.
 #endif
   bool              has_irreducible_loop() const { return _has_irreducible_loop; }
