@@ -97,8 +97,10 @@ public:
   FN(comp,        C2 Compile arena) \
   FN(type,        C2 Type arena) \
   FN(index,       C2 Index arena) \
-  FN(reglive,     C2 Register Allocation Live Arena) \
+  FN(states,      C2 Matcher States Arena) \
+  FN(reglive,     C2 Register Allocation Live Arenas) \
   FN(regsplit,    C2 Register Allocation Split Arena) \
+  FN(superword,   C2 SuperWord Arenas) \
   FN(cienv,       CI Env Arena) \
   FN(ha,          Handle area) \
   FN(other,       Other arenas) \
