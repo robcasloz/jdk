@@ -1396,6 +1396,16 @@ void PhaseCFG::verify_no_interfering_stores(const Node* load) const {
     if (unrelated_load_in_store_null_block(store, load)) {
       return false;
     }
+    if (store->in(MemNode::Memory) == initial_mem &&
+        initial_mem->is_Proj() &&
+        initial_mem->adr_type() == TypeRawPtr::BOTTOM &&
+        initial_mem->in(0)->is_Initialize()) {
+      // Disabled by now due to false positives due to discrepancies between
+      // memory node types and their alias indices between array clearing stores
+      // (PhaseMacroExpand::generate_clear_array) and array-copying masked
+      // vector loads (PhaseMacroExpand::generate_partial_inlining_block).
+      return false;
+    }
     // TODO: anything else we should skip?
     return true;
   });
