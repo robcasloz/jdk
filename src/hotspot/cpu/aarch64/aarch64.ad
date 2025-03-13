@@ -6978,6 +6978,7 @@ instruct storeimmB0(immI0 zero, memory1 mem)
 instruct storeC(iRegIorL2I src, memory2 mem)
 %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
   predicate(!needs_releasing_store(n));
 
   ins_cost(INSN_COST);
@@ -6991,6 +6992,7 @@ instruct storeC(iRegIorL2I src, memory2 mem)
 instruct storeimmC0(immI0 zero, memory2 mem)
 %{
   match(Set mem (StoreC mem zero));
+  match(Set mem (StoreS mem zero));
   predicate(!needs_releasing_store(n));
 
   ins_cost(INSN_COST);
@@ -7401,6 +7403,7 @@ instruct storeimmB0_volatile(immI0 zero, /* sync_memory*/indirect mem)
 instruct storeC_volatile(iRegIorL2I src, /* sync_memory*/indirect mem)
 %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
 
   ins_cost(VOLATILE_REF_COST);
   format %{ "stlrh  $src, $mem\t# short" %}
@@ -7413,6 +7416,7 @@ instruct storeC_volatile(iRegIorL2I src, /* sync_memory*/indirect mem)
 instruct storeimmC0_volatile(immI0 zero, /* sync_memory*/indirect mem)
 %{
   match(Set mem (StoreC mem zero));
+  match(Set mem (StoreS mem zero));
 
   ins_cost(VOLATILE_REF_COST);
   format %{ "stlrh  zr, $mem\t# short" %}

@@ -5068,6 +5068,7 @@ instruct storeB(memory mem, rRegI src)
 instruct storeC(memory mem, rRegI src)
 %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
 
   ins_cost(125); // XXX
   format %{ "movw    $mem, $src\t# char/short" %}
@@ -5270,6 +5271,7 @@ instruct storeImmC0(memory mem, immI_0 zero)
 %{
   predicate(UseCompressedOops && (CompressedOops::base() == nullptr));
   match(Set mem (StoreC mem zero));
+  match(Set mem (StoreS mem zero));
 
   ins_cost(125); // XXX
   format %{ "movw    $mem, R12\t# short/char (R12_heapbase==0)" %}
@@ -5283,6 +5285,7 @@ instruct storeImmI16(memory mem, immI16 src)
 %{
   predicate(UseStoreImmI16);
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
 
   ins_cost(150);
   format %{ "movw    $mem, $src\t# short/char" %}

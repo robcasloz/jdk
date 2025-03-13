@@ -378,7 +378,7 @@ public:
   virtual uint ideal_reg() const { return Op_RegI; }
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
   virtual const Type* Value(PhaseGVN* phase) const;
-  virtual int store_Opcode() const { return Op_StoreC; }
+  virtual int store_Opcode() const { return Op_StoreS; }
   virtual BasicType memory_type() const { return T_SHORT; }
 };
 
@@ -670,7 +670,7 @@ public:
 };
 
 //------------------------------StoreCNode-------------------------------------
-// Store char/short to memory
+// Store char to memory
 class StoreCNode : public StoreNode {
 public:
   StoreCNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, MemOrd mo)
@@ -678,6 +678,17 @@ public:
   virtual int Opcode() const;
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
   virtual BasicType memory_type() const { return T_CHAR; }
+};
+
+//------------------------------StoreSNode-------------------------------------
+// Store char/short to memory
+class StoreSNode : public StoreNode {
+public:
+  StoreSNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, MemOrd mo)
+    : StoreNode(c, mem, adr, at, val, mo) {}
+  virtual int Opcode() const;
+  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+  virtual BasicType memory_type() const { return T_SHORT; }
 };
 
 //------------------------------StoreINode-------------------------------------

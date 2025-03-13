@@ -2693,8 +2693,8 @@ StoreNode* StoreNode::make(PhaseGVN& gvn, Node* ctl, Node* mem, Node* adr, const
   case T_BOOLEAN: val = gvn.transform(new AndINode(val, gvn.intcon(0x1))); // Fall through to T_BYTE case
   case T_BYTE:    return new StoreBNode(ctl, mem, adr, adr_type, val, mo);
   case T_INT:     return new StoreINode(ctl, mem, adr, adr_type, val, mo);
-  case T_CHAR:
-  case T_SHORT:   return new StoreCNode(ctl, mem, adr, adr_type, val, mo);
+  case T_CHAR:    return new StoreCNode(ctl, mem, adr, adr_type, val, mo);
+  case T_SHORT:   return new StoreSNode(ctl, mem, adr, adr_type, val, mo);
   case T_LONG:    return new StoreLNode(ctl, mem, adr, adr_type, val, mo, require_atomic_access);
   case T_FLOAT:   return new StoreFNode(ctl, mem, adr, adr_type, val, mo);
   case T_DOUBLE:  return new StoreDNode(ctl, mem, adr, adr_type, val, mo, require_atomic_access);
@@ -2891,7 +2891,7 @@ private:
 StoreNode* MergePrimitiveStores::run() {
   // Check for B/S/C/I
   int opc = _store->Opcode();
-  if (opc != Op_StoreB && opc != Op_StoreC && opc != Op_StoreI) {
+  if (opc != Op_StoreB && opc != Op_StoreC && opc != Op_StoreS && opc != Op_StoreI) {
     return nullptr;
   }
 
@@ -2936,7 +2936,7 @@ StoreNode* MergePrimitiveStores::run() {
 // Check compatibility between _store and other_store.
 bool MergePrimitiveStores::is_compatible_store(const StoreNode* other_store) const {
   int opc = _store->Opcode();
-  assert(opc == Op_StoreB || opc == Op_StoreC || opc == Op_StoreI, "precondition");
+  assert(opc == Op_StoreB || opc == Op_StoreC || opc == Op_StoreS || opc == Op_StoreI, "precondition");
 
   if (other_store == nullptr ||
       _store->Opcode() != other_store->Opcode()) {
@@ -3696,6 +3696,22 @@ Node *StoreBNode::Ideal(PhaseGVN *phase, bool can_reshape){
 // If the store is from an AND mask that leaves the low bits untouched, then
 // we can skip the AND operation
 Node *StoreCNode::Ideal(PhaseGVN *phase, bool can_reshape){
+  Node *progress = StoreNode::Ideal_masked_input(phase, 0xFFFF);
+  if( progress != nullptr ) return progress;
+
+  progress = StoreNode::Ideal_sign_extended_input(phase, 16);
+  if( progress != nullptr ) return progress;
+
+  // Finally check the default case
+  return StoreNode::Ideal(phase, can_reshape);
+}
+//=============================================================================
+
+//------------------------------Ideal------------------------------------------
+// If the store is from an AND mask that leaves the low bits untouched, then
+// we can skip the AND operation
+// TODO: factor out common code with StoreCNode::Ideal
+Node *StoreSNode::Ideal(PhaseGVN *phase, bool can_reshape){
   Node *progress = StoreNode::Ideal_masked_input(phase, 0xFFFF);
   if( progress != nullptr ) return progress;
 

@@ -190,6 +190,7 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
       break;
     case Op_StoreB:
     case Op_StoreC:
+    case Op_StoreS:
     case Op_StoreD:
     case Op_StoreF:
     case Op_StoreI:
@@ -724,6 +725,7 @@ void PhaseCFG::adjust_register_pressure(Node* n, Block* block, intptr_t* recalc_
         switch (iop) {
         case Op_StoreB:
         case Op_StoreC:
+        case Op_StoreS:
         case Op_StoreD:
         case Op_StoreF:
         case Op_StoreI:

@@ -3743,6 +3743,7 @@ instruct convF2HF_mem_reg(memory mem, regF src, kReg ktmp, rRegI rtmp) %{
   predicate((UseAVX > 2) && VM_Version::supports_avx512vl());
   effect(TEMP ktmp, TEMP rtmp);
   match(Set mem (StoreC mem (ConvF2HF src)));
+  match(Set mem (StoreS mem (ConvF2HF src)));
   format %{ "evcvtps2ph $mem,$src \t using $ktmp and $rtmp as TEMP" %}
   ins_encode %{
     __ movl($rtmp$$Register, 0x1);

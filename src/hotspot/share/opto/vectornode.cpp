@@ -249,6 +249,7 @@ int VectorNode::opcode(int sopc, BasicType bt) {
 
   case Op_StoreB:
   case Op_StoreC:
+  case Op_StoreS:
   case Op_StoreI:
   case Op_StoreL:
   case Op_StoreF:
@@ -597,7 +598,8 @@ void VectorNode::vector_operands(Node* n, uint* start, uint* end) {
     *start = 0;
     *end   = 0; // no vector operands
     break;
-  case Op_StoreB:  case Op_StoreC:
+  case Op_StoreB:
+  case Op_StoreC:  case Op_StoreS:
   case Op_StoreI:  case Op_StoreL:
   case Op_StoreF:  case Op_StoreD:
   case Op_StoreP:  case Op_StoreN:

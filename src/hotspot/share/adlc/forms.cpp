@@ -278,6 +278,7 @@ Form::DataType Form::is_load_from_memory(const char *opType) const {
 Form::DataType Form::is_store_to_memory(const char *opType) const {
   if( strcmp(opType,"StoreB")==0)  return Form::idealB;
   if( strcmp(opType,"StoreC")==0)  return Form::idealC;
+  if( strcmp(opType,"StoreS")==0)  return Form::idealS;
   if( strcmp(opType,"StoreD")==0)  return Form::idealD;
   if( strcmp(opType,"StoreF")==0)  return Form::idealF;
   if( strcmp(opType,"StoreI")==0)  return Form::idealI;

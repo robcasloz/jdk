@@ -6119,6 +6119,7 @@ instruct storeB(memory mem, xRegI src) %{
 // Store Char/Short
 instruct storeC(memory mem, rRegI src) %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
 
   ins_cost(125);
   format %{ "MOV16  $mem,$src" %}
@@ -6241,6 +6242,7 @@ instruct storeImmI(memory mem, immI src) %{
 instruct storeImmI16(memory mem, immI16 src) %{
   predicate(UseStoreImmI16);
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
 
   ins_cost(150);
   format %{ "MOV16  $mem,$src" %}
