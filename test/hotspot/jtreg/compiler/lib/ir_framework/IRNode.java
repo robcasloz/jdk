@@ -1721,6 +1721,16 @@ public class IRNode {
         storeOfNodes(STORE_C_OF_CLASS, "StoreC");
     }
 
+    public static final String STORE_S = PREFIX + "STORE_S" + POSTFIX;
+    static {
+        beforeMatchingNameRegex(STORE_S, "StoreS");
+    }
+
+    public static final String STORE_S_OF_CLASS = COMPOSITE_PREFIX + "STORE_S_OF_CLASS" + POSTFIX;
+    static {
+        storeOfNodes(STORE_S_OF_CLASS, "StoreS");
+    }
+
     public static final String STORE_D = PREFIX + "STORE_D" + POSTFIX;
     static {
         beforeMatchingNameRegex(STORE_D, "StoreD");

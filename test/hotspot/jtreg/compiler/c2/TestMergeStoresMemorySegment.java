@@ -156,7 +156,7 @@ class TestMergeStoresMemorySegmentImpl {
 
     // Custom Regex: allows us to only match Store that come from MemorySegment internals.
     private static final String REGEX_STORE_B_TO_MS_FROM_B = START + "StoreB" + MID + END + "ScopedMemoryAccess::putByteInternal";
-    private static final String REGEX_STORE_C_TO_MS_FROM_B = START + "StoreC" + MID + END + "ScopedMemoryAccess::putByteInternal";
+    private static final String REGEX_STORE_S_TO_MS_FROM_B = START + "StoreS" + MID + END + "ScopedMemoryAccess::putByteInternal";
     private static final String REGEX_STORE_I_TO_MS_FROM_B = START + "StoreI" + MID + END + "ScopedMemoryAccess::putByteInternal";
     private static final String REGEX_STORE_L_TO_MS_FROM_B = START + "StoreL" + MID + END + "ScopedMemoryAccess::putByteInternal";
 
@@ -366,7 +366,7 @@ class TestMergeStoresMemorySegmentImpl {
 
     @Test
     @IR(counts = {REGEX_STORE_B_TO_MS_FROM_B, "<=5", // 4x RC
-                  REGEX_STORE_C_TO_MS_FROM_B, ">=3", // 4x merged
+                  REGEX_STORE_S_TO_MS_FROM_B, ">=3", // 4x merged
                   REGEX_STORE_I_TO_MS_FROM_B, "0",
                   REGEX_STORE_L_TO_MS_FROM_B, "0"},
         phase = CompilePhase.PRINT_IDEAL,
@@ -386,7 +386,7 @@ class TestMergeStoresMemorySegmentImpl {
 
     @Test
     @IR(counts = {REGEX_STORE_B_TO_MS_FROM_B, "<=5", // 4x RC
-                  REGEX_STORE_C_TO_MS_FROM_B, ">=3", // 4x merged
+                  REGEX_STORE_S_TO_MS_FROM_B, ">=3", // 4x merged
                   REGEX_STORE_I_TO_MS_FROM_B, "0",
                   REGEX_STORE_L_TO_MS_FROM_B, "0"},
         phase = CompilePhase.PRINT_IDEAL,
@@ -406,7 +406,7 @@ class TestMergeStoresMemorySegmentImpl {
 
     @Test
     @IR(counts = {REGEX_STORE_B_TO_MS_FROM_B, "<=5", // 4x RC
-                  REGEX_STORE_C_TO_MS_FROM_B, ">=3", // 4x merged
+                  REGEX_STORE_S_TO_MS_FROM_B, ">=3", // 4x merged
                   REGEX_STORE_I_TO_MS_FROM_B, "0",
                   REGEX_STORE_L_TO_MS_FROM_B, "0"},
         phase = CompilePhase.PRINT_IDEAL,
