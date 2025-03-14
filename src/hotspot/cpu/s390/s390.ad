@@ -4659,6 +4659,7 @@ instruct storeB(memory mem, iRegI src) %{
 // Store Char/Short
 instruct storeC(memory mem, iRegI src) %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
   ins_cost(MEMORY_REF_COST);
   size(Z_DISP_SIZE);
   format %{ "STH(Y)  $src,$mem\t # short" %}
@@ -4767,6 +4768,7 @@ instruct memInitB(memoryRSY mem, immI8 src) %{
 // Move Immediate to 2-byte memory.
 instruct memInitC(memoryRS mem, immI16 src) %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
   ins_cost(MEMORY_REF_COST);
   size(6);
   format %{ "MVHHI   $mem,$src\t # direct mem init 2" %}

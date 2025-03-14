@@ -5010,6 +5010,7 @@ instruct storeimmB0(immI0 zero, memory mem)
 instruct storeC(iRegIorL2I src, memory mem)
 %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
 
   ins_cost(STORE_COST);
   format %{ "sh  $src, $mem\t# short, #@storeC" %}
@@ -5024,6 +5025,7 @@ instruct storeC(iRegIorL2I src, memory mem)
 instruct storeimmC0(immI0 zero, memory mem)
 %{
   match(Set mem (StoreC mem zero));
+  match(Set mem (StoreS mem zero));
 
   ins_cost(STORE_COST);
   format %{ "sh  zr, $mem\t# short, #@storeimmC0" %}

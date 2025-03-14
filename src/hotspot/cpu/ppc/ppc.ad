@@ -6354,6 +6354,7 @@ instruct storeB(memory mem, iRegIsrc src) %{
 // Store Char/Short
 instruct storeC(memory mem, iRegIsrc src) %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
   ins_cost(MEMORY_REF_COST);
 
   format %{ "STH     $src, $mem \t// short" %}
@@ -13376,6 +13377,7 @@ instruct storeL_reversed(iRegLsrc src, indirect mem) %{
 // Store unsigned short / char reversed byte order
 instruct storeUS_reversed(iRegIsrc src, indirect mem) %{
   match(Set mem (StoreC mem (ReverseBytesUS src)));
+  match(Set mem (StoreS mem (ReverseBytesUS src)));
   ins_cost(MEMORY_REF_COST);
 
   size(4);
@@ -13388,6 +13390,7 @@ instruct storeUS_reversed(iRegIsrc src, indirect mem) %{
 // Store short reversed byte order
 instruct storeS_reversed(iRegIsrc src, indirect mem) %{
   match(Set mem (StoreC mem (ReverseBytesS src)));
+  match(Set mem (StoreS mem (ReverseBytesS src)));
   ins_cost(MEMORY_REF_COST);
 
   size(4);

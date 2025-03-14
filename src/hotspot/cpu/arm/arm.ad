@@ -4231,6 +4231,7 @@ instruct storeB(memoryB mem, store_RegI src) %{
 
 instruct storeC(memoryS mem, store_RegI src) %{
   match(Set mem (StoreC mem src));
+  match(Set mem (StoreS mem src));
   ins_cost(MEMORY_REF_COST);
 
   size(4);
