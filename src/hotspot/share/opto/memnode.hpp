@@ -681,7 +681,7 @@ public:
 };
 
 //------------------------------StoreSNode-------------------------------------
-// Store char/short to memory
+// Store short to memory
 class StoreSNode : public StoreNode {
 public:
   StoreSNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, MemOrd mo)

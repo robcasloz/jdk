@@ -3710,7 +3710,7 @@ Node *StoreCNode::Ideal(PhaseGVN *phase, bool can_reshape){
 //------------------------------Ideal------------------------------------------
 // If the store is from an AND mask that leaves the low bits untouched, then
 // we can skip the AND operation
-// TODO: factor out common code with StoreCNode::Ideal
+// TODO: factor out common code with StoreCNode::Ideal?
 Node *StoreSNode::Ideal(PhaseGVN *phase, bool can_reshape){
   Node *progress = StoreNode::Ideal_masked_input(phase, 0xFFFF);
   if( progress != nullptr ) return progress;
