@@ -1918,7 +1918,7 @@ ClassFileParser::FieldAnnotationCollector::~FieldAnnotationCollector() {
 void MethodAnnotationCollector::apply_to(const methodHandle& m) {
   if (has_annotation(_method_CallerSensitive))
     m->set_caller_sensitive();
-  if (has_annotation(_method_ForceInline))
+  if (has_annotation(_method_ForceInline) && !UseNewCode)
     m->set_force_inline();
   if (has_annotation(_method_DontInline))
     m->set_dont_inline();
