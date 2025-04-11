@@ -112,28 +112,20 @@ void G1BarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembler* mas
   __ addptr(count, tmp);
 
   Label loop;
+  Label next;
   // Iterate from start card to end card (inclusive).
   __ bind(loop);
 
-  Label is_clean_card;
   if (UseCondCardMark) {
     __ cmpb(Address(addr, 0), G1CardTable::clean_card_val());
-    __ jcc(Assembler::equal, is_clean_card);
-  } else {
-   __ movb(Address(addr, 0), G1CardTable::dirty_card_val());
+    __ jcc(Assembler::notEqual, next);
   }
+  __ movb(Address(addr, 0), G1CardTable::dirty_card_val());
 
-  Label next_card;
-  __ bind(next_card);
+  __ bind(next);
   __ addptr(addr, sizeof(CardTable::CardValue));
   __ cmpptr(addr, count);
   __ jcc(Assembler::belowEqual, loop);
-  __ jmp(done);
-
-  __ bind(is_clean_card);
-  // Card was clean. Dirty card and go to next..
-  __ movb(Address(addr, 0), G1CardTable::dirty_card_val());
-  __ jmp(next_card);
 
   __ bind(done);
 }
