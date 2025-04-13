@@ -28,7 +28,6 @@ package java.lang;
 
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.DecimalDigits;
-import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 
 import java.lang.invoke.MethodHandle;
@@ -68,7 +67,6 @@ final class StringConcatHelper {
             super(constants);
         }
 
-        @ForceInline
         String concat0(String value) {
             int length = stringSize(this.length, value);
             byte coder = (byte) (this.coder | value.coder());
@@ -80,7 +78,6 @@ final class StringConcatHelper {
             return new String(buf, coder);
         }
 
-        @ForceInline
         String concat(boolean value) {
             int length = stringSize(this.length, value);
             String suffix = constants[1];
@@ -90,7 +87,6 @@ final class StringConcatHelper {
             return new String(buf, coder);
         }
 
-        @ForceInline
         String concat(char value) {
             int length = stringSize(this.length, value);
             byte coder = (byte) (this.coder | stringCoder(value));
@@ -101,7 +97,6 @@ final class StringConcatHelper {
             return new String(buf, coder);
         }
 
-        @ForceInline
         String concat(int value) {
             int length = stringSize(this.length, value);
             String suffix = constants[1];
@@ -111,7 +106,6 @@ final class StringConcatHelper {
             return new String(buf, coder);
         }
 
-        @ForceInline
         String concat(long value) {
             int length = stringSize(this.length, value);
             String suffix = constants[1];
@@ -121,17 +115,14 @@ final class StringConcatHelper {
             return new String(buf, coder);
         }
 
-        @ForceInline
         String concat(Object value) {
             return concat0(stringOf(value));
         }
 
-        @ForceInline
         String concat(float value) {
             return concat0(Float.toString(value));
         }
 
-        @ForceInline
         String concat(double value) {
             return concat0(Double.toString(value));
         }
@@ -407,7 +398,6 @@ final class StringConcatHelper {
      * @param second        second argument
      * @return String       resulting string
      */
-    @ForceInline
     static String simpleConcat(Object first, Object second) {
         String s1 = stringOf(first);
         String s2 = stringOf(second);
@@ -429,7 +419,6 @@ final class StringConcatHelper {
      * @param s2         second argument
      * @return String    resulting string
      */
-    @ForceInline
     static String doConcat(String s1, String s2) {
         byte coder = (byte) (s1.coder() | s2.coder());
         int newLength = (s1.length() + s2.length()) << coder;
@@ -450,7 +439,6 @@ final class StringConcatHelper {
      * @param arg           the only argument
      * @return String       resulting string
      */
-    @ForceInline
     static String newStringOf(Object arg) {
         return new String(stringOf(arg));
     }
@@ -541,7 +529,6 @@ final class StringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
-    @ForceInline
     static byte[] newArrayWithSuffix(String suffix, long indexCoder) {
         byte[] buf = newArray(indexCoder + suffix.length());
         if (indexCoder < UTF16) {
@@ -558,7 +545,6 @@ final class StringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
-    @ForceInline
     static byte[] newArray(long indexCoder) {
         byte coder = (byte)(indexCoder >> 32);
         int index = ((int)indexCoder) << coder;
@@ -570,7 +556,6 @@ final class StringConcatHelper {
      * @param length
      * @return the newly allocated byte array
      */
-    @ForceInline
     static byte[] newArray(int length) {
         if (length < 0) {
             throw new OutOfMemoryError("Overflow: String length out of range");
@@ -606,7 +591,6 @@ final class StringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
-    @ForceInline
     static byte[] newArrayWithSuffix(String suffix, int index, byte coder) {
         byte[] buf = newArray((index + suffix.length()) << coder);
         if (coder == String.LATIN1) {
@@ -779,7 +763,6 @@ final class StringConcatHelper {
      * @param value
      * @return the given parameter value, if valid
      */
-    @ForceInline
     static int checkOverflow(int value) {
         if (value >= 0) {
             return value;
@@ -787,7 +770,6 @@ final class StringConcatHelper {
         throw new OutOfMemoryError("Overflow: String length out of range");
     }
 
-    @ForceInline
     private static String concat0(String prefix, String str, String suffix) {
         byte coder = (byte) (prefix.coder() | str.coder() | suffix.coder());
         int len = prefix.length() + str.length();
@@ -796,7 +778,6 @@ final class StringConcatHelper {
         return new String(buf, coder);
     }
 
-    @ForceInline
     static String concat(String prefix, Object value, String suffix) {
         if (prefix == null) prefix = "null";
         if (suffix == null) suffix = "null";
