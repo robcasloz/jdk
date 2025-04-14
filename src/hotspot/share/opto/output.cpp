@@ -1406,6 +1406,10 @@ CodeBuffer* PhaseOutput::init_buffer() {
   return cb;
 }
 
+long PhaseOutput::_total_bytes = 0;
+long PhaseOutput::_cold_bytes = 0;
+long PhaseOutput::_hot_bytes = 0;
+
 //------------------------------fill_buffer------------------------------------
 void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
   // blk_starts[] contains offsets calculated during short branches processing,
@@ -1475,10 +1479,20 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
     blk_labels[i].init();
   }
 
+  // Compute the maximum estimated frequency in the current graph.
+  double max_freq = 1.0e-6;
+  for (uint i = 0; i < nblocks; i++) {
+    Block* block = C->cfg()->get_block(i);
+    if (block->_freq > max_freq) {
+      max_freq = block->_freq;
+    }
+  }
+
   // Now fill in the code buffer
   Node* delay_slot = nullptr;
   for (uint i = 0; i < nblocks; i++) {
     Block* block = C->cfg()->get_block(i);
+    int initial_offset = current_offset;
     _block = block;
     Node* head = block->head();
 
@@ -1813,6 +1827,13 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
     // Verify that the distance for generated before forward
     // short branches is still valid.
     guarantee((int)(blk_starts[i+1] - blk_starts[i]) >= (current_offset - blk_offset), "shouldn't increase block size");
+    int block_bytes = current_offset - initial_offset;
+    _total_bytes += block_bytes;
+    if ((block->_freq / max_freq) > ColdFreqThreshold) {
+      _hot_bytes += block_bytes;
+    } else {
+      _cold_bytes += block_bytes;
+    }
 
     // Save new block start offset
     blk_starts[i] = blk_offset;
@@ -3659,5 +3680,6 @@ void PhaseOutput::dump_asm_on(outputStream* st, int* pcs, uint pc_limit) {
 #ifndef PRODUCT
 void PhaseOutput::print_statistics() {
   Scheduling::print_statistics();
+  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld",_total_bytes, _hot_bytes, _cold_bytes);
 }
 #endif

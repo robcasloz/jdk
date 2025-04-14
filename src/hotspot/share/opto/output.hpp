@@ -99,6 +99,10 @@ private:
   Block*                 _block;
   uint                   _index;
 
+  static long _total_bytes;
+  static long _cold_bytes;
+  static long _hot_bytes;
+
   void perform_mach_node_analysis();
   void pd_perform_mach_node_analysis();
 

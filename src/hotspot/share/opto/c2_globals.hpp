@@ -826,6 +826,9 @@
           "used dead by replacing them with a Halt node. Turning this off " \
           "could corrupt the graph in rare cases and should be used with "  \
           "care.")                                                          \
+                                                                            \
+  develop(double, ColdFreqThreshold, 0.01,                                  \
+          "Highest relative execution frequency considered cold")           \
 
 // end of C2_FLAGS
 
