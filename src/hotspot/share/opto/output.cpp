@@ -1407,8 +1407,9 @@ CodeBuffer* PhaseOutput::init_buffer() {
 }
 
 long PhaseOutput::_total_bytes = 0;
-long PhaseOutput::_cold_bytes = 0;
 long PhaseOutput::_hot_bytes = 0;
+long PhaseOutput::_cold_bytes = 0;
+long PhaseOutput::_cold_notrap_bytes = 0;
 
 //------------------------------fill_buffer------------------------------------
 void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
@@ -1521,6 +1522,8 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 
     uint last_inst = block->number_of_nodes();
 
+    bool is_uncommon_trap_block = false;
+
     // Emit block normally, except for last instruction.
     // Emit means "dump code bits into code buffer".
     for (uint j = 0; j<last_inst; j++) {
@@ -1549,6 +1552,11 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         MachNode *mach = n->as_Mach();
         is_mcall = n->is_MachCall();
         bool is_sfn = n->is_MachSafePoint();
+
+        if (n->is_MachCallStaticJava() &&
+            n->as_MachCallStaticJava()->uncommon_trap_request() != 0) {
+          is_uncommon_trap_block = true;
+        }
 
         // If this requires all previous instructions be flushed, then do so
         if (is_sfn || is_mcall || mach->alignment_required() != 1) {
@@ -1833,6 +1841,9 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
       _hot_bytes += block_bytes;
     } else {
       _cold_bytes += block_bytes;
+      if (!is_uncommon_trap_block) {
+        _cold_notrap_bytes += block_bytes;
+      }
     }
 
     // Save new block start offset
@@ -3680,6 +3691,6 @@ void PhaseOutput::dump_asm_on(outputStream* st, int* pcs, uint pc_limit) {
 #ifndef PRODUCT
 void PhaseOutput::print_statistics() {
   Scheduling::print_statistics();
-  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld",_total_bytes, _hot_bytes, _cold_bytes);
+  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld,%ld", _total_bytes, _hot_bytes, _cold_bytes, _cold_notrap_bytes);
 }
 #endif
