@@ -1410,6 +1410,9 @@ long PhaseOutput::_total_bytes = 0;
 long PhaseOutput::_hot_bytes = 0;
 long PhaseOutput::_cold_bytes = 0;
 long PhaseOutput::_cold_notrap_bytes = 0;
+long PhaseOutput::_total_allocations = 0;
+long PhaseOutput::_hot_allocations = 0;
+long PhaseOutput::_cold_allocations = 0;
 
 //------------------------------fill_buffer------------------------------------
 void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
@@ -1523,6 +1526,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
     uint last_inst = block->number_of_nodes();
 
     bool is_uncommon_trap_block = false;
+    bool is_allocation_block = false;
 
     // Emit block normally, except for last instruction.
     // Emit means "dump code bits into code buffer".
@@ -1556,6 +1560,13 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         if (n->is_MachCallStaticJava() &&
             n->as_MachCallStaticJava()->uncommon_trap_request() != 0) {
           is_uncommon_trap_block = true;
+        }
+
+        if (n->is_MachCallStaticJava() &&
+            n->as_MachCallStaticJava()->_name != nullptr &&
+            ((strcmp(n->as_MachCallStaticJava()->_name, "C2 Runtime new_instance") == 0) ||
+             (strcmp(n->as_MachCallStaticJava()->_name, "C2 Runtime new_array") == 0))) {
+          is_allocation_block = true;
         }
 
         // If this requires all previous instructions be flushed, then do so
@@ -1837,12 +1848,23 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
     guarantee((int)(blk_starts[i+1] - blk_starts[i]) >= (current_offset - blk_offset), "shouldn't increase block size");
     int block_bytes = current_offset - initial_offset;
     _total_bytes += block_bytes;
+    if (is_allocation_block) {
+      _total_allocations++;
+    }
     if ((block->_freq / max_freq) > ColdFreqThreshold) {
+      // Hot block.
       _hot_bytes += block_bytes;
+      if (is_allocation_block) {
+        _hot_allocations++;
+      }
     } else {
+      // Cold block.
       _cold_bytes += block_bytes;
       if (!is_uncommon_trap_block) {
         _cold_notrap_bytes += block_bytes;
+      }
+      if (is_allocation_block) {
+        _cold_allocations++;
       }
     }
 
@@ -3691,6 +3713,11 @@ void PhaseOutput::dump_asm_on(outputStream* st, int* pcs, uint pc_limit) {
 #ifndef PRODUCT
 void PhaseOutput::print_statistics() {
   Scheduling::print_statistics();
-  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld,%ld", _total_bytes, _hot_bytes, _cold_bytes, _cold_notrap_bytes);
+  // Note: hot/cold allocation measurements only make sense with -XX:-UseTLAB,
+  // since they are based on recognizing the slow path which by construction is
+  // always going to be cold otherwise.
+  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld,%ld,%ld,%ld,%ld",
+                _total_bytes, _hot_bytes, _cold_bytes, _cold_notrap_bytes,
+                _total_allocations, _hot_allocations, _cold_allocations);
 }
 #endif

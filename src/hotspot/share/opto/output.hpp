@@ -103,6 +103,9 @@ private:
   static long _hot_bytes;
   static long _cold_bytes;
   static long _cold_notrap_bytes;
+  static long _total_allocations;
+  static long _hot_allocations;
+  static long _cold_allocations;
 
   void perform_mach_node_analysis();
   void pd_perform_mach_node_analysis();
