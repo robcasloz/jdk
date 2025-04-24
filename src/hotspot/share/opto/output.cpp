@@ -1413,6 +1413,9 @@ long PhaseOutput::_cold_notrap_bytes = 0;
 long PhaseOutput::_total_allocations = 0;
 long PhaseOutput::_hot_allocations = 0;
 long PhaseOutput::_cold_allocations = 0;
+long PhaseOutput::_total_barriers = 0;
+long PhaseOutput::_hot_barriers = 0;
+long PhaseOutput::_cold_barriers = 0;
 
 //------------------------------fill_buffer------------------------------------
 void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
@@ -1527,6 +1530,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
 
     bool is_uncommon_trap_block = false;
     bool is_allocation_block = false;
+    uint block_barriers = 0;
 
     // Emit block normally, except for last instruction.
     // Emit means "dump code bits into code buffer".
@@ -1549,6 +1553,10 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
       // (but allow split bundles)
       if (Pipeline::requires_bundling() && starts_bundle(n))
         masm->code()->flush_bundle(false);
+
+      if (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_StoreN && n->as_Mach()->barrier_data() != 0) {
+        block_barriers++;
+      }
 
       // Special handling for SafePoint/Call Nodes
       bool is_mcall = false;
@@ -1851,12 +1859,14 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
     if (is_allocation_block) {
       _total_allocations++;
     }
+    _total_barriers += block_barriers;
     if ((block->_freq / max_freq) > ColdFreqThreshold) {
       // Hot block.
       _hot_bytes += block_bytes;
       if (is_allocation_block) {
         _hot_allocations++;
       }
+      _hot_barriers += block_barriers;
     } else {
       // Cold block.
       _cold_bytes += block_bytes;
@@ -1866,6 +1876,7 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
       if (is_allocation_block) {
         _cold_allocations++;
       }
+      _cold_barriers += block_barriers;
     }
 
     // Save new block start offset
@@ -3716,8 +3727,9 @@ void PhaseOutput::print_statistics() {
   // Note: hot/cold allocation measurements only make sense with -XX:-UseTLAB,
   // since they are based on recognizing the slow path which by construction is
   // always going to be cold otherwise.
-  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld,%ld,%ld,%ld,%ld",
+  tty->print_cr("hot-cold-bytes,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld",
                 _total_bytes, _hot_bytes, _cold_bytes, _cold_notrap_bytes,
-                _total_allocations, _hot_allocations, _cold_allocations);
+                _total_allocations, _hot_allocations, _cold_allocations,
+                _total_barriers, _hot_barriers, _cold_barriers);
 }
 #endif

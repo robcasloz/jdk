@@ -106,6 +106,9 @@ private:
   static long _total_allocations;
   static long _hot_allocations;
   static long _cold_allocations;
+  static long _total_barriers;
+  static long _hot_barriers;
+  static long _cold_barriers;
 
   void perform_mach_node_analysis();
   void pd_perform_mach_node_analysis();
