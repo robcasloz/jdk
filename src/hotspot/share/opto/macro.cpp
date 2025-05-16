@@ -1072,7 +1072,14 @@ bool PhaseMacroExpand::eliminate_allocate_node(AllocateNode *alloc) {
   bool boxing_alloc = C->eliminate_boxing() &&
                       tklass->isa_instklassptr() &&
                       tklass->is_instklassptr()->instance_klass()->is_box_klass();
-  if (!alloc->_is_scalar_replaceable && (!boxing_alloc || (res != nullptr))) {
+
+  // Eliminate dead array allocations which are not used
+  // regardless of their scalar replaceable status.
+  bool array_alloc = alloc->is_AllocateArray();
+
+  if (!alloc->_is_scalar_replaceable &&
+      (!boxing_alloc || (res != nullptr)) &&
+      (!array_alloc || (res != nullptr))) {
     return false;
   }
 
