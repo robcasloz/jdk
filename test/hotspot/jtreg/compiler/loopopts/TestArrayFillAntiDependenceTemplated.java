@@ -26,6 +26,7 @@ package compiler.loopopts;
 import compiler.lib.compile_framework.*;
 import compiler.lib.template_framework.Template;
 import static compiler.lib.template_framework.Template.body;
+import static compiler.lib.template_framework.Template.let;
 
 /**
  * @test
@@ -51,16 +52,26 @@ public class TestArrayFillAntiDependenceTemplated {
         comp.invoke("TestArrayFillAntiDependence", "main", new Object[] {});
     }
 
+    private static String typeVal(String type) {
+        return type.toUpperCase() + "_VAL";
+    }
+
+    private static String capitalize(String type) {
+        return type.substring(0, 1).toUpperCase() + type.substring(1);
+    }
+
     public static String generate(CompileFramework comp) {
 
         // Template for a test.
         var testTemplate = Template.make("type", "operation", "value", (String type, String operation, String value) -> body(
+        let("Type", capitalize(type)),
+        let("TYPE_VAL", typeVal(type)),
         """
-        static #type test#type(int pos, int samePos) {
+        static #type test#Type(int pos, int samePos) {
             assert pos == samePos;
             #type total = #value;
             #type[] array = new #type[N];
-            array[pos] = VAL_#type;
+            array[pos] = #TYPE_VAL;
             for (int i = 0; i < M; i++) {
                 total #operation array[samePos];
                 for (int t = 0; t < array.length; t++) {
@@ -74,15 +85,12 @@ public class TestArrayFillAntiDependenceTemplated {
 
         // Template for a test run.
         var runTemplate = Template.make("type", (String type) -> body(
-        // In the token below, it would be useful to be able to write something like this,
-        // to match the existing code in TestArrayFillAntiDependence.java:
-        // Asserts.assertEquals(#toUpperCase(#type)_VAL, result);
-        // toUpperCase could be part of a collection of util String manipulation
-        // functions, or (preferably) a user-defined one.
+            let("Type", capitalize(type)),
+            let("TYPE_VAL", typeVal(type)),
             """
             for (int i = 0; i < 10_000; i++) {
-                #type result = test#type(0, 0);
-                Asserts.assertEquals(VAL_#type, result);
+                #type result = test#Type(0, 0);
+                Asserts.assertEquals(#TYPE_VAL, result);
             }
             """
         ));
@@ -96,14 +104,14 @@ public class TestArrayFillAntiDependenceTemplated {
 
                 static int N = 10;
                 static short M = 4;
-                static boolean VAL_boolean = true;
-                static char VAL_char = 42;
-                static float VAL_float = 42.0f;
-                static double VAL_double = 42.0;
-                static byte VAL_byte = 42;
-                static short VAL_short = 42;
-                static int VAL_int = 42;
-                static long VAL_long = 42;
+                static boolean BOOLEAN_VAL = true;
+                static char CHAR_VAL = 42;
+                static float FLOAT_VAL = 42.0f;
+                static double DOUBLE_VAL = 42.0;
+                static byte BYTE_VAL = 42;
+                static short SHORT_VAL = 42;
+                static int INT_VAL = 42;
+                static long LONG_VAL = 42;
 
             """,
                 testTemplate.asToken("boolean", "|=", "false"),
