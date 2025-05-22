@@ -37,13 +37,13 @@ import static compiler.lib.template_framework.Template.let;
  * @library /test/lib /
  * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions
  *                   -Xbatch -XX:-TieredCompilation
- *                   -XX:CompileOnly=compiler.loopopts.TestArrayFillAntiDependence::test*
+ *                   -XX:CompileOnly=compiler.loopopts.TestArrayFillAntiDependenceTemplatedWithDelimiters::test*
  *                   -XX:CompileCommand=quiet -XX:LoopUnrollLimit=0 -XX:+OptimizeFill
- *                   compiler.loopopts.TestArrayFillAntiDependence
- * @run main compiler.loopopts.TestArrayFillAntiDependenceTemplated
+ *                   compiler.loopopts.TestArrayFillAntiDependenceTemplatedWithDelimiters
+ * @run main compiler.loopopts.TestArrayFillAntiDependenceTemplatedWithDelimiters
  */
 
-public class TestArrayFillAntiDependenceTemplated {
+public class TestArrayFillAntiDependenceTemplatedWithDelimiters {
 
     public static void main(String[] args) {
         CompileFramework comp = new CompileFramework();
