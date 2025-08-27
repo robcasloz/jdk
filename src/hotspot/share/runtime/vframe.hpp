@@ -303,6 +303,8 @@ class vframeStreamCommon : StackObj {
 
   javaVFrame* asJavaVFrame();
 
+  inline int compile_id() const;
+
   // Frame type
   inline bool is_interpreted_frame() const;
 

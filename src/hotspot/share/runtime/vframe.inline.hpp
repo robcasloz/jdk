@@ -72,6 +72,16 @@ inline int vframeStreamCommon::decode_offset() const {
   return _decode_offset;
 }
 
+inline int vframeStreamCommon::compile_id() const {
+  if (is_interpreted_frame()) {
+    // TODO: Sometimes there is a discrepancy between JFR and this class. JFR
+    // believes this is a compiled frame while this class believes it is
+    // interpreted. Investigate whether this is expected, and what to do.
+    return 0;
+  }
+  return nm()->compile_id();
+}
+
 inline bool vframeStreamCommon::is_interpreted_frame() const { return _frame.is_interpreted_frame(); }
 
 inline void vframeStreamCommon::next() {

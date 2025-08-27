@@ -39,11 +39,11 @@ class JfrStackFrame {
   mutable int _line;
   int _bci;
   u1 _type;
+  int _compile_id;
 
  public:
   JfrStackFrame();
-  JfrStackFrame(const traceid& id, int bci, u1 type, const InstanceKlass* klass);
-  JfrStackFrame(const traceid& id, int bci, u1 type, int lineno, const InstanceKlass* klass);
+  JfrStackFrame(const traceid& id, int bci, u1 type, int compile_id, const InstanceKlass* klass);
 
   bool equals(const JfrStackFrame& rhs) const;
   void write(JfrChunkWriter& cw) const;

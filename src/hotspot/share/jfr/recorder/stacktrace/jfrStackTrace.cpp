@@ -145,7 +145,8 @@ void JfrStackTrace::record_interpreter_top_frame(const JfrSampleRequest& request
   _hash = (_hash * 31) + mid;
   _hash = (_hash * 31) + bci;
   _hash = (_hash * 31) + type;
-  _frames->append(JfrStackFrame(mid, bci, type, method->method_holder()));
+  _hash = (_hash * 31);
+  _frames->append(JfrStackFrame(mid, bci, type, 0, method->method_holder()));
   _count++;
 }
 
@@ -225,10 +226,15 @@ bool JfrStackTrace::record_inner(JavaThread* jt, const frame& frame, bool in_con
       // frame, so this frame is inlined into the caller.
       type = JfrStackFrame::FRAME_INLINE;
     }
+    int compile_id = 0;
+    if (type == JfrStackFrame::FRAME_JIT || type == JfrStackFrame::FRAME_INLINE) {
+      compile_id = vfs.compile_id();
+    }
     _hash = (_hash * 31) + mid;
     _hash = (_hash * 31) + bci;
     _hash = (_hash * 31) + type;
-    _frames->append(JfrStackFrame(mid, bci, type, method->method_holder()));
+    _hash = (_hash * 31) + compile_id;
+    _frames->append(JfrStackFrame(mid, bci, type, compile_id, method->method_holder()));
     _count++;
   }
   return _count > 0;

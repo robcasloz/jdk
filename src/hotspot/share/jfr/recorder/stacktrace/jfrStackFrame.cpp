@@ -28,32 +28,30 @@
 #include "jfr/support/jfrMethodLookup.hpp"
 #include "oops/method.inline.hpp"
 
-JfrStackFrame::JfrStackFrame() : _klass(nullptr), _methodid(0), _line(0), _bci(0), _type(0) {}
+JfrStackFrame::JfrStackFrame() : _klass(nullptr), _methodid(0), _line(0), _bci(0), _type(0), _compile_id(0) {}
 
-JfrStackFrame::JfrStackFrame(const traceid& id, int bci, u1 type, const InstanceKlass* ik) :
-  _klass(ik), _methodid(id), _line(0), _bci(bci), _type(type) {}
-
-JfrStackFrame::JfrStackFrame(const traceid& id, int bci, u1 type, int lineno, const InstanceKlass* ik) :
-  _klass(ik), _methodid(id), _line(lineno), _bci(bci), _type(type) {}
+JfrStackFrame::JfrStackFrame(const traceid& id, int bci, u1 type, int compile_id, const InstanceKlass* ik) :
+  _klass(ik), _methodid(id), _line(0), _bci(bci), _type(type), _compile_id(compile_id) {}
 
 template <typename Writer>
-static void write_frame(Writer& w, traceid methodid, int line, int bci, u1 type) {
+static void write_frame(Writer& w, traceid methodid, int line, int bci, u1 type, int compile_id) {
   w.write(methodid);
   w.write(static_cast<u4>(line));
   w.write(static_cast<u4>(bci));
-  w.write(static_cast<u8>(type));
+  w.write(static_cast<u4>(type));
+  w.write(static_cast<u4>(compile_id));
 }
 
 void JfrStackFrame::write(JfrChunkWriter& cw) const {
-  write_frame(cw, _methodid, _line, _bci, _type);
+  write_frame(cw, _methodid, _line, _bci, _type, _compile_id);
 }
 
 void JfrStackFrame::write(JfrCheckpointWriter& cpw) const {
-  write_frame(cpw, _methodid, _line, _bci, _type);
+  write_frame(cpw, _methodid, _line, _bci, _type, _compile_id);
 }
 
 bool JfrStackFrame::equals(const JfrStackFrame& rhs) const {
-  return _methodid == rhs._methodid && _bci == rhs._bci && _type == rhs._type;
+  return _methodid == rhs._methodid && _bci == rhs._bci && _type == rhs._type && _compile_id == rhs._compile_id;
 }
 
 void JfrStackFrame::resolve_lineno() const {
