@@ -1526,6 +1526,7 @@
     <Field type="int" name="lineNumber" label="Line Number" />
     <Field type="int" name="bytecodeIndex" label="Bytecode Index" />
     <Field type="FrameType" name="type" label="Frame Type" />
+    <Field type="int" name="compileId" label="Compilation Identifier" />
   </Type>
 
   <Type name="ChunkHeader" label="Chunk Header">
