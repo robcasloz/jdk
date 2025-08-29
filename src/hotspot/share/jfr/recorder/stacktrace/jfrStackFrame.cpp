@@ -38,7 +38,7 @@ static void write_frame(Writer& w, traceid methodid, int line, int bci, u1 type,
   w.write(methodid);
   w.write(static_cast<u4>(line));
   w.write(static_cast<u4>(bci));
-  w.write(static_cast<u4>(type));
+  w.write(static_cast<u8>(type));
   w.write(static_cast<u4>(compile_id));
 }
 
