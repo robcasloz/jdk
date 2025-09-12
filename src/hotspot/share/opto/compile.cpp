@@ -3308,8 +3308,15 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
     // If the pure call is not supported, then lower to a CallLeaf.
     if (!Matcher::match_rule_supported(Op_CallLeafPure)) {
       CallNode* call = n->as_Call();
+      // TODO: investigate whether the address type of CallLeafPure should
+      // always be nullptr. It used to be so before JDK-8347901, at least in
+      // some cases, see e.g.:
+      // $ make run-test CONF=linux-x64-debug
+      // TEST="compiler/interpreter/Test6539464.java" TEST_VM_OPTS="-ea -esa
+      // -XX:CompileThreshold=100 -XX:+UnlockExperimentalVMOptions -server
+      // -XX:+TieredCompilation".
       CallNode* new_call = new CallLeafNode(call->tf(), call->entry_point(),
-                                            call->_name, TypeRawPtr::BOTTOM);
+                                            call->_name, nullptr);
       new_call->init_req(TypeFunc::Control, call->in(TypeFunc::Control));
       new_call->init_req(TypeFunc::I_O, C->top());
       new_call->init_req(TypeFunc::Memory, C->top());
