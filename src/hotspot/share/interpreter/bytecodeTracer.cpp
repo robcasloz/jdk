@@ -171,7 +171,9 @@ class BytecodePrinter {
     }
     _next_pc = is_wide() ? bcp+2 : bcp+1;
     print_attributes(bci, st);
-    bytecode_epilog(bci, st);
+    if (!ClassPrinter::has_mode(_flags, ClassPrinter::PRINT_GRAPHVIZ_FORMAT)) {
+      bytecode_epilog(bci, st);
+    }
   }
 };
 
@@ -202,6 +204,9 @@ void BytecodeTracer::print_method_codes(const methodHandle& method, int from, in
   stringStream ss;
   while (s.next() >= 0) {
     method_printer.trace(method, s.bcp(), &ss);
+    if (ClassPrinter::has_mode(flags, ClassPrinter::PRINT_GRAPHVIZ_FORMAT)) {
+      ss.print("<br align=\"left\"/>");
+    }
   }
   st->print("%s", ss.as_string());
 }

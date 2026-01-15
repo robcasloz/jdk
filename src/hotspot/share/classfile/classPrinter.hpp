@@ -54,6 +54,7 @@ public:
     PRINT_METHOD_HANDLE     = 1 << 4, // extra information for invokehandle
     PRINT_CLASS_DETAILS     = 1 << 5, // print details of the C++ and Java objects that represent classes
     PRINT_METHOD_DETAILS    = 1 << 6, // print details of the C++ objects that represent methods
+    PRINT_GRAPHVIZ_FORMAT   = 1 << 7,
   };
   static bool has_mode(int flags, Mode mode) {
     return (flags & static_cast<int>(mode)) != 0;

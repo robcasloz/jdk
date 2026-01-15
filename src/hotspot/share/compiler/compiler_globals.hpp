@@ -91,6 +91,10 @@
   develop(bool, CITraceTypeFlow, false,                                     \
           "detailed per-bytecode tracing of ciTypeFlow analysis")           \
                                                                             \
+  develop(bool, CIPrintTypeFlowCFGs, false,                                 \
+          "print the control-flow graph of each analyzed method in "        \
+          "Graphviz's DOT format")                                          \
+                                                                            \
   product(bool, CICompilerCountPerCPU, false,                               \
           "1 compiler thread for log(N CPUs)")                              \
                                                                             \

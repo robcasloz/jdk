@@ -834,6 +834,7 @@ public:
 #else
   void print_name(outputStream* st = tty) const  PRODUCT_RETURN; // prints as "virtual void foo(int)"
 #endif
+  void print_file_name(outputStream* st = tty) const;
 
   typedef int (*method_comparator_func)(Method* a, Method* b);
 

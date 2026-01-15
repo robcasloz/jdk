@@ -1859,17 +1859,19 @@ class SignatureTypePrinter : public SignatureTypeNames {
  private:
   outputStream* _st;
   bool _use_separator;
+  const char* _separator = ", ";
 
   void type_name(const char* name) {
-    if (_use_separator) _st->print(", ");
+    if (_use_separator) _st->print("%s", _separator);
     _st->print("%s", name);
     _use_separator = true;
   }
 
  public:
-  SignatureTypePrinter(Symbol* signature, outputStream* st) : SignatureTypeNames(signature) {
+  SignatureTypePrinter(Symbol* signature, outputStream* st, const char* separator) : SignatureTypeNames(signature) {
     _st = st;
     _use_separator = false;
+    _separator = separator;
   }
 
   void print_parameters()              { _use_separator = false; do_parameters_on(this); }
@@ -1886,7 +1888,7 @@ void Method::print_name(outputStream* st) const {
     name()->print_symbol_on(st);
     signature()->print_symbol_on(st);
   } else {
-    SignatureTypePrinter sig(signature(), st);
+    SignatureTypePrinter sig(signature(), st, ", ");
     sig.print_returntype();
     st->print(" %s.", method_holder()->internal_name());
     name()->print_symbol_on(st);
@@ -1895,6 +1897,19 @@ void Method::print_name(outputStream* st) const {
     st->print(")");
   }
 }
+
+void Method::print_file_name(outputStream* st) const {
+  Thread *thread = Thread::current();
+  ResourceMark rm(thread);
+  SignatureTypePrinter sig(signature(), st, ".");
+  st->print("%s.", method_holder()->internal_name());
+  name()->print_symbol_on(st);
+  if (size_of_parameters() > 1) {
+    st->print(".");
+    sig.print_parameters();
+  }
+}
+
 #endif // !PRODUCT || INCLUDE_JVMTI
 
 

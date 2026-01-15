@@ -929,6 +929,9 @@ private:
   // Create the block map, which indexes blocks in pre_order.
   void map_blocks();
 
+  // Dump control-flow graph in Graphviz's DOT format.
+  void dump_dot_graph();
+
 public:
   // Perform type inference flow analysis.
   void do_flow();

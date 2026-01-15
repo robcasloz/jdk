@@ -30,15 +30,18 @@
 #include "ci/ciStreams.hpp"
 #include "ci/ciTypeArrayKlass.hpp"
 #include "ci/ciTypeFlow.hpp"
+#include "classfile/classPrinter.hpp"
 #include "compiler/compileLog.hpp"
 #include "interpreter/bytecode.hpp"
 #include "interpreter/bytecodes.hpp"
+#include "interpreter/bytecodeTracer.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.inline.hpp"
 #include "opto/compile.hpp"
 #include "runtime/deoptimization.hpp"
 #include "utilities/growableArray.hpp"
+#include "utilities/ostream.hpp"
 
 // ciTypeFlow::JsrSet
 //
@@ -3065,6 +3068,12 @@ void ciTypeFlow::do_flow() {
   if (CIPrintTypeFlow || CITraceTypeFlow) {
     rpo_print_on(tty);
   }
+
+#ifndef PRODUCT
+  if (CIPrintTypeFlowCFGs) {
+    dump_dot_graph();
+  }
+#endif // !PRODUCT
 }
 
 // ------------------------------------------------------------------
@@ -3202,4 +3211,51 @@ void ciTypeFlow::rpo_print_on(outputStream* st) const {
   st->print_cr("********************************************************");
   st->cr();
 }
-#endif
+
+void ciTypeFlow::dump_dot_graph() {
+  stringStream filename;
+  Method* method = _method->get_Method();
+  method->print_file_name(&filename);
+  filename.print(".dot");
+  fileStream* fs = new (mtCompiler) fileStream(filename.as_string(), "w");
+  fs->print_cr("digraph G {");
+  fs->print_cr("  fontname=\"Courier\"");
+  fs->print_cr("  labeldistance=2.0");
+  stringStream prettyname;
+  method->print_name(&prettyname);
+  fs->print_cr("  label=\"\n%s\"", prettyname.freeze());
+
+  for (Block* blk = _rpo_list; blk != nullptr; blk = blk->rpo_next()) {
+    fs->print_cr("%d [label=<<FONT FACE=\"Courier New\"><b>rpo#%d</b>", blk->rpo(), blk->rpo());
+    //fs->print("<br/>");
+    fs->print("<br align=\"left\"/>");
+    stringStream bytecode;
+    Thread *thread = Thread::current();
+    ResourceMark rm(thread);
+    methodHandle mh (thread, method);
+    int flags = ClassPrinter::PRINT_METHOD_NAME |
+                ClassPrinter::PRINT_BYTECODE |
+                ClassPrinter::PRINT_GRAPHVIZ_FORMAT;
+    BytecodeTracer::print_method_codes(mh, blk->start(), blk->limit(), &bytecode, flags);
+
+  //method->print_codes_on(blk->start(), blk->limit(), &bytecode);
+    fs->print("%s", bytecode.freeze());
+    fs->print("</FONT>>");
+    fs->print(", shape=box");
+    fs->print("]");
+    fs->cr();
+    if (blk->successors() != nullptr) {
+      for (int i = 0; i < blk->successors()->length(); i++) {
+        Block* succ = blk->successors()->at(i);
+        fs->print_cr("%d -> %d", blk->rpo(), succ->rpo());
+      }
+    }
+  }
+
+  // TODO: print bytecode in each block, print additional block info (irred, etc).
+
+  fs->print_cr("}");
+  fs->close();
+}
+
+#endif // !PRODUCT
