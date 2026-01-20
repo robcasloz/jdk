@@ -601,6 +601,48 @@ void JVMState::dump_on(outputStream* st) const {
 void dump_jvms(JVMState* jvms) {
   jvms->dump();
 }
+
+void JVMState::dump_structured(int sp, outputStream* st) const {
+  st->print("method: ");
+  method()->print_short_name(st);
+  st->cr();
+  st->print("map: %d %s", _map->_idx, _map->Name());
+  if (!_map->replaced_nodes().is_empty()) {
+    st->print(", ");
+    _map->replaced_nodes().dump(st);
+  }
+  st->cr();
+  st->print_cr("stack:");
+  for (int i = stk_size() - 1; i >= 0; i--) {
+    st->print("  %d: ", i);
+    Node* n = _map->in(stkoff() + i);
+    if (n->is_top()) {
+      st->print("-");
+    } else {
+      if (i >= sp) {
+        st->print("- (%d %s)", n->_idx, n->Name());
+      } else {
+        st->print("%d %s", n->_idx, n->Name());
+      }
+    }
+    st->cr();
+    if (i == sp) {
+      st->print_cr("   <- sp = %d", sp);
+    }
+  }
+  st->print_cr("locals:");
+  for (uint i = 0; i < (uint)loc_size(); i++) {
+    st->print("  %d: ", i);
+    Node* n = _map->in(locoff() + i);
+    if (n->is_top()) {
+      st->print("-");
+    } else {
+      st->print("%d %s", n->_idx, n->Name());
+    }
+    st->cr();
+  }
+}
+
 #endif
 
 //--------------------------clone_shallow--------------------------------------
@@ -1487,6 +1529,16 @@ const Type* SafePointNode::Value(PhaseGVN* phase) const {
 void SafePointNode::dump_spec(outputStream *st) const {
   st->print(" SafePoint ");
   _replaced_nodes.dump(st);
+}
+
+void SafePointNode::dump_jvms_stack(int sp, outputStream* st) const {
+  assert(_jvms->map() == this, "maps should be synchronized");
+  const JVMState* jvms = _jvms;
+  do {
+    jvms->dump_structured(sp, st);
+    st->cr();
+    jvms = jvms->caller();
+  } while (jvms != nullptr);
 }
 #endif
 

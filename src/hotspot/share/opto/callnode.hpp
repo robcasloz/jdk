@@ -324,6 +324,7 @@ public:
   void      dump() const {
     dump_on(tty);
   }
+  void      dump_structured(int sp, outputStream* st) const;
 #endif
 };
 
@@ -523,6 +524,7 @@ public:
 
 #ifndef PRODUCT
   virtual void           dump_spec(outputStream *st) const;
+  void                   dump_jvms_stack(int sp, outputStream* st = tty) const;
 #endif
 };
 

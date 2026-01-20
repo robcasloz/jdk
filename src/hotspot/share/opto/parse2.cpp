@@ -1962,6 +1962,10 @@ void Parse::do_one_bytecode() {
     dump_bci(bci());
     tty->print(" %s", Bytecodes::name(bc()));
     tty->cr();
+#ifndef PRODUCT
+    tty->print_cr("JVM state before:");
+    map()->dump_jvms_stack(sp());
+#endif // !PRODUCT
   }
 #endif
 
@@ -2846,6 +2850,12 @@ void Parse::do_one_bytecode() {
 
 #ifndef PRODUCT
   if (failing()) { return; }
+
+  if (TraceOptoParse && map() != nullptr) {
+    tty->print_cr("JVM state after:");
+    map()->dump_jvms_stack(sp());
+  }
+
   constexpr int perBytecode = 6;
   if (C->should_print_igv(perBytecode)) {
     IdealGraphPrinter* printer = C->igv_printer();
