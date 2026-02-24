@@ -3704,13 +3704,6 @@ frame %{
   // Compiled code's Frame Pointer.
   frame_pointer(R1); // R1_SP
 
-  // Interpreter stores its frame pointer in a register which is
-  // stored to the stack by I2CAdaptors. I2CAdaptors convert from
-  // interpreted java to compiled java.
-  //
-  // R14_state holds pointer to caller's cInterpreter.
-  interpreter_frame_pointer(R14); // R14_state
-
   stack_alignment(frame::alignment_in_bytes);
 
   // Number of outgoing stack slots killed above the

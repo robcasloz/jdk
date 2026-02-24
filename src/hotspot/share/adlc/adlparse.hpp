@@ -120,7 +120,6 @@ protected:
   // Parse the components of the frame section
   void sync_stack_slots_parse(FrameForm *frame);
   void frame_pointer_parse(FrameForm *frame, bool native);
-  void interpreter_frame_pointer_parse(FrameForm *frame, bool native);
   void inline_cache_parse(FrameForm *frame, bool native);
   void interpreter_arg_ptr_parse(FrameForm *frame, bool native);
   void interpreter_method_parse(FrameForm *frame, bool native);
