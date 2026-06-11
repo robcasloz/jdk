@@ -801,9 +801,6 @@
   develop(bool, AlwaysIncrementalInline, false,                             \
           "do all inlining incrementally")                                  \
                                                                             \
-  product(bool, IncrementalInlinePropagateTypes, true, DIAGNOSTIC,          \
-          "propagate types after every iteration of incremental inlining")  \
-                                                                            \
   product(bool, IncrementalInlineForceCleanup, false, DIAGNOSTIC,           \
           "do cleanup after every iteration of incremental inlining")       \
                                                                             \

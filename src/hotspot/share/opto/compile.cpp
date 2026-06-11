@@ -2223,7 +2223,7 @@ void Compile::inline_incrementally(PhaseIterGVN& igvn) {
     while (_late_inlines.is_nonempty() && // The late inline queue could be emptied by IGVN if IncrementalInlineForceIGVN is enabled.
            inline_incrementally_one()) {
       assert(!failing_internal() || failure_is_artificial(), "inconsistent");
-      if (IncrementalInlinePropagateTypes) {
+      if (UseNewCode) {
         // We succeeded inlining one call site, propagate type information. Do
         // IGVN but without idealization, only to propagate types. Traverse the
         // IGVN queue but do not alter it so that idealizations are still
