@@ -465,6 +465,7 @@ class PhaseIterGVN : public PhaseGVN {
 private:
   bool _delay_transform;  // When true simply register the node when calling transform
                           // instead of actually optimizing it
+  bool _idealize;
   DEBUG_ONLY(uint _num_processed;) // Running count for trace_PhaseIterGVN_verbose
 
   // Idealize old Node 'n' with respect to its inputs and its value
@@ -537,6 +538,8 @@ public:
   // CountedLoopEnd, LongCountedLoopEnd) to catch optimization opportunities
   // from changes far away that the normal notification mechanism misses.
   void optimize(bool deep = false);
+
+  void propagate_types();
 
 #ifdef ASSERT
   void verify_optimize(bool deep_revisit_converged);
@@ -646,6 +649,12 @@ public:
 
   void set_delay_transform(bool delay) {
     _delay_transform = delay;
+  }
+
+  bool idealize() const { return _idealize; }
+
+  void set_idealize(bool idealize) {
+    _idealize = idealize;
   }
 
   void remove_speculative_types();

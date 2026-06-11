@@ -825,6 +825,7 @@ void PhaseGVN::dump_infinite_loop_info(Node* n, const char* where) {
 //------------------------------PhaseIterGVN-----------------------------------
 // Initialize with previous PhaseIterGVN info; used by PhaseCCP
 PhaseIterGVN::PhaseIterGVN(PhaseIterGVN* igvn) : _delay_transform(igvn->_delay_transform),
+                                                 _idealize(igvn->_idealize),
                                                  _worklist(*C->igvn_worklist())
 {
   _phase = PhaseValuesType::iter_gvn;
@@ -834,6 +835,7 @@ PhaseIterGVN::PhaseIterGVN(PhaseIterGVN* igvn) : _delay_transform(igvn->_delay_t
 //------------------------------PhaseIterGVN-----------------------------------
 // Initialize from scratch
 PhaseIterGVN::PhaseIterGVN() : _delay_transform(false),
+                               _idealize(true),
                                _worklist(*C->igvn_worklist())
 {
   _phase = PhaseValuesType::iter_gvn;
@@ -1210,6 +1212,20 @@ void PhaseIterGVN::optimize(bool deep) {
 
   NOT_PRODUCT(verify_PhaseIterGVN(deep_revisit_converged);)
   C->print_method(PHASE_AFTER_ITER_GVN, 3);
+}
+
+void PhaseIterGVN::propagate_types() {
+  // Best effort, incomplete type propagation.
+  // TODO: implement proper worklist algorithm
+  for (uint next = 0; next < _worklist.size(); next++) {
+    Node* n = _worklist.at(next);
+    if (n->outcnt() == 0) {
+      continue;
+    }
+    _idealize = false;
+    transform_old(n);
+    _idealize = true;
+  }
 }
 
 #ifdef ASSERT
@@ -2214,56 +2230,60 @@ Node *PhaseIterGVN::transform_old(Node* n) {
 
   // Apply the Ideal call in a loop until it no longer applies
   Node* k = n;
-  DEBUG_ONLY(dead_loop_check(k);)
-  DEBUG_ONLY(bool is_new = (k->outcnt() == 0);)
-  C->remove_modified_node(k);
-#ifndef PRODUCT
-  uint hash_before = is_verify_Ideal_return() ? k->hash() : 0;
-#endif
-  Node* i = apply_ideal(k, /*can_reshape=*/true);
-  assert(i != k || is_new || i->outcnt() > 0, "don't return dead nodes");
-#ifndef PRODUCT
-  if (is_verify_Ideal_return()) {
-    assert(k->outcnt() == 0 || i != nullptr || hash_before == k->hash(), "hash changed after Ideal returned nullptr for %s", k->Name());
-  }
-  verify_step(k);
-#endif
+  Node* i;
 
-  DEBUG_ONLY(uint loop_count = 1;)
-  if (i != nullptr) {
-    set_progress();
-  }
-  while (i != nullptr) {
-#ifdef ASSERT
-    if (loop_count >= K + C->live_nodes()) {
-      dump_infinite_loop_info(i, "PhaseIterGVN::transform_old");
-    }
-#endif
-    assert((i->_idx >= k->_idx) || i->is_top(), "Idealize should return new nodes, use Identity to return old nodes");
-    // Made a change; put users of original Node on worklist
-    add_users_to_worklist(k);
-    // Replacing root of transform tree?
-    if (k != i) {
-      // Make users of old Node now use new.
-      subsume_node(k, i);
-      k = i;
-    }
+  if (_idealize) {
     DEBUG_ONLY(dead_loop_check(k);)
-    // Try idealizing again
-    DEBUG_ONLY(is_new = (k->outcnt() == 0);)
+    DEBUG_ONLY(bool is_new = (k->outcnt() == 0);)
     C->remove_modified_node(k);
 #ifndef PRODUCT
     uint hash_before = is_verify_Ideal_return() ? k->hash() : 0;
 #endif
     i = apply_ideal(k, /*can_reshape=*/true);
-    assert(i != k || is_new || (i->outcnt() > 0), "don't return dead nodes");
+    assert(i != k || is_new || i->outcnt() > 0, "don't return dead nodes");
 #ifndef PRODUCT
     if (is_verify_Ideal_return()) {
       assert(k->outcnt() == 0 || i != nullptr || hash_before == k->hash(), "hash changed after Ideal returned nullptr for %s", k->Name());
     }
     verify_step(k);
 #endif
-    DEBUG_ONLY(loop_count++;)
+
+    DEBUG_ONLY(uint loop_count = 1;)
+    if (i != nullptr) {
+      set_progress();
+    }
+    while (i != nullptr) {
+#ifdef ASSERT
+      if (loop_count >= K + C->live_nodes()) {
+        dump_infinite_loop_info(i, "PhaseIterGVN::transform_old");
+      }
+#endif
+      assert((i->_idx >= k->_idx) || i->is_top(), "Idealize should return new nodes, use Identity to return old nodes");
+      // Made a change; put users of original Node on worklist
+      add_users_to_worklist(k);
+      // Replacing root of transform tree?
+      if (k != i) {
+        // Make users of old Node now use new.
+        subsume_node(k, i);
+        k = i;
+      }
+      DEBUG_ONLY(dead_loop_check(k);)
+        // Try idealizing again
+        DEBUG_ONLY(is_new = (k->outcnt() == 0);)
+        C->remove_modified_node(k);
+#ifndef PRODUCT
+      uint hash_before = is_verify_Ideal_return() ? k->hash() : 0;
+#endif
+      i = apply_ideal(k, /*can_reshape=*/true);
+      assert(i != k || is_new || (i->outcnt() > 0), "don't return dead nodes");
+#ifndef PRODUCT
+      if (is_verify_Ideal_return()) {
+        assert(k->outcnt() == 0 || i != nullptr || hash_before == k->hash(), "hash changed after Ideal returned nullptr for %s", k->Name());
+      }
+      verify_step(k);
+#endif
+      DEBUG_ONLY(loop_count++;)
+    }
   }
 
   // If brand new node, make space in type array.

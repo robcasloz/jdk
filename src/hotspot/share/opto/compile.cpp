@@ -2220,8 +2220,19 @@ void Compile::inline_incrementally(PhaseIterGVN& igvn) {
       break; // no more progress
     }
 
-    while (inline_incrementally_one()) {
+    while (_late_inlines.is_nonempty() && // The late inline queue could be emptied by IGVN if IncrementalInlineForceIGVN is enabled.
+           inline_incrementally_one()) {
       assert(!failing_internal() || failure_is_artificial(), "inconsistent");
+      if (IncrementalInlinePropagateTypes) {
+        // We succeeded inlining one call site, propagate type information. Do
+        // IGVN but without idealization, only to propagate types. Traverse the
+        // IGVN queue but do not alter it so that idealizations are still
+        // applied in the cleanup phase.
+        // TODO: can we find a way to visit only the nodes enqueued since the
+        // last type propagation invocation?
+        igvn.propagate_types();
+        if (failing()) return;
+      }
     }
     if (failing())  return;
 
