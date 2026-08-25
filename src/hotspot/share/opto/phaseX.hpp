@@ -306,8 +306,6 @@ public:
   // you must use type_or_null, and test the result for null.
   const Type* type(const Node* n) const {
     assert(n != nullptr, "must not be null");
-    //tty->print_cr("Getting type of: ");
-    //n->dump();
     const Type* t = _types.fast_lookup(n->_idx);
     assert(t != nullptr, "must set before get");
     return t;

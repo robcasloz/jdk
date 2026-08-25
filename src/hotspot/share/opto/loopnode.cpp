@@ -6264,6 +6264,7 @@ int PhaseIdealLoop::build_loop_tree_impl(Node* n, int pre_order) {
       // l is irreducible: we just found a second entry m.
       _has_irreducible_loops = true;
       RegionNode* secondary_entry = m->as_Region();
+
       if ((CIDispatch || CIIrrFix) && !CIIrrDebug) assert(false, "Should never have irreducibility after it is fixed");
       if (!secondary_entry->can_be_irreducible_entry()) {
         assert(!VerifyNoNewIrreducibleLoops, "A new irreducible loop was created after parsing.");

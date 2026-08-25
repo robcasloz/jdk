@@ -698,6 +698,7 @@ Node* PhaseGVN::apply_identity(Node* n) {
 // in a faster or cheaper fashion.
 Node* PhaseGVN::transform(Node* n) {
   NOT_PRODUCT( set_transforms(); )
+
   // Apply the Ideal call in a loop until it no longer applies
   Node* k = n;
   Node* i = apply_ideal(k, /*can_reshape=*/false);
@@ -717,6 +718,7 @@ Node* PhaseGVN::transform(Node* n) {
 
   // If brand new node, make space in type array.
   ensure_type_or_null(k);
+
   // Since I just called 'Value' to compute the set of run-time values
   // for this Node, and 'Value' is non-local (and therefore expensive) I'll
   // cache Value.  Later requests for the local phase->type of this Node can
@@ -756,6 +758,7 @@ Node* PhaseGVN::transform(Node* n) {
     return i;
   }
 
+  // Return Idealized original
   return k;
 }
 
@@ -1197,7 +1200,6 @@ void PhaseIterGVN::optimize(bool deep) {
   NOT_PRODUCT(init_verifyPhaseIterGVN();)
   NOT_PRODUCT(C->reset_igv_phase_iter(PHASE_AFTER_ITER_GVN_STEP);)
   C->print_method(PHASE_BEFORE_ITER_GVN, 3);
-  
   if (StressIGVN) {
     shuffle_worklist();
   }

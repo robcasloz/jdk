@@ -532,7 +532,7 @@ public:
        DispatchInfo(int target, Block* src, Block* trg);
 
        int rpo() const              { return _src->rpo(); }
-       int target() const           { return _target; } 
+       int target() const           { return _target; }
        Block* block() const         { return _src;   }
        Block* trgt()   const        { return _target_block; }
 
@@ -574,7 +574,7 @@ public:
     bool                             _backedge_copy;
 
     // Has this block been cloned to fix irreducibility?
-    bool			     _irreducible_copy;
+    bool           _irreducible_copy;
     Block*                           _cloned_block;
     // This block is a loop head of an irreducible loop.
     bool                             _irreducible_loop_head;
@@ -585,8 +585,8 @@ public:
     bool                             _irreducible_loop_secondary_entry;
 
     bool                             _is_reachable;
-    
-    bool 			                       _irreducible_entry;
+
+    bool                             _irreducible_entry;
     // This block has monitor entry point.
     bool                             _has_monitorenter;
 
@@ -613,8 +613,6 @@ public:
       _trap_index = trap_index;
       assert(has_trap(), "");
     }
-
-
     bool has_trap()   const  { return _trap_bci != -1; }
     int  trap_bci()   const  { assert(has_trap(), ""); return _trap_bci; }
     int  trap_index() const  { assert(has_trap(), ""); return _trap_index; }
@@ -626,12 +624,12 @@ public:
     void set_unreachable() {
       _is_reachable = false;
       if (_successors != nullptr) {
-	      for(SuccIter iter(this); !iter.done(); iter.next()) {
-		  Block* succ = iter.succ();
-		  if (succ->predecessors()->length() == 1) {
-		    succ->set_unreachable();
-	        }
-	   }
+        for(SuccIter iter(this); !iter.done(); iter.next()) {
+      Block* succ = iter.succ();
+      if (succ->predecessors()->length() == 1) {
+        succ->set_unreachable();
+          }
+     }
       }
     }
 
@@ -643,32 +641,32 @@ public:
     int limit() const         { return _ciblock->limit_bci(); }
     int control() const       { return _ciblock->control_bci(); }
     JsrSet* jsrs() const      { return _jsrs; }
-    
+
     void setjsrs(JsrSet* jsr) {_jsrs = jsr;}
 
     bool is_dispatch() const   { return _dispatchTargets != nullptr; }
-    GrowableArray<DispatchInfo*>*  dispatch()    const   { assert(is_dispatch(), "only dispatcher has dispatch"); return _dispatchTargets; } 
-    void sort_dispatch()       { 
-	    assert(is_dispatch(), "can only sort dispatch info if dispatcher"); 
-	    for(int i = _dispatchTargets->length() - 1; i >= 0; --i) {
+    GrowableArray<DispatchInfo*>*  dispatch()    const   { assert(is_dispatch(), "only dispatcher has dispatch"); return _dispatchTargets; }
+    void sort_dispatch()       {
+      assert(is_dispatch(), "can only sort dispatch info if dispatcher");
+      for(int i = _dispatchTargets->length() - 1; i >= 0; --i) {
         Block* blk = _dispatchTargets->at(i)->block();
-	      if(!blk->is_reachable()){
+        if(!blk->is_reachable()){
           _dispatchTargets->remove_at(i);
         }
       }
-	    _dispatchTargets->sort(DispatchInfo::compare);
+      _dispatchTargets->sort(DispatchInfo::compare);
     }
 
     bool    is_backedge_copy() const       { return _backedge_copy; }
     void   set_backedge_copy(bool z);
     int        backedge_copy_count() const { return outer()->backedge_copy_count(ciblock()->index(), _jsrs); }
-    void    new_target(GrowableArray<DispatchInfo*>* newTarget)   {_dispatchTargets = newTarget; } 
+    void    new_target(GrowableArray<DispatchInfo*>* newTarget)   {_dispatchTargets = newTarget; }
 
 
     bool    is_irreducible_copy() const    { return _irreducible_copy; }
     void   set_irreducible_copy(bool z)    { _irreducible_copy = z;    }
     void    set_clone_block(Block* b)      { _cloned_block = b;        }
-    Block*  get_clone_block()     const    { 
+    Block*  get_clone_block()     const    {
       assert(is_irreducible_copy(), "Only copied blocks have clones");
       return _cloned_block;
     }
@@ -696,7 +694,7 @@ public:
     void clone(Block* blk);
 
     // Get the successors for this Block.
-    
+
     GrowableArray<Block*>* successors(GrowableArray<Block*>* target);
 
     GrowableArray<Block*>* successors(ciBytecodeStream* str,
@@ -706,7 +704,7 @@ public:
       assert(_successors != nullptr, "must be filled in");
       return _successors;
     }
-    
+
     bool has_successors() const {return _successors != nullptr;}
 
     // Predecessors of this block (including exception edges)
@@ -759,10 +757,10 @@ public:
       return state()->meet_exception(exc, incoming);
     }
 
-    Block* dot_next() const       { 
+    Block* dot_next() const       {
       if (has_rpo())  return _rpo_next;
-	    return _next;
-		}
+      return _next;
+    }
 
     // Work list manipulation
     void   set_next(Block* block) { _next = block; }
@@ -810,10 +808,10 @@ public:
         if (lp->is_irreducible()) return false;
       return true;
     }
-    void   reset_irreducible()           { 
-      _irreducible_loop_head = false; 
+    void   reset_irreducible() {
+      _irreducible_loop_head = false;
       _irreducible_loop_secondary_entry = false;
-      _irreducible_entry = true; 
+      _irreducible_entry = true;
     }
 
     bool   is_irreducible_entry() const  { return _irreducible_entry; }
@@ -1056,11 +1054,11 @@ private:
                      bool do_flow,
                      StateVector* temp_vector,
                      JsrSet* temp_set,
-		     bool handleIrr);
+                     bool handleIrr);
 
   // Incrementally build loop tree.
   Block* build_loop_tree(Block* blk);
-  
+
   // Fix all predecessor information.
   // TODO: Remove dependency on this and make the build work from the beginning
   void split_dispatch_by_stack(Block* disp);
@@ -1074,7 +1072,7 @@ private:
 public:
   // Perform type inference flow analysis.
   void do_flow();
-  
+
   // Dump control-flow graph in Graphviz's DOT format.
   void dump_dot_graph();
 

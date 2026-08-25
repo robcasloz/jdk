@@ -116,7 +116,7 @@ bool ciTypeFlow::JsrSet::is_compatible_with(JsrSet* other) {
       }
     }
     return true;
-}
+  }
 
 #if 0
   int pos1 = 0;
@@ -1674,8 +1674,6 @@ ciTypeFlow::DispatchInfo::DispatchInfo(int target, Block* src, Block* trgt) {
   _target_block = trgt;
 }
 
-
-
 // ciTypeFlow::Block
 //
 // A basic block.
@@ -1744,7 +1742,6 @@ GrowableArray<ciTypeFlow::Block*>* ciTypeFlow::Block::successors(GrowableArray<B
   }
   return _successors;
 }
-
 
 // ------------------------------------------------------------------
 // ciTypeFlow::Block::successors
@@ -2521,6 +2518,7 @@ void ciTypeFlow::flow_block(ciTypeFlow::Block* block,
     block->print_on(tty);
   }
   assert(block->has_pre_order(), "pre-order is assigned before 1st flow");
+
   int start = block->start();
   int limit = block->limit();
   int control = block->control();
@@ -2717,7 +2715,6 @@ int ciTypeFlow::Loop::profiled_count() {
     //tty->print_cr("Destination: %d, head_start: %d", iter.get_dest(), head()->start());
     //tty->print_cr("If taken: %d, limit: %d", succs->at(ciTypeFlow::IF_TAKEN)->pre_order(), succs->at(ciTypeFlow::IF_TAKEN)->limit());
     //tty->print_cr("Head: %d, limit: %d", head()->pre_order(), head()->limit());
-   
 
     // TODO: Fix some better way to do this:
     // I think that the current problem is that a faulty successor is chosen (or a faulty head) such that the original block is correct, however, it is incorrect for the specific clone that this code think it is connected too.
@@ -2768,9 +2765,6 @@ bool ciTypeFlow::Loop::at_insertion_point(Loop* lp, Loop* current) {
   return false;
 }
 
-
-
-
 void ciTypeFlow::print_blocks(outputStream* st) {
   st->print_cr("Outputting the current graph: ");
   for (int i = 0; i < _method->get_method_blocks()->num_blocks(); ++i){
@@ -2791,7 +2785,7 @@ void ciTypeFlow::print_blocks(outputStream* st) {
       st->print_cr("");
       blk->jsrs()->print_on(st);
       st->print_cr("\nControl: %d, Start: %d, Limit: %d", blk->control(), blk->start(), blk->limit());
-    } 
+    }
   }
 
 }
@@ -2806,14 +2800,14 @@ void ciTypeFlow::reset_blocks(Block* start) {
       blk->df_init();
       blk->set_next(nullptr);
       blk->set_rpo_next(nullptr);
-    } 
+    }
   }
 }
 
 
 // ------------------------------------------------------------------
 // ciTypeFlow::add_dispatch()
-// 
+//
 // Add dispatch block to the flow graph
 
 ciTypeFlow::Block* ciTypeFlow::add_dispatch(Loop* lp) {
@@ -2871,16 +2865,16 @@ void ciTypeFlow::switch_blocks(Block* target, Block* source) {
 void ciTypeFlow::connect_pred_dispatch(Block* dispatch, Block* source, Block* source2) {
   Arena* a = arena();
   int len = source->predecessors()->length() + source2->predecessors()->length();
-  //GrowableArray<int>* RPO_in_order = new (a) GrowableArray<int>(a, 1, 0, 0); 
+  //GrowableArray<int>* RPO_in_order = new (a) GrowableArray<int>(a, 1, 0, 0);
   int greatest_added = -1;
   int added = 0;
   for (int i = 0; i < source->predecessors()->length(); ++i) {
     Block* pred = source->predecessors()->at(i);
-    dispatch->dispatch()->push(new(a) DispatchInfo(source->start(), pred, source)); 
+    dispatch->dispatch()->push(new(a) DispatchInfo(source->start(), pred, source));
   }
   for (int i = 0; i < source2->predecessors()->length(); ++i) {
     Block* pred = source2->predecessors()->at(i);
-    dispatch->dispatch()->push(new(a) DispatchInfo(source2->start(), pred, source2)); 
+    dispatch->dispatch()->push(new(a) DispatchInfo(source2->start(), pred, source2));
   }
 }
 
@@ -2890,7 +2884,6 @@ void ciTypeFlow::connect_pred_dispatch(Block* dispatch, Block* source, Block* so
 // Connect the dispatch block to the rest of the CFG
 void ciTypeFlow::connect_dispatch_loop(Block* dispatch, Loop* irr_region) {
   // Simply redirect predecessors and successors of head and second entry.
-  
 
   // The current problem is that the RPO is wrongly calculated
   // In the dispatcherDoubleRPO block #4 comes after #6, however, this makes no sense
@@ -2905,27 +2898,27 @@ void ciTypeFlow::connect_dispatch_loop(Block* dispatch, Loop* irr_region) {
 
   StateVector* state = new StateVector(this);
   entry->copy_state_into(state);
-  dispatch->meet(state);  
+  dispatch->meet(state);
 
   Block* second_entry = irr_region->second_entry();
- 
+
   StateVector* state2 = new StateVector(this);
   second_entry->copy_state_into(state2);
-  dispatch->meet(state2);  
+  dispatch->meet(state2);
 
   connect_pred_dispatch(dispatch, entry, second_entry);
-  
-  switch_blocks(dispatch, entry); 
+
+  switch_blocks(dispatch, entry);
   switch_blocks(dispatch, second_entry);
-   
+
   entry->predecessors()->push(dispatch);
   second_entry->predecessors()->push(dispatch);
   dispatch->successors()->push(entry);
   dispatch->successors()->push(second_entry);
-  
+
   entry->reset_irreducible();
   second_entry->reset_irreducible();
- 
+
   prepend_to_rpo_list(dispatch);
   irr_region->set_second_entry(nullptr);
   irr_region->set_head(dispatch);
@@ -2933,54 +2926,54 @@ void ciTypeFlow::connect_dispatch_loop(Block* dispatch, Loop* irr_region) {
 
 
 // ------------------------------------------------------------------
-	// ciTypeFlow::clone_block
-	//
-	// Clone block without predecessors
-	ciTypeFlow::Block* ciTypeFlow::clone_block(Block* blk) {
-	  assert(blk->has_pre_order(), "Non-visited nodes should not contribute to irreducibility");
-	  //if (blk->is_irreducible_copy() && blk->get_clone_block() != blk) return blk->get_clone_block();
+  // ciTypeFlow::clone_block
+  //
+  // Clone block without predecessors
+  ciTypeFlow::Block* ciTypeFlow::clone_block(Block* blk) {
+    assert(blk->has_pre_order(), "Non-visited nodes should not contribute to irreducibility");
+    //if (blk->is_irreducible_copy() && blk->get_clone_block() != blk) return blk->get_clone_block();
     Block* clone = block_at(blk->start(), blk->jsrs(), create_deep_copy);
-	  clone->clone(blk);
-	  clone->set_irreducible_copy(true);
+    clone->clone(blk);
+    clone->set_irreducible_copy(true);
     clone->set_clone_block(blk);
     //blk->set_irreducible_copy(true);
-	  //blk->set_clone_block(clone);
+    //blk->set_clone_block(clone);
     clone->predecessors()->clear();
-	    for (int j = 0; j < clone->successors()->length(); ++j) {
-	      Block* succ = clone->successors()->at(j);
-	      succ->predecessors()->push(clone);
-	    }
+      for (int j = 0; j < clone->successors()->length(); ++j) {
+        Block* succ = clone->successors()->at(j);
+        succ->predecessors()->push(clone);
+      }
     return clone;
-	}
+  }
 
 // ------------------------------------------------------------------
-	// ciTypeFlow::clone_irreducible_block
-	//
-	// Clone block that causes irreducibility
-	void ciTypeFlow::clone_irreducible_block(Block* blk) {
-	  assert(blk->has_pre_order(), "Non-visited nodes should not contribute to irreducibility");
-	  for (int i = 0; i < blk->predecessors()->length(); ++i) {
-	    Block* pred = blk->predecessors()->at(i);
-	    Block* clone = block_at(blk->start(), blk->jsrs(), create_deep_copy);
-	    if(pred->successors()->contains(blk))
-	      pred->successors()->remove(blk);
-	    pred->successors()->push(clone);
-	    clone->clone(blk);
-	    clone->set_irreducible_copy(true);
-	    clone->predecessors()->clear();
-	    clone->predecessors()->push(pred);
-	    //tty->print_cr("\tAfter: %d",pred->successors()->length());
-	    for (int j = 0; j < clone->successors()->length(); ++j) {
-	      Block* succ = clone->successors()->at(j);
-	      succ->predecessors()->push(clone);
-	      if (succ->predecessors()->contains(blk)) succ->predecessors()->remove(blk);
-	    }
+  // ciTypeFlow::clone_irreducible_block
+  //
+  // Clone block that causes irreducibility
+  void ciTypeFlow::clone_irreducible_block(Block* blk) {
+    assert(blk->has_pre_order(), "Non-visited nodes should not contribute to irreducibility");
+    for (int i = 0; i < blk->predecessors()->length(); ++i) {
+      Block* pred = blk->predecessors()->at(i);
+      Block* clone = block_at(blk->start(), blk->jsrs(), create_deep_copy);
+      if(pred->successors()->contains(blk))
+        pred->successors()->remove(blk);
+      pred->successors()->push(clone);
+      clone->clone(blk);
+      clone->set_irreducible_copy(true);
+      clone->predecessors()->clear();
+      clone->predecessors()->push(pred);
+      //tty->print_cr("\tAfter: %d",pred->successors()->length());
+      for (int j = 0; j < clone->successors()->length(); ++j) {
+        Block* succ = clone->successors()->at(j);
+        succ->predecessors()->push(clone);
+        if (succ->predecessors()->contains(blk)) succ->predecessors()->remove(blk);
+      }
       if (_work_list == blk) _work_list = pred;
-	    pred->set_next(clone);
- 	  }
-	  blk->successors()->clear();
+      pred->set_next(clone);
+    }
+    blk->successors()->clear();
           blk->predecessors()->clear();
-	}
+  }
 
 void ciTypeFlow::split_dispatch_by_stack(Block* dispatch) {
   StateVector* merged = new StateVector(this);
@@ -3020,7 +3013,7 @@ void ciTypeFlow::split_dispatch_by_stack(Block* dispatch) {
       for (int j = 0; j < blocks->length(); ++j){
         Block* blk = blocks->at(j);
         blk->predecessors()->clear();
-      } 
+      }
     }
 
 
@@ -3035,7 +3028,7 @@ void ciTypeFlow::split_dispatch_by_stack(Block* dispatch) {
           Block* succ = blk->successors()->at(k);
           succ->predecessors()->append(blk);
         }
-      } 
+      }
     }
 
     for (int i = 0; i < _method->get_method_blocks()->num_blocks(); ++i){
@@ -3055,7 +3048,7 @@ void ciTypeFlow::split_dispatch_by_stack(Block* dispatch) {
           combine_dispatch(blk, to_combine->at(k));
         }
         split_dispatch_by_stack(blk);
-      }    
+      }
     }
   }
 
@@ -3067,18 +3060,17 @@ void ciTypeFlow::split_dispatch_by_stack(Block* dispatch) {
       succ->predecessors()->append(blk);
       if (succ->predecessors()->contains(second)) succ->predecessors()->remove(second);
     }
-    
 
     for (int i = 0; i < second->dispatch()->length(); i++){
       blk->dispatch()->append_if_missing(second->dispatch()->at(i));
     }
-    
+
     for (int j = blk->dispatch()->length() - 1; j >= 0; j--) {
         DispatchInfo* di = blk->dispatch()->at(j);
         if (di->trgt()->is_dispatch()) {
             blk->dispatch()->remove_at(j);
         }else {
-	  di->trgt()->set_dispatch_target();
+    di->trgt()->set_dispatch_target();
         }
     }
 
@@ -3088,7 +3080,7 @@ void ciTypeFlow::split_dispatch_by_stack(Block* dispatch) {
   tty->print_cr("=== ciTypeFlow state of dispatch block ===");
   tty->print_cr("Stack size: %d", blk->stack_size());
   tty->print_cr("Locals:");
-  blk->def_locals()->print_on(tty, 5);      
+  blk->def_locals()->print_on(tty, 5);
 }
 
 
@@ -3132,46 +3124,46 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
   return leaf;
 }
 
-	// ------------------------------------------------------------------
-	// ciTypeFlow::build_loop_tree
-	//
-	// Incrementally build loop tree.
-	ciTypeFlow::Block* ciTypeFlow::build_loop_tree(Block* blk) {
+  // ------------------------------------------------------------------
+  // ciTypeFlow::build_loop_tree
+  //
+  // Incrementally build loop tree.
+  ciTypeFlow::Block* ciTypeFlow::build_loop_tree(Block* blk) {
     assert(!blk->is_post_visited(), "precondition");
     Loop* innermost = nullptr; // merge of loop tree branches over all successors
-	  Block* irreducible = nullptr;
-	  Loop* irreducible_loop = nullptr;
+    Block* irreducible = nullptr;
+    Loop* irreducible_loop = nullptr;
     Block* second_entry = nullptr;
-	  for (SuccIter iter(blk); !iter.done(); iter.next()) {
-	    Loop*  lp   = nullptr;
-	    Block* succ = iter.succ();
-	    if (!succ->is_post_visited()) {
-	      // Found backedge since predecessor post visited, but successor is not
-	      assert(succ->pre_order() <= blk->pre_order(), "should be backedge");
+    for (SuccIter iter(blk); !iter.done(); iter.next()) {
+      Loop*  lp   = nullptr;
+      Block* succ = iter.succ();
+      if (!succ->is_post_visited()) {
+        // Found backedge since predecessor post visited, but successor is not
+        assert(succ->pre_order() <= blk->pre_order(), "should be backedge");
 
-	      // Create a LoopNode to mark this loop.
-	      lp = new (arena()) Loop(succ, blk);
-	      if (succ->loop() == nullptr)
+        // Create a LoopNode to mark this loop.
+        lp = new (arena()) Loop(succ, blk);
+        if (succ->loop() == nullptr)
          succ->set_loop(lp);
-	       // succ->loop will be updated to innermost loop on a later call, when blk==succ
-	    } else {  // Nested loop
+         // succ->loop will be updated to innermost loop on a later call, when blk==succ
+      } else {  // Nested loop
         lp = succ->loop();
 
-	      // If succ is loop head, find outer loop.
-	      while (lp != nullptr && lp->head() == succ) {
+        // If succ is loop head, find outer loop.
+        while (lp != nullptr && lp->head() == succ) {
           lp = lp->parent();
-	      }
-	      if (lp == nullptr) {
+        }
+        if (lp == nullptr) {
           // Infinite loop, it's parent is the root
           lp = loop_tree_root();
-	      }
-	    }
+        }
+      }
 
-	    
-	    // Report irreducibility
-	    if(CIIrrFix && irreducible == nullptr){
-		    if (lp->head()->is_post_visited() && lp != loop_tree_root()){
-			    if (CIIrrDebug) { 
+
+      // Report irreducibility
+      if(CIIrrFix && irreducible == nullptr){
+        if (lp->head()->is_post_visited() && lp != loop_tree_root()){
+          if (CIIrrDebug) {
             tty->print_cr("Found irreducible block %d", succ->pre_order());
             tty->print_cr("Found while traversing %d", blk->pre_order());
             tty->print_cr("Head of loop is %d", succ->loop()->head()->pre_order());
@@ -3181,24 +3173,23 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
           irreducible = lp->head();
           second_entry = succ;
           irreducible_loop = lp;
-          
+
 
           bool multi_head = false;
           bool multi_succ = false;
           bool clone_loop = false;
           Loop* irr_lp = nullptr;
           Loop* sec_lp = nullptr;
-          
+
           // This is probably the best way to do it, since we may only care about the loop header loops...
           for (SuccIter iter(lp->head()); !iter.done(); iter.next()) {
             Block* lp_succ = iter.succ();
             Loop* succ_lp = lp_succ->loop();
             if (succ_lp != nullptr) {
             }
-          } 
+          }
           Loop* outer = lp;
           while (outer->parent() != nullptr && outer->parent()->head() == lp->head()) outer = outer->parent();
-      
           // Check if there is any child loop of lp that has the tail as a direct successor of the lp head, in that case clone the second entry instead...
           int header_count = 0;
           int second_count = 0;
@@ -3228,11 +3219,11 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
             }
           }
           if (multi_head && multi_succ) {
-            
+
             Loop* clone_loop = irr_lp->depth() > sec_lp->depth() ? sec_lp : sec_lp;
 
             GrowableArray<Block*>* clone_queue = new (arena()) GrowableArray<Block*>(arena(), 4, 0, nullptr);
-            
+
 
             // 1. For all predecessors of `start` not part of `lp` we do:
               // 1.1. Connect to clone of `start`
@@ -3240,7 +3231,7 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
               // 2.1. Clone the node
               // 2.2. Connect cloned node to cloned predecessors
               // 2.3. If tail of loop, connect to `old header of loop`
-            
+
             // Possibly start at tail of the loop, then go up:
 
             // Clone current
@@ -3252,17 +3243,17 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
             // TODO: Get some better way to clone an entire loop, this is quite fragile
             // For example if there are multiple exit points of a loop
             clone_queue->push(succ);
-            // Find the looping predecessor of head (of `lp`) 
+            // Find the looping predecessor of head (of `lp`)
             clone_queue->push(irr_pred);
 
             GrowableArray<Block*>* visited = new (arena()) GrowableArray<Block*>(arena(), 4, 0, nullptr);
-           
+
             // Clone entire loop
             assert(clone_loop->contains(succ), "The loop we clone must contain the second entry");
             while (clone_queue->length() > 1) {
               Block* pred = clone_queue->pop();
               Block* clonee = clone_queue->pop();
-             
+
               tty->print_cr("Getting: %d", clonee->pre_order());
 
               if (visited->contains(clonee)) continue;
@@ -3294,7 +3285,7 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
               visited->push(clonee);
             }
             tty->print_cr("Cloned entire loop at: %d", succ->start());
-            visited->clear_and_deallocate(); 
+            visited->clear_and_deallocate();
             clone_queue->clear_and_deallocate();
 
             return irreducible;
@@ -3303,7 +3294,6 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
             clone->predecessors()->push(blk);
             if (blk->successors()->contains(succ)) blk->successors()->remove(succ);
             if (succ->predecessors()->contains(blk)) succ->predecessors()->remove(blk);
-            
 
             if (clone->successors()->contains(succ)) {
               clone->successors()->remove(succ);
@@ -3313,9 +3303,9 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
             }
 
             blk->successors()->push(clone);
-            blk->set_next(clone);  
+            blk->set_next(clone);
             if (!clone->has_pre_order()) clone->set_pre_order(succ->pre_order());
- 
+
             tty->print_cr("Cloned (succ): %d", lp->head()->start());
             irreducible = succ;
             return irreducible;
@@ -3325,44 +3315,44 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
             clone->predecessors()->push(lp->tail());
             if (lp->tail()->successors()->contains(lp->head())) lp->tail()->successors()->remove(lp->head());
             if (lp->head()->predecessors()->contains(lp->tail())) lp->head()->predecessors()->remove(lp->tail());
-            
+
             // For all loops this is a header of connect tail to clone.
 
             lp->tail()->successors()->push(clone);
-            lp->tail()->set_next(clone); 
+            lp->tail()->set_next(clone);
             for (Loop* ch = lp->child(); ch != nullptr; ch = ch->sibling()){
               if (ch->head() == lp->head()){
 
                 if (ch->tail()->successors()->contains(lp->head())) ch->tail()->successors()->remove(lp->head());
                 if (lp->head()->predecessors()->contains(ch->tail())) lp->head()->predecessors()->remove(ch->tail());
-                ch->tail()->successors()->push(clone);           
+                ch->tail()->successors()->push(clone);
               }
             }
-               
+
             if (!clone->has_pre_order()) clone->set_pre_order(lp->head()->pre_order());
-            
+
             irreducible = lp->head();
             tty->print_cr("Cloned: %d", lp->head()->start());
             return irreducible;
           }
 
 
-	   	  }
-	    }
-	    
-	    // TODO: Update this check in some way...
-	    // Check for irreducible loop.
-	    // Successor has already been visited. If the successor's loop head
-	    // has already been post-visited, then this is another entry into the loop.
-	    while (lp->head()->is_post_visited() && lp != loop_tree_root() && !CIIrrFix) {
-	      _has_irreducible_entry = true;
-	      if(!CIDispatch) lp->set_irreducible(succ);
-	      if (!succ->is_on_work_list()) {
+        }
+      }
+
+      // TODO: Update this check in some way...
+      // Check for irreducible loop.
+      // Successor has already been visited. If the successor's loop head
+      // has already been post-visited, then this is another entry into the loop.
+      while (lp->head()->is_post_visited() && lp != loop_tree_root() && !CIIrrFix) {
+        _has_irreducible_entry = true;
+        if(!CIDispatch) lp->set_irreducible(succ);
+        if (!succ->is_on_work_list()) {
           // Assume irreducible entries need more data flow
           add_to_work_list(succ);
-	      }
-	      Loop* plp = lp->parent();
-	      
+        }
+        Loop* plp = lp->parent();
+
         if (!plp->head()->is_post_visited() || plp == nullptr || plp == loop_tree_root()){
           // Here we also want to break when the second entry no longer is part of the loop...
           if(CIDispatch ){
@@ -3378,68 +3368,65 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
           break;
         }
         lp = plp;
-	    }
-	    // Merge loop tree branch for all successors.
+      }
+      // Merge loop tree branch for all successors.
       innermost = innermost == nullptr ? lp : innermost->sorted_merge(lp);
-	  } // end loop
-	  
-    if (innermost == nullptr) {
-	    assert(blk->successors()->length() == 0, "CFG exit");
-	    blk->set_loop(loop_tree_root());
-	  } else if (innermost->head() == blk) {
-	    // If loop header, complete the tree pointers
-	    if (blk->loop() != innermost) {
-#ifdef ASSERT
-	      assert(blk->loop()->head() == innermost->head(), "same head");
-	      Loop* dl;
-	      for (dl = innermost; dl != nullptr && dl != blk->loop(); dl = dl->parent());
-	      if (CIIrrFix) {
+    } // end loop
 
-        }
+    if (innermost == nullptr) {
+      assert(blk->successors()->length() == 0, "CFG exit");
+      blk->set_loop(loop_tree_root());
+    } else if (innermost->head() == blk) {
+      // If loop header, complete the tree pointers
+#ifdef ASSERT
+      if (blk->loop() != innermost) {
+        assert(blk->loop()->head() == innermost->head(), "same head");
+        Loop* dl;
+        for (dl = innermost; dl != nullptr && dl != blk->loop(); dl = dl->parent());
         assert(dl == blk->loop(), "blk->loop() already in innermost list");
+        blk->set_loop(innermost);
+      }
 #endif
-	      blk->set_loop(innermost);
-	    }
-	    innermost->def_locals()->add(blk->def_locals());
-	    Loop* l = innermost;
-	    Loop* p = l->parent();
-	    while (p && l->head() == blk) {
-	      l->set_sibling(p->child());  // Put self on parents 'next child'
-	      p->set_child(l);             // Make self the first child of parent
-	      p->def_locals()->add(l->def_locals());
-	      l = p;                       // Walk up the parent chain
-	      p = l->parent();
-	    }
-	  } else {
-	    blk->set_loop(innermost);
-	    innermost->def_locals()->add(blk->def_locals());
-	  }
-	  if (irreducible_loop != nullptr && _has_irreducible_entry && CIDispatch ) {
+      innermost->def_locals()->add(blk->def_locals());
+      Loop* l = innermost;
+      Loop* p = l->parent();
+      while (p && l->head() == blk) {
+        l->set_sibling(p->child());  // Put self on parents 'next child'
+        p->set_child(l);             // Make self the first child of parent
+        p->def_locals()->add(l->def_locals());
+        l = p;                       // Walk up the parent chain
+        p = l->parent();
+      }
+    } else {
+      blk->set_loop(innermost);
+      innermost->def_locals()->add(blk->def_locals());
+    }
+    if (irreducible_loop != nullptr && _has_irreducible_entry && CIDispatch ) {
       tty->print_cr("Irreducible loop is: ");
       irreducible_loop->print(tty);
-	    irreducible = add_dispatch(irreducible_loop);
-	  }
+      irreducible = add_dispatch(irreducible_loop);
+    }
 
-	  return irreducible;
-	}
+    return irreducible;
+  }
 
-	// ------------------------------------------------------------------
-	// ciTypeFlow::Loop::contains
-	//
-	// Returns true if lp is nested loop.
-	bool ciTypeFlow::Loop::contains(ciTypeFlow::Loop* lp) const {
-	  assert(lp != nullptr, "");
-	  if (this == lp || head() == lp->head()) return true;
-	  int depth1 = depth();
-	  int depth2 = lp->depth();
-	  if (depth1 > depth2)
-	    return false;
-	  while (depth1 < depth2) {
-	    depth2--;
-	    lp = lp->parent();
-	  }
-	  return this == lp;
-	}
+  // ------------------------------------------------------------------
+  // ciTypeFlow::Loop::contains
+  //
+  // Returns true if lp is nested loop.
+  bool ciTypeFlow::Loop::contains(ciTypeFlow::Loop* lp) const {
+    assert(lp != nullptr, "");
+    if (this == lp || head() == lp->head()) return true;
+    int depth1 = depth();
+    int depth2 = lp->depth();
+    if (depth1 > depth2)
+      return false;
+    while (depth1 < depth2) {
+      depth2--;
+      lp = lp->parent();
+    }
+    return this == lp;
+  }
 
 // ------------------------------------------------------------------
 // ciTypeFlow::Loop::depth
@@ -3448,7 +3435,7 @@ ciTypeFlow::Loop* ciTypeFlow::Loop::sorted_merge(Loop* lp) {
 int ciTypeFlow::Loop::depth() const {
   int dp = 0;
   for (Loop* lp = this->parent(); lp != nullptr; lp = lp->parent())
-	  dp++;
+    dp++;
   return dp;
 }
 
@@ -3458,9 +3445,9 @@ int ciTypeFlow::Loop::depth() const {
 void ciTypeFlow::Loop::print(outputStream* st, int indent) const {
   for (int i = 0; i < indent; i++) st->print(" ");
   st->print("%d<-%d %s",
-      is_root() ? 0 : this->head()->pre_order(),
-      is_root() ? 0 : this->tail()->pre_order(),
-      is_irreducible()?" irr":"");
+            is_root() ? 0 : this->head()->pre_order(),
+            is_root() ? 0 : this->tail()->pre_order(),
+            is_irreducible()?" irr":"");
   st->print(" defs: ");
   def_locals()->print_on(st, _head->outer()->method()->max_locals());
   st->cr();
@@ -3479,22 +3466,25 @@ ciTypeFlow::Block* ciTypeFlow::df_flow_types(Block* start,
                                              JsrSet* temp_set,
                                              bool handleIrr) {
   int dft_len = 100;
-	GrowableArray<Block*> stk(dft_len);
-	ciBlock* dummy = _method->get_method_blocks()->make_dummy_block();
-	JsrSet* root_set = new JsrSet(0);
-	Block* root_head = new (arena()) Block(this, dummy, root_set);
-	Block* root_tail = new (arena()) Block(this, dummy, root_set);
-	root_head->set_pre_order(0);
-	root_head->set_post_order(0);
-	root_tail->set_pre_order(max_jint);
-	root_tail->set_post_order(max_jint);
-	set_loop_tree_root(new (arena()) Loop(root_head, root_tail));
-	stk.push(start);
+  GrowableArray<Block*> stk(dft_len);
 
-	_next_pre_order = 0;  // initialize pre_order counter
-	_rpo_list = nullptr;
-	int next_po = 0;      // initialize post_order counter
-	Block* irreducible = nullptr;
+  ciBlock* dummy = _method->get_method_blocks()->make_dummy_block();
+  JsrSet* root_set = new JsrSet(0);
+  Block* root_head = new (arena()) Block(this, dummy, root_set);
+  Block* root_tail = new (arena()) Block(this, dummy, root_set);
+  root_head->set_pre_order(0);
+  root_head->set_post_order(0);
+  root_tail->set_pre_order(max_jint);
+  root_tail->set_post_order(max_jint);
+  set_loop_tree_root(new (arena()) Loop(root_head, root_tail));
+
+  stk.push(start);
+
+  _next_pre_order = 0;  // initialize pre_order counter
+  _rpo_list = nullptr;
+  int next_po = 0;      // initialize post_order counter
+
+  Block* irreducible = nullptr;
   // Compute RPO and the control flow graph
   int size;
   while ((size = stk.length()) > 0) {
@@ -3546,6 +3536,7 @@ ciTypeFlow::Block* ciTypeFlow::df_flow_types(Block* start,
         blk->set_post_order(next_po++);   // Assign post order
         prepend_to_rpo_list(blk);
         assert(blk->is_post_visited(), "");
+
         if (blk->is_loop_head() && !blk->is_on_work_list()) {
           // Assume loop heads need more data flow
           add_to_work_list(blk);
@@ -3564,20 +3555,20 @@ ciTypeFlow::Block* ciTypeFlow::df_flow_types(Block* start,
 // Perform the type flow analysis, creating and cloning Blocks as
 // necessary.
 void ciTypeFlow::flow_types() {
-	ResourceMark rm;
-	StateVector* temp_vector = new StateVector(this);
-	JsrSet* temp_set = new JsrSet(4);
+  ResourceMark rm;
+  StateVector* temp_vector = new StateVector(this);
+  JsrSet* temp_set = new JsrSet(4);
 
-	// Create the method entry block.
-	Block* start = block_at(start_bci(), temp_set);
+  // Create the method entry block.
+  Block* start = block_at(start_bci(), temp_set);
 
-	// Load the initial state into it.
-	const StateVector* start_state = get_start_state();
-	if (failing())  return;
-	start->meet(start_state);
+  // Load the initial state into it.
+  const StateVector* start_state = get_start_state();
+  if (failing())  return;
+  start->meet(start_state);
 
-	// Depth first visit
-	Block* irr_block = df_flow_types(start, true /*do flow*/, temp_vector, temp_set, true); 
+  // Depth first visit
+  Block* irr_block = df_flow_types(start, true /*do flow*/, temp_vector, temp_set, true);
   if (CIPrintLoops) {
     //dump_dot_graph();
     GrowableArray<Loop*>* lp_queue = new (arena()) GrowableArray<Loop*>(arena(), 4, 0, nullptr);
@@ -3614,10 +3605,10 @@ void ciTypeFlow::flow_types() {
     if (CIPrintTypeFlowCFGs && i < 1) {
       dump_dot_graph();
     }
-    
+
     if(CIIrrDebug) print_blocks(tty);
-    //if (CIIrrFix) clone_irreducible_block(irr_block); 
-    reset_blocks(start);  
+    //if (CIIrrFix) clone_irreducible_block(irr_block);
+    reset_blocks(start);
     //loop_tree_root()->set_child(nullptr);
     temp_vector = new StateVector(this);
     temp_set    = new JsrSet(4);
@@ -3631,7 +3622,7 @@ void ciTypeFlow::flow_types() {
     }
     i = i + 1;
     if ( i % 50 == 0) {
-      tty->print_cr("Trying to fix irreducibility: %d", i); 
+      tty->print_cr("Trying to fix irreducibility: %d", i);
       dump_dot_graph();
     }
   }
@@ -3647,9 +3638,11 @@ void ciTypeFlow::flow_types() {
   if (loop_tree_root()->child() != nullptr &&
       env()->comp_level() >= CompLevel_full_optimization && !CIDispatch) {
       // Loop optimizations are not performed on Tier1 compiles.
+
     bool changed = clone_loop_heads(temp_vector, temp_set);
+
     // If some loop heads were cloned, recompute postorder and loop tree
-    if (changed && CIDispatch  && irr_block != nullptr) { 
+    if (changed && CIDispatch  && irr_block != nullptr) {
       temp_vector = new StateVector(this);
       temp_set    = new JsrSet(4);
 
@@ -3665,15 +3658,15 @@ void ciTypeFlow::flow_types() {
         blk = next;
       }
       df_flow_types(start, false /*no flow*/, temp_vector, temp_set, true);
-
     }
   }
-  if (CIDispatch ) {
+  if (CIDispatch) {
     fix_predecessors();
-    dump_dot_graph();    
+    dump_dot_graph();
 }
 
   if (CITraceTypeFlow) {
+    tty->print_cr("\nLoop tree");
     loop_tree_root()->print();
   }
 
@@ -3698,7 +3691,6 @@ void ciTypeFlow::flow_types() {
 //
 // Create the block map, which indexes blocks in reverse post-order.
 void ciTypeFlow::map_blocks() {
-  //dump_dot_graph();
   assert(_block_map == nullptr, "single initialization");
   int block_ct = _next_pre_order;
   _block_map = NEW_ARENA_ARRAY(arena(), Block*, block_ct);
@@ -3711,8 +3703,9 @@ void ciTypeFlow::map_blocks() {
     _block_map[rpo] = blk;
     blk = blk->rpo_next();
   }
+
   assert(blk == nullptr, "should be done");
-        for (int j = 0; j < block_ct; j++) {
+  for (int j = 0; j < block_ct; j++) {
     assert(_block_map[j] != nullptr, "must not drop any blocks");
     Block* block = _block_map[j];
     // Remove dead blocks from successor lists:
@@ -3800,12 +3793,14 @@ int ciTypeFlow::backedge_copy_count(int ciBlockIndex, ciTypeFlow::JsrSet* jsrs) 
 // Perform type inference flow analysis.
 void ciTypeFlow::do_flow() {
   if (CITraceTypeFlow) {
+    tty->print_cr("\nPerforming flow analysis on method");
     method()->print();
     if (is_osr_flow())  tty->print(" at OSR bci %d", start_bci());
     tty->cr();
     method()->print_codes();
   }
   if (CITraceTypeFlow) {
+    tty->print_cr("Initial CI Blocks");
     print_on(tty);
   }
   flow_types();
@@ -3979,7 +3974,7 @@ void ciTypeFlow::rpo_print_on(outputStream* st) const {
 
 
 int ciTypeFlow::Block::dot_id() const {
-  
+
   if (has_rpo())       return rpo();
   //if (has_post_order()) return -post_order();
   if (has_pre_order()) return pre_order();
@@ -4003,20 +3998,20 @@ void ciTypeFlow::dump_dot_graph() {
   fs->print_cr("  label=\"\n%s\"", prettyname.freeze());
   // Could possibly go through all ciBlocks and then for all ciBlocks we get the related blocks, and then from these we get the successors
   Block* first = _rpo_list;
-  
+
   for (int i = 0; i < _method->get_method_blocks()->num_blocks(); ++i){
     GrowableArray<Block*>* blocks = _idx_to_blocklist[i];
     if (blocks == nullptr) continue;
     for (int j = 0; j < blocks->length(); ++j){
       Block* blk = blocks->at(j);
       if (blk->has_rpo()) {
-  fs->print_cr("%d [label=<<FONT FACE=\"Courier New\"><b>rpo#%d</b>", blk->rpo(), blk->rpo()); 
+  fs->print_cr("%d [label=<<FONT FACE=\"Courier New\"><b>rpo#%d</b>", blk->rpo(), blk->rpo());
       } else {
   fs->print_cr("%d [label=<<FONT FACE=\"Courier New\"><b>pre#%d</b>", blk->dot_id(), blk->dot_id());
       }
       //fs->print("<br/>");
       fs->print("<br align=\"left\"/>");
-      if (CIIrrDebug && !blk->is_dispatch()) {   
+      if (CIIrrDebug && !blk->is_dispatch()) {
   stringStream bytecode;
   Thread *thread = Thread::current();
   ResourceMark rm(thread);
@@ -4035,7 +4030,7 @@ void ciTypeFlow::dump_dot_graph() {
       fs->print(", shape=box");
       fs->print(", color=\"");
       double color = (double) blk->start() / (double) method->code_size();
-      fs->print("%f 0.8 1.0", color); 
+      fs->print("%f 0.8 1.0", color);
       //TODO: Take two first numbers and use it as hex 3 times
       fs->print("\"");
     fs->print("]");
@@ -4044,13 +4039,13 @@ void ciTypeFlow::dump_dot_graph() {
       for (int i = 0; i < blk->successors()->length(); i++) {
         Block* succ = blk->successors()->at(i);
   if (blk->has_rpo()) {
-    fs->print_cr("%d -> %d", blk->rpo(), succ->rpo()); 
+    fs->print_cr("%d -> %d", blk->rpo(), succ->rpo());
   } else {
     fs->print_cr("%d -> %d", blk->dot_id(), succ->dot_id());
   }
       }
-    }   
-  } 
+    }
+  }
 }
   // TODO: print bytecode in each block, print additional block info (irred, etc).
 

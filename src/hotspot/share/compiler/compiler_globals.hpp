@@ -63,14 +63,14 @@
           "be more verbose in compilation timings")                         \
   develop(bool, CIPrintLoops, false,                                        \
           "print information about loops in the program")                   \
-  develop(bool, CIIrrDebug, false, 					    \
-	  "display more irreducibility debug information") 		    \
+  develop(bool, CIIrrDebug, false,                                          \
+    "display more irreducibility debug information")                        \
   develop(bool, CISplitSecond, false,                                       \
     "Split the second and not the head")                                    \
-  develop(bool, CIIrrFix, false,					    \
-	  "Fix irreducibility")						    \
+  develop(bool, CIIrrFix, false,                                            \
+    "Fix irreducibility")                                                   \
   develop(bool, CIDispatch, false,                                          \
-	  "Add Dispatcher block")                                           \
+    "Add Dispatcher block")                                                 \
                                                                             \
   develop(bool, CITimeEach, false,                                          \
           "display timing information after each successful compilation")   \
@@ -132,7 +132,7 @@
   develop(intx, CIBreakAt, -1,                                              \
           "The id of compilation to break at")                              \
   develop(bool, CountOpts, false,                                           \
-	  "Determines if the number of optimizations should be counted")    \
+    "Determines if the number of optimizations should be counted")          \
                                                                             \
   /* recompilation */                                                       \
                                                                             \
