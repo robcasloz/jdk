@@ -185,6 +185,7 @@ class BytecodePrinter {
     print_attributes(bci, st);
     if (ClassPrinter::has_mode(_flags, ClassPrinter::PRINT_METHOD_DATA)) {
       print_method_data_at(bci, st);
+      // TBD: print if ClassPrinter::has_mode(_flags, ClassPrinter::PRINT_GRAPHVIZ_FORMAT)?
     }
   }
 };
@@ -213,6 +214,9 @@ void BytecodeTracer::print_method_codes(const methodHandle& method, int from, in
   while (s.next() >= 0) {
     BytecodePrinter method_printer(&data, flags);
     method_printer.trace(method, s.bcp(), out);
+    if (ClassPrinter::has_mode(flags, ClassPrinter::PRINT_GRAPHVIZ_FORMAT)) {
+      ss.print("<br align=\"left\"/>");
+    }
   }
   if (buffered) {
     st->print("%s", ss.as_string());

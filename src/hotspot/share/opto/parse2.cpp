@@ -3714,8 +3714,9 @@ void Parse::do_one_bytecode() {
     // Merge the current control into the target basic block
     merge(target_bci);
 
+    // TBD: accident?
     // See if we can get some profile data and hand it off to the next block
-    Block *target_block = block()->successor_for_bci(target_bci);
+    Block *target_block = successor_for_bci(target_bci);
     if (target_block->pred_count() != 1)  break;
     ciMethodData* methodData = method()->method_data();
     if (!methodData->is_mature())  break;

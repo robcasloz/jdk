@@ -200,7 +200,7 @@ class Parse : public GraphKit {
 #endif
 
     // True when all non-exception predecessors have been parsed.
-    bool is_ready() const                  { return preds_parsed() == pred_count(); }
+    bool is_ready() const                  { return preds_parsed() >= pred_count(); }
 
     bool has_predicates() const            { return _has_predicates; }
     void set_has_predicates()              { _has_predicates = true; }
@@ -249,7 +249,7 @@ class Parse : public GraphKit {
       if (!jvms->is_loc(i) || flow()->outer()->has_irreducible_entry()) return false;
       return flow()->is_invariant_local(i - jvms->locoff());
     }
-    bool can_elide_SEL_phi(uint i) const  { assert(is_SEL_head(),""); return is_invariant_local(i); }
+    bool can_elide_SEL_phi(uint i) const  { assert(is_SEL_head(),""); return is_invariant_local(i) && !flow()->is_irreducible_copy(); }
 
     const Type* peek(int off=0) const      { return stack_type_at(start_sp() - (off+1)); }
 

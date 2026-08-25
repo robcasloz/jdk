@@ -38,6 +38,8 @@ private:
   ciMethod* _method;
   int       _osr_bci;
 
+  int       _dot_prints;
+
   bool      _has_irreducible_entry;
 
   const char* _failure_reason;
@@ -61,6 +63,8 @@ public:
   int       max_stack() const  { return method()->max_stack(); }
   int       max_cells() const  { return max_locals() + max_stack(); }
   int       code_size() const  { return method()->code_size(); }
+  int       get_dot() {return _dot_prints; };
+  void      set_dot(int i) {_dot_prints = i;};
   bool      has_irreducible_entry() const { return _has_irreducible_entry; }
 
   // Represents information about an "active" jsr call.  This
@@ -495,6 +499,7 @@ public:
   enum CreateOption {
     create_public_copy,
     create_backedge_copy,
+    create_deep_copy,
     no_create
   };
 
@@ -539,11 +544,18 @@ public:
     // Has this block been cloned for a loop backedge?
     bool                             _backedge_copy;
 
+    // Has this block been cloned to fix irreducibility?
+    bool                             _irreducible_copy;
+
+    Block*                           _cloned_block;
+
     // This block is a loop head of an irreducible loop.
     bool                             _irreducible_loop_head;
 
     // This block is a secondary entry to an irreducible loop (entry but not head).
     bool                             _irreducible_loop_secondary_entry;
+
+    bool                             _irreducible_entry;
 
     // This block has monitor entry point.
     bool                             _has_monitorenter;
@@ -582,9 +594,19 @@ public:
     int control() const       { return _ciblock->control_bci(); }
     JsrSet* jsrs() const      { return _jsrs; }
 
+    void setjsrs(JsrSet* jsr) { _jsrs = jsr; }
+
     bool    is_backedge_copy() const       { return _backedge_copy; }
     void   set_backedge_copy(bool z);
     int        backedge_copy_count() const { return outer()->backedge_copy_count(ciblock()->index(), _jsrs); }
+
+    bool    is_irreducible_copy() const    { return _irreducible_copy; }
+    void   set_irreducible_copy(bool z)    { _irreducible_copy = z;    }
+    void    set_clone_block(Block* b)      { _cloned_block = b;        }
+    Block*  get_clone_block() const {
+      assert(is_irreducible_copy(), "Only copied blocks have clones");
+      return _cloned_block;
+    }
 
     // access to entry state
     int     stack_size() const         { return _state->stack_size(); }
@@ -606,7 +628,12 @@ public:
     LocalSet* def_locals() { return _state->def_locals(); }
     const LocalSet* def_locals() const { return _state->def_locals(); }
 
+    void clone(Block* blk);
+
     // Get the successors for this Block.
+
+    GrowableArray<Block*>* successors(GrowableArray<Block*>* target);
+
     GrowableArray<Block*>* successors(ciBytecodeStream* str,
                                       StateVector* state,
                                       JsrSet* jsrs);
@@ -614,6 +641,8 @@ public:
       assert(_successors != nullptr, "must be filled in");
       return _successors;
     }
+
+    bool has_successors() const { return _successors != nullptr; }
 
     // Predecessors of this block (including exception edges)
     GrowableArray<Block*>* predecessors() {
@@ -665,6 +694,13 @@ public:
       return state()->meet_exception(exc, incoming);
     }
 
+    Block* dot_next() const {
+      if (has_rpo()) {
+        return _rpo_next;
+      }
+      return _next;
+    }
+
     // Work list manipulation
     void   set_next(Block* block) { _next = block; }
     Block* next() const           { return _next; }
@@ -711,9 +747,17 @@ public:
         if (lp->is_irreducible()) return false;
       return true;
     }
+    void reset_irreducible() {
+      _irreducible_loop_head = false;
+      _irreducible_loop_secondary_entry = false;
+      _irreducible_entry = true;
+    }
+
+    bool   is_irreducible_entry() const  { return _irreducible_entry; }
 
     void   print_value_on(outputStream* st) const PRODUCT_RETURN;
     void   print_on(outputStream* st) const       PRODUCT_RETURN;
+    int    dot_id() const                         PRODUCT_RETURN0;
   };
 
   // Loop
@@ -724,6 +768,7 @@ public:
     Loop* _child;    // Head of child list threaded thru sibling pointer
     Block* _head;    // Head of loop
     Block* _tail;    // Tail of loop
+    Block* _second_entry; // Second entry of the loop, if irreducible
     bool   _irreducible;
     LocalSet _def_locals;
     int _profiled_count;
@@ -734,19 +779,21 @@ public:
   public:
     Loop(Block* head, Block* tail) :
       _parent(nullptr), _sibling(nullptr), _child(nullptr),
-      _head(head),   _tail(tail),
+      _head(head), _tail(tail), _second_entry(nullptr),
       _irreducible(false), _def_locals(), _profiled_count(-1) {}
 
     Loop* parent()  const { return _parent; }
     Loop* sibling() const { return _sibling; }
     Loop* child()   const { return _child; }
     Block* head()   const { return _head; }
+    Block* second_entry() const { return _second_entry; }
     Block* tail()   const { return _tail; }
     void set_parent(Loop* p)  { _parent = p; }
     void set_sibling(Loop* s) { _sibling = s; }
     void set_child(Loop* c)   { _child = c; }
     void set_head(Block* hd)  { _head = hd; }
     void set_tail(Block* tl)  { _tail = tl; }
+    void set_second_entry(Block* se) { _second_entry = se; }
 
     int depth() const;              // nesting depth
 
@@ -765,9 +812,14 @@ public:
     // Mark non-single entry to loop
     void set_irreducible(Block* entry) {
       _irreducible = true;
+      set_second_entry(entry);
       head()->set_irreducible_loop_head();
       entry->set_irreducible_loop_secondary_entry();
     }
+    void reset_irreducible() {
+      _irreducible = false;
+    }
+
     bool is_irreducible() const { return _irreducible; }
 
     bool is_root() const { return _tail->pre_order() == max_jint; }
@@ -840,6 +892,8 @@ public:
 
   // Note a failure.
   void record_failure(const char* reason);
+
+  void print_blocks(outputStream* st = tty);
 
   // Return the block of a given pre-order number.
   int have_block_count() const      { return _block_map != nullptr; }
@@ -921,14 +975,21 @@ private:
   // necessary.
   void flow_types();
 
+  // Clone a block in a loop which causes irreducibility
+  void clone_irreducible_block(Block *irr);
+  // Clone block without predecessors
+  Block* clone_block(Block* blk);
+  void reset_blocks(Block* start);
+
   // Perform the depth first type flow analysis. Helper for flow_types.
-  void df_flow_types(Block* start,
+  Block* df_flow_types(Block* start,
                      bool do_flow,
                      StateVector* temp_vector,
-                     JsrSet* temp_set);
+                     JsrSet* temp_set,
+                     bool handleIrr);
 
   // Incrementally build loop tree.
-  void build_loop_tree(Block* blk);
+  Block* build_loop_tree(Block* blk);
 
   // Create the block map, which indexes blocks in pre_order.
   void map_blocks();
@@ -936,6 +997,9 @@ private:
 public:
   // Perform type inference flow analysis.
   void do_flow();
+
+  // Dump control-flow graph in Graphviz's DOT format.
+  void dump_dot_graph();
 
   // Determine if bci is dominated by dom_bci
   bool is_dominated_by(int bci, int dom_bci);

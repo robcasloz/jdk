@@ -6262,6 +6262,7 @@ int PhaseIdealLoop::build_loop_tree_impl(Node* n, int pre_order) {
     if (is_postvisited(l->_head)) {
       // We are currently visiting l, but its head has already been post-visited.
       // l is irreducible: we just found a second entry m.
+      assert(!CIIrrFix || CIIrrDebug, "Should never have irreducibility after it is fixed");
       _has_irreducible_loops = true;
       RegionNode* secondary_entry = m->as_Region();
 
