@@ -3004,7 +3004,6 @@ void Compile::remove_root_to_sfpts_edges(PhaseIterGVN& igvn) {
 //------------------------------Optimize---------------------------------------
 // Given a graph, optimize it.
 void Compile::Optimize() {
-  if (CountOpts) tty->print_cr("Optimizing: %s", method()->name()->as_utf8());
   TracePhase tp(_t_optimizer);
 
 #ifndef PRODUCT

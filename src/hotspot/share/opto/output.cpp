@@ -1928,14 +1928,12 @@ void PhaseOutput::fill_buffer(C2_MacroAssembler* masm, uint* blk_starts) {
         tty->print_cr("----------------------------- RuntimeStub %s -------------------------------", C->stub_name());
       }
       tty->cr();
-      if (!CountOpts) {
-	      tty->print_cr("------------------------ OptoAssembly for Compile_id = %d -----------------------", C->compile_id());
-	      tty->print_raw(dump_asm_str.freeze());
-	      tty->print_cr("--------------------------------------------------------------------------------");
-	      if (xtty != nullptr) {
-		      xtty->tail("opto_assembly");
-	      }
-     }
+      tty->print_cr("------------------------ OptoAssembly for Compile_id = %d -----------------------", C->compile_id());
+      tty->print_raw(dump_asm_str.freeze());
+      tty->print_cr("--------------------------------------------------------------------------------");
+      if (xtty != nullptr) {
+        xtty->tail("opto_assembly");
+      }
     }
   }
 #endif
