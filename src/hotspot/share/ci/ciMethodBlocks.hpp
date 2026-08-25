@@ -53,6 +53,7 @@ public:
   int num_blocks()  { return _num_blocks;}
   void clear_processed();
 
+  ciBlock *make_dispatch_block(int target); 
   ciBlock *make_dummy_block(); // a block not associated with a bci
 
 #ifndef PRODUCT

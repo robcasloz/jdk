@@ -61,6 +61,16 @@
                                                                             \
   develop(bool, CITimeVerbose, false,                                       \
           "be more verbose in compilation timings")                         \
+  develop(bool, CIPrintLoops, false,                                        \
+          "print information about loops in the program")                   \
+  develop(bool, CIIrrDebug, false, 					    \
+	  "display more irreducibility debug information") 		    \
+  develop(bool, CISplitSecond, false,                                       \
+    "Split the second and not the head")                                    \
+  develop(bool, CIIrrFix, false,					    \
+	  "Fix irreducibility")						    \
+  develop(bool, CIDispatch, false,                                          \
+	  "Add Dispatcher block")                                           \
                                                                             \
   develop(bool, CITimeEach, false,                                          \
           "display timing information after each successful compilation")   \
@@ -87,6 +97,10 @@
                                                                             \
   develop(bool, CITraceTypeFlow, false,                                     \
           "detailed per-bytecode tracing of ciTypeFlow analysis")           \
+                                                                            \
+  develop(bool, CIPrintTypeFlowCFGs, false,                                 \
+          "print the control-flow graph of each analyzed method in "        \
+          "Graphviz's DOT format")                                          \
                                                                             \
   product(bool, CICompilerCountPerCPU, false,                               \
           "1 compiler thread for log(N CPUs)")                              \
@@ -117,6 +131,8 @@
                                                                             \
   develop(intx, CIBreakAt, -1,                                              \
           "The id of compilation to break at")                              \
+  develop(bool, CountOpts, false,                                           \
+	  "Determines if the number of optimizations should be counted")    \
                                                                             \
   /* recompilation */                                                       \
                                                                             \

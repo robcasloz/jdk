@@ -423,7 +423,14 @@ public:
 #endif
 
   // Reference to the i'th input Node.  Error if out of bounds.
-  Node* in(uint i) const { assert(i < _max, "oob: i=%d, _max=%d", i, _max); return _in[i]; }
+  Node* in(uint i) const { 
+    if(i >= _max) {
+  	  this->dump();		
+  	}
+    assert(i < _max, "oob: i=%d, _max=%d", i, _max);
+		return _in[i]; 
+  }
+  
   // Reference to the i'th input Node.  null if out of bounds.
   Node* lookup(uint i) const { return ((i < _max) ? _in[i] : nullptr); }
   // Reference to the i'th output Node.  Error if out of bounds.

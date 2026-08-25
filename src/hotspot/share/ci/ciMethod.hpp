@@ -193,6 +193,8 @@ class ciMethod : public ciMetadata {
   int interpreter_throwout_count() const         { check_is_loaded(); return _interpreter_throwout_count; }
   int size_of_parameters() const                 { check_is_loaded(); return _size_of_parameters; }
 
+  void increment_code_size()                     { check_is_loaded(); _code_size++; }
+
   // Code size for inlining decisions.
   int code_size_for_inlining();
 

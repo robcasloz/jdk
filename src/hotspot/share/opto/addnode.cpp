@@ -226,7 +226,8 @@ const Type* AddNode::Value(PhaseGVN* phase) const {
   // Check for an addition involving the additive identity
   const Type* tadd = add_of_identity(t1, t2);
   if (tadd != nullptr) {
-    return tadd;
+     //tty->print_cr("Got type of addition as: %s", Type::str(tadd));
+     return tadd;
   }
 
   return add_ring(t1, t2);               // Local flavor of type addition

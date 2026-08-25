@@ -301,7 +301,7 @@ void Compile::gvn_replace_by(Node* n, Node* nn) {
       initial_gvn()->hash_find_insert(use);
     }
     record_for_igvn(use);
-    PhaseIterGVN::add_users_of_use_to_worklist(nn, use, *_igvn_worklist);
+    
     i -= uses_found;    // we deleted 1 or more copies of this edge
   }
 }
@@ -2662,7 +2662,7 @@ void Compile::process_for_unstable_if_traps(PhaseIterGVN& igvn) {
       ciBytecodeStream iter(method);
 
       iter.force_bci(jvms->bci());
-      assert(next_bci == iter.next_bci() || next_bci == iter.get_dest(), "wrong next_bci at unstable_if");
+      assert((next_bci == iter.next_bci() || next_bci == iter.get_dest()) || (CIDispatch && next_bci == iter.get_dest() - 1), "wrong next_bci at unstable_if: next: %d, iter_next: %d, iter_dest: %d", next_bci, iter.next_bci(), iter.get_dest());
       Bytecodes::Code c = iter.cur_bc();
       Node* lhs = nullptr;
       Node* rhs = nullptr;
@@ -3003,6 +3003,7 @@ void Compile::remove_root_to_sfpts_edges(PhaseIterGVN& igvn) {
 //------------------------------Optimize---------------------------------------
 // Given a graph, optimize it.
 void Compile::Optimize() {
+  if (CountOpts) tty->print_cr("Optimizing: %s", method()->name()->as_utf8());
   TracePhase tp(_t_optimizer);
 
 #ifndef PRODUCT
@@ -3230,6 +3231,8 @@ void Compile::Optimize() {
 
   // Conditional Constant Propagation;
   print_method(PHASE_BEFORE_CCP1, 2);
+  // UseNewCode
+  if (!(CIDispatch && UseNewCode)) {
   PhaseCCP ccp( &igvn );
   assert( true, "Break here to ccp.dump_nodes_and_types(_root,999,1)");
   {
@@ -3237,7 +3240,7 @@ void Compile::Optimize() {
     ccp.do_transform();
   }
   print_method(PHASE_CCP1, 2);
-
+  
   assert( true, "Break here to ccp.dump_old2new_map()");
 
   // Iterative Global Value Numbering, including ideal transforms
@@ -3249,7 +3252,7 @@ void Compile::Optimize() {
   print_method(PHASE_ITER_GVN2, 2);
 
   if (failing())  return;
-
+  }
   // Loop transforms on the ideal graph.  Range Check Elimination,
   // peeling, unrolling, etc.
   if (!optimize_loops(igvn, LoopOptsDefault)) {
@@ -5250,8 +5253,13 @@ Compile::TracePhase::~TracePhase() {
   }
 #ifdef ASSERT
   if (PrintIdealNodeCount) {
-    tty->print_cr("phase name='%s' nodes='%d' live='%d' live_graph_walk='%d'",
+    if (_compile->method() != nullptr) {
+      tty->print_cr("method: '%s' phase name='%s' nodes='%d' live='%d' live_graph_walk='%d'",
+                  _compile->method()->name()->as_utf8(),phase_name(), _compile->unique(), _compile->live_nodes(), _compile->count_live_nodes_by_graph_walk());
+    }else {
+      tty->print_cr("phase name='%s' nodes='%d' live='%d' live_graph_walk='%d'",
                   phase_name(), _compile->unique(), _compile->live_nodes(), _compile->count_live_nodes_by_graph_walk());
+     }
   }
 
   if (VerifyIdealNodeCount) {

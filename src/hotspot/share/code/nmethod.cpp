@@ -1862,6 +1862,7 @@ void nmethod::print_nmethod(bool printmethod) {
     }
     tty->print_cr("----------------------------------- Assembly -----------------------------------");
     decode2(tty);
+    if (CountOpts) return;
 #if defined(SUPPORT_DATA_STRUCTS)
     if (AbstractDisassembler::show_structs()) {
       // Print the oops from the underlying CodeBlob as well.
@@ -3633,7 +3634,7 @@ void nmethod::decode2(outputStream* ost) const {
   //----------------------------------
   //---<  Print real disassembly  >---
   //----------------------------------
-  if (! use_compressed_format) {
+  if (! use_compressed_format && !CountOpts) {
     st->print_cr("[Disassembly]");
     Disassembler::decode(const_cast<nmethod*>(this), st);
     st->bol();

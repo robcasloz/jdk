@@ -805,6 +805,121 @@ static void merge_ranges(SwitchRange* ranges, int& rp) {
   }
 }
 
+void Parse::do_dispatchswitch() {
+   
+  tty->print_cr("Doing dispatch!");
+  tty->print_cr("Current block is: %d", block()->flow()->rpo());
+  // Add phi-node
+  int len           = block()->flow()->dispatch()->length(); 
+  for (int i = 0; i < block()->flow()->predecessors()->length(); i++) {
+    tty->print_cr("Pred: %d", block()->flow()->predecessors()->at(i)->rpo());
+  }
+  int greatest      = 0;
+  tty->print_cr("Number of preds are: %d", len);
+  block()->flow()->sort_dispatch();
+
+  if (!control()->is_Region()) { 
+    RegionNode *r = new RegionNode(len+1);
+    r->set_req(1, control());
+    r->set_req(0, r);
+    gvn().set_type(r, Type::CONTROL);
+    record_for_igvn(r);
+    set_control(r);
+  }
+
+  RegionNode* r = control()->as_Region();
+  r->set_req(0, r);
+
+  Node* jumpTarget  = new PhiNode(r, TypeInt::INT);
+  _gvn.set_type(jumpTarget, TypeInt::INT);  
+  record_for_igvn(jumpTarget);  
+
+  intptr_t *unique_ids = NEW_RESOURCE_ARRAY(intptr_t, len);
+  int unique_length = 0; 
+  for (int i = 0; i < len; ++i) {
+    unique_ids[i] = -1;
+  }
+
+
+  int unused = -1;
+  for (int i = 0; i < len; ++i){
+    int targetBCI = block()->flow()->dispatch()->at(i)->target();
+    int val = unused + 1;
+    int empty = 0;
+    for (int j = 0; j < len; ++j) {
+      int v = unique_ids[j];
+      if (v == -1) break;
+      empty++;
+      if (v == targetBCI) {
+        tty->print_cr("Found bci: %d at: %d", targetBCI, j);
+        val = j;
+        empty = -1;
+        break;
+      } 
+    }
+    Node* v = new ConINode(TypeInt::make(val));
+    _gvn.set_type(v, TypeInt::INT);  
+    
+    // These has to be added in predecessor RPO order
+    jumpTarget->init_req(i + 1, v);
+    if (targetBCI > greatest) {
+	    greatest = targetBCI;
+    }
+    if (empty != -1) {
+      tty->print_cr("Setting %d to bci: %d", empty, targetBCI);
+      unique_ids[empty] = targetBCI;
+      unique_length += 1;
+    }
+    unused = val > unused ? val: unused;
+  }
+
+
+  int default_dest = greatest;
+
+  int unique = 0;
+  intptr_t *targets = NEW_RESOURCE_ARRAY(intptr_t, len);
+  for (int i = 0; i < unique_length; ++i) {
+     bool should_add = true;
+     tty->print_cr("Getting possible candidate");
+     int candidate = unique_ids[i];
+     tty->print_cr("Target is: %d and source %d, and rpo: %d, %d", candidate, block()->flow()->dispatch()->at(i)->block()->start(), block()->flow()->dispatch()->at(i)->rpo(), block()->flow()->dispatch()->at(i)->trgt()->rpo());
+     if (should_add)
+     {
+       targets[unique] = candidate;
+       unique++;
+     }
+  }
+
+  int rnum = unique + 2;
+  int lo_index = 0;
+  SwitchRange* ranges = NEW_RESOURCE_ARRAY(SwitchRange, rnum);
+
+  int rp = -1;
+  float cnt = 1.0;
+  ranges[++rp].setRange(min_jint, lo_index-1, default_dest, cnt);
+
+  bool trim_ranges = !C->too_many_traps(method(), bci(), Deoptimization::Reason_unstable_if);
+
+  for (int i = 0; i < unique; i++){
+    jint match_int = lo_index + i;
+    int dest = targets[i];
+    if (rp < 0 || !ranges[rp].adjoin(match_int, dest, cnt, trim_ranges)) {
+      ranges[++rp].set(match_int, dest, cnt);
+    }
+  }
+  jint highest = lo_index + (unique - 1);
+  if (highest != max_jint && !ranges[rp].adjoinRange(unique, max_jint, default_dest, cnt, trim_ranges)) {
+    ranges[++rp].setRange(unique, max_jint, default_dest, cnt);
+  }
+  Node* tmp = control();
+  { PreserveJVMState pjvms(this);  
+	   
+    jump_switch_ranges(jumpTarget, &ranges[0], &ranges[rp]);
+  }
+  tty->print_cr("\t\t Done with dispatching");
+  set_control(tmp);
+}
+
 //-------------------------------do_tableswitch--------------------------------
 void Parse::do_tableswitch() {
   // Get information about tableswitch
@@ -812,7 +927,6 @@ void Parse::do_tableswitch() {
   jint lo_index    = iter().get_int_table(1);
   jint hi_index    = iter().get_int_table(2);
   int len          = hi_index - lo_index + 1;
-
   if (len < 1) {
     // If this is a backward branch, add safepoint
     maybe_add_safepoint(default_dest);
@@ -1839,8 +1953,9 @@ void Parse::do_ifnull(BoolTest::mask btest, Node *c) {
       }
     } else {                    // Path is live.
       adjust_map_after_if(btest, c, prob, branch_block);
-      if (!stopped()) {
-        merge(target_bci);
+      if (!stopped()) 
+      {
+	merge(target_bci);
       }
     }
   }
@@ -1867,10 +1982,8 @@ void Parse::do_ifnull(BoolTest::mask btest, Node *c) {
 //------------------------------------do_if------------------------------------
 void Parse::do_if(BoolTest::mask btest, Node* c, bool can_trap, bool new_path, Node** ctrl_taken, Node** mem_taken, Node** io_taken) {
   int target_bci = iter().get_dest();
-
   Block* branch_block = successor_for_bci(target_bci);
   Block* next_block   = successor_for_bci(iter().next_bci());
-
   float cnt;
   float prob = branch_prediction(cnt, btest, target_bci, c);
   float untaken_prob = 1.0 - prob;
@@ -1888,9 +2001,9 @@ void Parse::do_if(BoolTest::mask btest, Node* c, bool can_trap, bool new_path, N
       branch_block->next_path_num();
       next_block->next_path_num();
     }
+    tty->print_cr("Early return...");
     return;
   }
-
   Node* counter = nullptr;
   Node* incr_store = nullptr;
   bool do_stress_trap = StressUnstableIfTraps && ((C->stress().random() % 2) == 0);
@@ -1949,12 +2062,10 @@ void Parse::do_if(BoolTest::mask btest, Node* c, bool can_trap, bool new_path, N
     taken_branch   = untaken_branch;
     untaken_branch = tmp;
   }
-
   // Branch is taken:
   { PreserveJVMState pjvms(this);
     taken_branch = _gvn.transform(taken_branch);
     set_control(taken_branch);
-
     if (stopped()) {
       if (C->eliminate_boxing() && !new_path) {
         // Mark the successor block as parsed (if we haven't created a new path)
@@ -2624,6 +2735,7 @@ void Parse::adjust_map_after_if(BoolTest::mask btest, Node* c, float prob, Block
   }
 
   bool is_fallthrough = (path == successor_for_bci(iter().next_bci()));
+ 
 
   if (can_trap && path_is_suitable_for_uncommon_trap(prob)) {
     repush_if_args();
@@ -2968,7 +3080,10 @@ void Parse::do_one_bytecode() {
     tty->cr();
   }
 #endif
-
+  if (block()->flow()->is_dispatch() && CIDispatch){
+    do_dispatchswitch();
+    return;
+  }
   switch (bc()) {
   case Bytecodes::_nop:
     // do nothing
@@ -3654,7 +3769,7 @@ void Parse::do_one_bytecode() {
 
   case Bytecodes::_iinc:        // Increment local
     i = iter().get_index();     // Get local index
-    set_local( i, _gvn.transform( new AddINode( _gvn.intcon(iter().get_iinc_con()), local(i) ) ) );
+    set_local( i, _gvn.transform( new AddINode( _gvn.intcon(iter().get_iinc_con()), local(i))));
     break;
 
   // Exit points of synchronized methods must have an unlock node
@@ -3700,9 +3815,9 @@ void Parse::do_one_bytecode() {
 
     // Merge the current control into the target basic block
     merge(target_bci);
-
     // See if we can get some profile data and hand it off to the next block
-    Block *target_block = block()->successor_for_bci(target_bci);
+    Block *target_block = successor_for_bci(target_bci);
+    //return;
     if (target_block->pred_count() != 1)  break;
     ciMethodData* methodData = method()->method_data();
     if (!methodData->is_mature())  break;
@@ -3748,6 +3863,7 @@ void Parse::do_one_bytecode() {
   case Bytecodes::_if_acmpne: btest = BoolTest::ne; goto handle_if_acmp;
   handle_if_acmp:
     // If this is a backwards branch in the bytecodes, add Safepoint
+    //
     maybe_add_safepoint(iter().get_dest());
     a = pop();
     b = pop();

@@ -101,6 +101,12 @@ ciBlock *ciMethodBlocks::make_block_at(int bci) {
   }
 }
 
+ciBlock *ciMethodBlocks::make_dispatch_block(int target) {
+  ciBlock *dum = new(_arena) ciBlock(_method, -1, target);
+  return dum;
+}
+
+
 ciBlock *ciMethodBlocks::make_dummy_block() {
   ciBlock *dum = new(_arena) ciBlock(_method, -1, 0);
   return dum;
