@@ -545,8 +545,10 @@ public:
     bool                             _backedge_copy;
 
     // Has this block been cloned to fix irreducibility?
-    bool           _irreducible_copy;
+    bool                             _irreducible_copy;
+
     Block*                           _cloned_block;
+
     // This block is a loop head of an irreducible loop.
     bool                             _irreducible_loop_head;
 
@@ -554,6 +556,7 @@ public:
     bool                             _irreducible_loop_secondary_entry;
 
     bool                             _irreducible_entry;
+
     // This block has monitor entry point.
     bool                             _has_monitorenter;
 
@@ -591,7 +594,7 @@ public:
     int control() const       { return _ciblock->control_bci(); }
     JsrSet* jsrs() const      { return _jsrs; }
 
-    void setjsrs(JsrSet* jsr) {_jsrs = jsr;}
+    void setjsrs(JsrSet* jsr) { _jsrs = jsr; }
 
     bool    is_backedge_copy() const       { return _backedge_copy; }
     void   set_backedge_copy(bool z);
@@ -600,7 +603,7 @@ public:
     bool    is_irreducible_copy() const    { return _irreducible_copy; }
     void   set_irreducible_copy(bool z)    { _irreducible_copy = z;    }
     void    set_clone_block(Block* b)      { _cloned_block = b;        }
-    Block*  get_clone_block()     const    {
+    Block*  get_clone_block() const {
       assert(is_irreducible_copy(), "Only copied blocks have clones");
       return _cloned_block;
     }
@@ -639,7 +642,7 @@ public:
       return _successors;
     }
 
-    bool has_successors() const {return _successors != nullptr;}
+    bool has_successors() const { return _successors != nullptr; }
 
     // Predecessors of this block (including exception edges)
     GrowableArray<Block*>* predecessors() {
@@ -691,8 +694,10 @@ public:
       return state()->meet_exception(exc, incoming);
     }
 
-    Block* dot_next() const       {
-      if (has_rpo())  return _rpo_next;
+    Block* dot_next() const {
+      if (has_rpo()) {
+        return _rpo_next;
+      }
       return _next;
     }
 
@@ -742,7 +747,7 @@ public:
         if (lp->is_irreducible()) return false;
       return true;
     }
-    void   reset_irreducible() {
+    void reset_irreducible() {
       _irreducible_loop_head = false;
       _irreducible_loop_secondary_entry = false;
       _irreducible_entry = true;
@@ -774,7 +779,7 @@ public:
   public:
     Loop(Block* head, Block* tail) :
       _parent(nullptr), _sibling(nullptr), _child(nullptr),
-      _head(head),   _tail(tail), _second_entry(nullptr),
+      _head(head), _tail(tail), _second_entry(nullptr),
       _irreducible(false), _def_locals(), _profiled_count(-1) {}
 
     Loop* parent()  const { return _parent; }
@@ -788,7 +793,7 @@ public:
     void set_child(Loop* c)   { _child = c; }
     void set_head(Block* hd)  { _head = hd; }
     void set_tail(Block* tl)  { _tail = tl; }
-    void set_second_entry(Block* se) {_second_entry = se; }
+    void set_second_entry(Block* se) { _second_entry = se; }
 
     int depth() const;              // nesting depth
 
@@ -971,7 +976,8 @@ private:
   void flow_types();
 
   // Clone a block in a loop which causes irreducibility
-  void clone_irreducible_block(Block* irr);
+  void clone_irreducible_block(Block *irr);
+  // Clone block without predecessors
   Block* clone_block(Block* blk);
   void reset_blocks(Block* start);
 

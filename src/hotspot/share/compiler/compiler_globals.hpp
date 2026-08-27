@@ -61,12 +61,16 @@
                                                                             \
   develop(bool, CITimeVerbose, false,                                       \
           "be more verbose in compilation timings")                         \
+                                                                            \
   develop(bool, CIPrintLoops, false,                                        \
           "print information about loops in the program")                   \
+                                                                            \
   develop(bool, CIIrrDebug, false,                                          \
     "display more irreducibility debug information")                        \
+                                                                            \
   develop(bool, CISplitSecond, false,                                       \
     "Split the second and not the head")                                    \
+                                                                            \
   develop(bool, CIIrrFix, false,                                            \
     "Fix irreducibility")                                                   \
                                                                             \

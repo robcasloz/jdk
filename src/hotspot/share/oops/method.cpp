@@ -1979,7 +1979,7 @@ void Method::print_name(outputStream* st) const {
 }
 
 void Method::print_file_name(outputStream* st) const {
-  Thread *thread = Thread::current();
+  Thread* thread = Thread::current();
   ResourceMark rm(thread);
   SignatureTypePrinter sig(signature(), st, ".");
   st->print("%s.", method_holder()->internal_name());
