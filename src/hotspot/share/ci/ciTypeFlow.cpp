@@ -1675,7 +1675,6 @@ ciTypeFlow::Block::Block(ciTypeFlow* outer,
   _exceptions = nullptr;
   _exc_klasses = nullptr;
   _successors = nullptr;
-  _is_reachable = true;
   _irreducible_copy = false;
   _state = new (outer->arena()) StateVector(outer);
   JsrSet* new_jsrs =

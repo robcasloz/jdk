@@ -553,8 +553,6 @@ public:
     // This block is a secondary entry to an irreducible loop (entry but not head).
     bool                             _irreducible_loop_secondary_entry;
 
-    bool                             _is_reachable;
-
     bool                             _irreducible_entry;
     // This block has monitor entry point.
     bool                             _has_monitorenter;
@@ -585,20 +583,6 @@ public:
     bool has_trap()   const  { return _trap_bci != -1; }
     int  trap_bci()   const  { assert(has_trap(), ""); return _trap_bci; }
     int  trap_index() const  { assert(has_trap(), ""); return _trap_index; }
-
-    void set_unreachable() {
-      _is_reachable = false;
-      if (_successors != nullptr) {
-        for(SuccIter iter(this); !iter.done(); iter.next()) {
-      Block* succ = iter.succ();
-      if (succ->predecessors()->length() == 1) {
-        succ->set_unreachable();
-          }
-     }
-      }
-    }
-
-    bool is_reachable() const {return _is_reachable; }
 
     // accessors
     ciTypeFlow* outer() const { return state()->outer(); }
