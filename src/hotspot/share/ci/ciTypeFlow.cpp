@@ -43,7 +43,6 @@
 #include "runtime/deoptimization.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/ostream.hpp"
-#include <time.h>
 
 // ciTypeFlow::JsrSet
 //
