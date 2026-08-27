@@ -2663,7 +2663,7 @@ void Compile::process_for_unstable_if_traps(PhaseIterGVN& igvn) {
       ciBytecodeStream iter(method);
 
       iter.force_bci(jvms->bci());
-      assert((next_bci == iter.next_bci() || next_bci == iter.get_dest()) || (CIDispatch && next_bci == iter.get_dest() - 1), "wrong next_bci at unstable_if: next: %d, iter_next: %d, iter_dest: %d", next_bci, iter.next_bci(), iter.get_dest());
+      assert(next_bci == iter.next_bci() || next_bci == iter.get_dest(), "wrong next_bci at unstable_if");
       Bytecodes::Code c = iter.cur_bc();
       Node* lhs = nullptr;
       Node* rhs = nullptr;

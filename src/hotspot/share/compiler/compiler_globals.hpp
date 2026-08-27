@@ -69,8 +69,6 @@
     "Split the second and not the head")                                    \
   develop(bool, CIIrrFix, false,                                            \
     "Fix irreducibility")                                                   \
-  develop(bool, CIDispatch, false,                                          \
-    "Add Dispatcher block")                                                 \
                                                                             \
   develop(bool, CITimeEach, false,                                          \
           "display timing information after each successful compilation")   \

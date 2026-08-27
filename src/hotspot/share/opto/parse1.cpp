@@ -577,18 +577,18 @@ Parse::Parse(JVMState* caller, ciMethod* parse_method, float expected_uses)
     assert(false, "type flow analysis failed during parsing");
     C->record_method_not_compilable(_flow->failure_reason());
 #ifndef PRODUCT
-    if (PrintOpto && (Verbose || WizardMode)) {
-      if (is_osr_parse()) {
-        tty->print_cr("OSR @%d type flow bailout: %s", _entry_bci, _flow->failure_reason());
-      } else {
-        tty->print_cr("type flow bailout: %s", _flow->failure_reason());
+      if (PrintOpto && (Verbose || WizardMode)) {
+        if (is_osr_parse()) {
+          tty->print_cr("OSR @%d type flow bailout: %s", _entry_bci, _flow->failure_reason());
+        } else {
+          tty->print_cr("type flow bailout: %s", _flow->failure_reason());
+        }
+        if (Verbose) {
+          method()->print();
+          method()->print_codes();
+          _flow->print();
+        }
       }
-      if (Verbose) {
-        method()->print();
-        method()->print_codes();
-        _flow->print();
-      }
-    }
 #endif
   }
 
@@ -734,38 +734,6 @@ void Parse::do_all_blocks() {
       NOT_PRODUCT(blocks_parsed++);
 
       progress = true;
-      if (block->flow()->is_dispatch() && !block->is_parsed()) {
-        RegionNode* r = control()->as_Region();
-        r->set_req(0, r);
-        gvn().set_type(r, Type::CONTROL);
-        record_for_igvn(r);
-        for (uint idx = TypeFunc::Parms; idx < map()->req(); idx++) {
-          Node* o = map()->in(idx);
-          const JVMState* jvms = map()->jvms();
-          const Type* t = nullptr;
-          if (jvms->is_loc(idx)) {
-            tty->print_cr("Getting local type at: %d", idx - jvms->locoff());
-            ciType* ct = block->flow()->local_type_at(idx - jvms->locoff());
-            t = Block::get_type(ct);
-          } else if (jvms->is_stk(idx)) {
-            continue;
-            //t = block->stack_type_at(idx - jvms->stkoff());
-          } else {
-            continue; // monitors etc., skip
-          }
-          tty->print_cr("The type of %d is %s", idx, Type::str(t));
-          if (t == nullptr || t == Type::TOP || t == Type::HALF || t == Type::BOTTOM)
-            {
-              tty->print_cr("CITYPEFLOW SAYS DEAD! for: %d", idx);
-              continue;
-            }
-          PhiNode* phi = PhiNode::make(r, o, t);
-          gvn().set_type(phi, t);
-          record_for_igvn(phi);
-          map()->set_req(idx, phi);
-        }
-      }
-
       if (block->is_loop_head() || block->is_handler() || (has_irreducible && !block->is_ready())) {
         // Not all preds have been parsed.  We must build phis everywhere.
         // (Note that dead locals do not get phis built, ever.)
@@ -1587,9 +1555,6 @@ Parse::Block* Parse::Block::successor_for_bci(int bci) {
     Block* block2 = successor_at(i);
     if (block2->start() == bci)  return block2;
   }
-  if (CIDispatch) {
-    return get_dispatch(bci);
-  }
   // We can actually reach here if ciTypeFlow traps out a block
   // due to an unloaded class, and concurrently with compilation the
   // class is then loaded, so that a later phase of the parser is
@@ -1602,22 +1567,6 @@ Parse::Block* Parse::Block::successor_for_bci(int bci) {
 }
 
 
-//---------------------------get_dispatch---------------------------------
-Parse::Block* Parse::Block::get_dispatch(int bci) {
-  for (int i = 0; i < all_successors(); i++) {
-    Block* block2 = successor_at(i);
-    if (block2->flow()->is_dispatch())  return block2;
-  }
-  // We can actually reach here if ciTypeFlow traps out a block
-  // due to an unloaded class, and concurrently with compilation the
-  // class is then loaded, so that a later phase of the parser is
-  // able to see more of the bytecode CFG.  Or, the flow pass and
-  // the parser can have a minor difference of opinion about executability
-  // of bytecodes.  For example, "obj.field = null" is executable even
-  // if the field's type is an unloaded class; the flow pass used to
-  // make a trap for such code.
-  return nullptr;
-}
 //-----------------------------stack_type_at-----------------------------------
 const Type* Parse::Block::stack_type_at(int i) const {
   return get_type(flow()->stack_type_at(i));
@@ -1808,26 +1757,11 @@ void Parse::do_one_block() {
     // Learn the current bci from the iterator:
     set_parse_bci(iter().cur_bci());
 
-    // TODO possibly improve this??
-    if (bci() == 0 && block()->limit() == -1 && CIDispatch){
-      //Add dispatcher switch
-      // Add phi for predecessors, to determine successor
-      // (how the hell do I determine successor (?)
-      // I must save the original CFG or bytecode in some way
-      //
-      //
-      // We know where the original jump was supposed to go from the `target_bci`
-      // If we can propogate this value and add a phi node in its place then maybe everything works out...
-      //tty->print_cr("Breaking because of dispatcher...");
-      break;
-    }
-
     if (bci() == block()->limit()) {
       // Do not walk into the next block until directed by do_all_blocks.
       merge(bci());
       break;
     }
-    if(!(block() != nullptr && block()->flow()->is_dispatch())) assert(bci() < block()->limit(), "bci still in block");
 
     if (log != nullptr) {
       // Output an optional context marker, to help place actions
@@ -1852,14 +1786,11 @@ void Parse::do_one_block() {
     int pre_bc_sp = sp();
     int inputs, depth;
     bool have_se = !stopped() && compute_stack_effects(inputs, depth);
-    assert(block()->flow()->is_dispatch() || (!have_se || pre_bc_sp >= inputs), "have enough stack to execute this BC: pre_bc_sp=%d, inputs=%d, BCI:%d", pre_bc_sp, inputs, bci());
+    assert(!have_se || pre_bc_sp >= inputs, "have enough stack to execute this BC: pre_bc_sp=%d, inputs=%d", pre_bc_sp, inputs);
 #endif //ASSERT
 
     do_one_bytecode();
     if (failing()) return;
-    if (block()->flow()->is_dispatch()){
-      break;
-    }
 
     assert(!have_se || stopped() || failing() || (sp() - pre_bc_sp) == depth,
            "incorrect depth prediction: sp=%d, pre_bc_sp=%d, depth=%d", sp(), pre_bc_sp, depth);
@@ -1955,7 +1886,7 @@ void Parse::handle_missing_successor(int target_bci) {
 //--------------------------merge_common---------------------------------------
 void Parse::merge_common(Parse::Block* target, int pnum) {
   if (TraceOptoParse) {
-    tty->print("Merging state at block #%d bci:%d, disp:%d", target->rpo(), target->start(), target->flow()->is_dispatch());
+    tty->print("Merging state at block #%d bci:%d", target->rpo(), target->start());
   }
 
   // Zap extra stack slots to top
@@ -2068,7 +1999,7 @@ void Parse::merge_common(Parse::Block* target, int pnum) {
 #endif
 
     // We must not manufacture more phis if the target is already parsed.
-    bool nophi = target->is_parsed() && !target->flow()->is_dispatch();
+    bool nophi = target->is_parsed();
 
     SafePointNode* newin = map();// Hang on to incoming mapping
     Block* save_block = block(); // Hang on to incoming block;
@@ -2192,18 +2123,6 @@ void Parse::merge_common(Parse::Block* target, int pnum) {
           record_for_igvn(vtm);
         }
       } else if (phi != nullptr) {
-        // Insert some dummy value for the phi if the phi is for the dispatch block
-        if (n == top() && target->flow()->is_dispatch()){
-          // In this case this safepoint does not use / update a value that the dispatcher must handle...
-          // These cases will never happen in practice, however are needed since they can "theoretically" happen
-
-          // Add throw away value here...
-          tty->print_cr("Block merge phi has too few inputs");
-          phi->dump();
-          phi->set_req(pnum, phi);
-          phi->dump();
-          continue; // try if a continue works (?)
-        }
         assert(n != top() || r->in(pnum) == top(), "live value must not be garbage");
         assert(phi->as_Phi()->region() == r, "");
         phi->set_req(pnum, maybe_narrow_phi_input(r->in(pnum), n, _gvn.type(phi)));

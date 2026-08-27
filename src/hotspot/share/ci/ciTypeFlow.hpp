@@ -48,7 +48,6 @@ public:
   class StateVector;
   class Loop;
   class Block;
-  class DispatchInfo;
 
   // Build a type flow analyzer
   // Do an OSR analysis if osr_bci >= 0.
@@ -522,32 +521,6 @@ public:
     bool   is_normal_ctrl() { return index() < _pred->successors()->length(); }
   };
 
-
-  class DispatchInfo : public ArenaObj {
-     private:
-       int                          _target;
-       Block*                       _src;
-       Block*                       _target_block;
-     public:
-       DispatchInfo(int target, Block* src, Block* trg);
-
-       int rpo() const              { return _src->rpo(); }
-       int target() const           { return _target; }
-       Block* block() const         { return _src;   }
-       Block* trgt()   const        { return _target_block; }
-
-       void updateTarget(int new_target)   { _target = new_target; }
-
-       static int compare(DispatchInfo** o1, DispatchInfo** o2) {
-         DispatchInfo* a = *o1;
-         DispatchInfo* b = *o2;
-         if (a->rpo() != b->rpo())
-           return b->rpo() - a->rpo();
-
-         return (a->target() < b->target()) ? -1 : (a->target() > b->target()) ? 1 : 0;
-       }
-  };
-
   // A basic block
   class Block : public ArenaObj {
   private:
@@ -558,8 +531,6 @@ public:
     GrowableArray<Block*>            _predecessors;
     StateVector*                     _state;
     JsrSet*                          _jsrs;
-
-    GrowableArray<DispatchInfo*>*           _dispatchTargets;
 
     int                              _trap_bci;
     int                              _trap_index;
@@ -578,8 +549,6 @@ public:
     Block*                           _cloned_block;
     // This block is a loop head of an irreducible loop.
     bool                             _irreducible_loop_head;
-
-    bool                             _is_dispatch_target;
 
     // This block is a secondary entry to an irreducible loop (entry but not head).
     bool                             _irreducible_loop_secondary_entry;
@@ -617,10 +586,6 @@ public:
     int  trap_bci()   const  { assert(has_trap(), ""); return _trap_bci; }
     int  trap_index() const  { assert(has_trap(), ""); return _trap_index; }
 
-    bool is_dispatch_target() const { return _is_dispatch_target; }
-
-    void set_dispatch_target()   { _is_dispatch_target = true; }
-
     void set_unreachable() {
       _is_reachable = false;
       if (_successors != nullptr) {
@@ -644,24 +609,9 @@ public:
 
     void setjsrs(JsrSet* jsr) {_jsrs = jsr;}
 
-    bool is_dispatch() const   { return _dispatchTargets != nullptr; }
-    GrowableArray<DispatchInfo*>*  dispatch()    const   { assert(is_dispatch(), "only dispatcher has dispatch"); return _dispatchTargets; }
-    void sort_dispatch()       {
-      assert(is_dispatch(), "can only sort dispatch info if dispatcher");
-      for(int i = _dispatchTargets->length() - 1; i >= 0; --i) {
-        Block* blk = _dispatchTargets->at(i)->block();
-        if(!blk->is_reachable()){
-          _dispatchTargets->remove_at(i);
-        }
-      }
-      _dispatchTargets->sort(DispatchInfo::compare);
-    }
-
     bool    is_backedge_copy() const       { return _backedge_copy; }
     void   set_backedge_copy(bool z);
     int        backedge_copy_count() const { return outer()->backedge_copy_count(ciblock()->index(), _jsrs); }
-    void    new_target(GrowableArray<DispatchInfo*>* newTarget)   {_dispatchTargets = newTarget; }
-
 
     bool    is_irreducible_copy() const    { return _irreducible_copy; }
     void   set_irreducible_copy(bool z)    { _irreducible_copy = z;    }
@@ -1039,14 +989,6 @@ private:
   // Clone a block in a loop which causes irreducibility
   void clone_irreducible_block(Block* irr);
   Block* clone_block(Block* blk);
-
-
-  Block* add_dispatch(Loop* irreducible_region);
-  Block* create_dispatch_block(JsrSet* jsrs, Loop* lp);
-  void switch_blocks(Block* target, Block* source);
-  void connect_dispatch_loop(Block* dispatch, Loop* irreducible_region);
-  void connect_pred_dispatch(Block* dispatch, Block* source, Block* source2);
-
   void reset_blocks(Block* start);
 
   // Perform the depth first type flow analysis. Helper for flow_types.
@@ -1058,13 +1000,6 @@ private:
 
   // Incrementally build loop tree.
   Block* build_loop_tree(Block* blk);
-
-  // Fix all predecessor information.
-  // TODO: Remove dependency on this and make the build work from the beginning
-  void split_dispatch_by_stack(Block* disp);
-  void fix_predecessors();
-
-  void combine_dispatch(Block* main, Block* second);
 
   // Create the block map, which indexes blocks in pre_order.
   void map_blocks();
