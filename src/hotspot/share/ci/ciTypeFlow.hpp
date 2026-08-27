@@ -768,7 +768,7 @@ public:
 
     void   print_value_on(outputStream* st) const PRODUCT_RETURN;
     void   print_on(outputStream* st) const       PRODUCT_RETURN;
-    int    dot_id() const PRODUCT_RETURN;
+    int    dot_id() const                         PRODUCT_RETURN0;
   };
 
   // Loop

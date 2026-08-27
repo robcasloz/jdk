@@ -2013,12 +2013,6 @@ void Parse::merge_common(Parse::Block* target, int pnum) {
     // Iterate over my current mapping and the old mapping.
     // Where different, insert Phi functions.
     // Use any existing Phi functions.
-
-    if (!control()->is_Region()) {
-      tty->print_cr("Target is: %d and block is: %d", target->rpo(), block()->rpo());;
-      control()->dump();
-    }
-
     assert(control()->is_Region(), "must be merging to a region");
     RegionNode* r = control()->as_Region();
 

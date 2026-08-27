@@ -3688,7 +3688,6 @@ void ciTypeFlow::rpo_print_on(outputStream* st) const {
 
 
 int ciTypeFlow::Block::dot_id() const {
-
   if (has_rpo())       return rpo();
   //if (has_post_order()) return -post_order();
   if (has_pre_order()) return pre_order();
