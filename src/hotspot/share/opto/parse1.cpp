@@ -562,9 +562,6 @@ Parse::Parse(JVMState* caller, ciMethod* parse_method, float expected_uses)
     _entry_bci = InvocationEntryBci;
     _flow = method()->get_flow_analysis();
   }
-  if (CIIrrDebug) {
-    _flow->dump_dot_graph();
-  }
 
 #ifndef PRODUCT
   if (CIIrrDebug) {

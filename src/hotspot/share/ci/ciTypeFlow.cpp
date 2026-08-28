@@ -3308,9 +3308,6 @@ void ciTypeFlow::flow_types() {
 
   int i = 0;
   while (irr_block != nullptr && CIIrrFix) {
-    if (CIPrintTypeFlowCFGs && i < 1) {
-      dump_dot_graph();
-    }
     if (CIIrrDebug) {
       print_blocks(tty);
     }
@@ -3321,18 +3318,9 @@ void ciTypeFlow::flow_types() {
     start = block_at(start_bci(), temp_set);
     start->meet(start_state);
     irr_block = df_flow_types(start, true, temp_vector, temp_set, true);
-    if (CIPrintTypeFlowCFGs && i < 15) {
-      dump_dot_graph();
-    }
     i = i + 1;
-    if ( i % 50 == 0) {
-      tty->print_cr("Trying to fix irreducibility: %d", i);
-      dump_dot_graph();
-    }
   }
   if (i != 0) {
-    tty->print_cr("Done with node splitting");
-    dump_dot_graph();
     return; // Early return ... The final steps break the graph for some reason
   }
   if (failing())  return;
