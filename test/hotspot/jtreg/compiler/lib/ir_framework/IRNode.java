@@ -1890,6 +1890,11 @@ public class IRNode {
         trapNodes(PREDICATE_TRAP, "predicate");
     }
 
+    public static final String REGION = PREFIX + "REGION" + POSTFIX;
+    static {
+        beforeMatchingNameRegex(REGION, "Region");
+    }
+
     public static final String RANGE_CHECK = PREFIX + "RANGE_CHECK" + POSTFIX;
     static {
         beforeMatchingNameRegex(RANGE_CHECK, "RangeCheck");
