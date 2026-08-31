@@ -3181,8 +3181,7 @@ void ciTypeFlow::Loop::print(outputStream* st, int indent) const {
 ciTypeFlow::Block* ciTypeFlow::df_flow_types(Block* start,
                                              bool do_flow,
                                              StateVector* temp_vector,
-                                             JsrSet* temp_set,
-                                             bool handleIrr) {
+                                             JsrSet* temp_set) {
   int dft_len = 100;
   GrowableArray<Block*> stk(dft_len);
 
@@ -3236,13 +3235,12 @@ ciTypeFlow::Block* ciTypeFlow::df_flow_types(Block* start,
       if (stk.length() == size) {
         // There were no additional children, post visit node now
         stk.pop(); // Remove node from stack
-        if (handleIrr) {
-          Block* irreducible_block = build_loop_tree(blk);
-          if (irreducible_block != nullptr && irreducible == nullptr) {
-            irreducible = irreducible_block;
-            if (CIIrrFix) {
-              return irreducible;
-            }
+
+        Block* irreducible_block = build_loop_tree(blk);
+        if (irreducible_block != nullptr && irreducible == nullptr) {
+          irreducible = irreducible_block;
+          if (CIIrrFix) {
+            return irreducible;
           }
         }
         blk->set_post_order(next_po++);   // Assign post order
@@ -3280,7 +3278,7 @@ void ciTypeFlow::flow_types() {
   start->meet(start_state);
 
   // Depth first visit
-  Block* irr_block = df_flow_types(start, true /*do flow*/, temp_vector, temp_set, true);
+  Block* irr_block = df_flow_types(start, true /*do flow*/, temp_vector, temp_set);
   if (CIPrintLoops) {
     GrowableArray<Loop*>* lp_queue = new (arena()) GrowableArray<Loop*>(arena(), 4, 0, nullptr);
     lp_queue->push(loop_tree_root());
@@ -3317,7 +3315,7 @@ void ciTypeFlow::flow_types() {
     // Create the method entry block.
     start = block_at(start_bci(), temp_set);
     start->meet(start_state);
-    irr_block = df_flow_types(start, true, temp_vector, temp_set, true);
+    irr_block = df_flow_types(start, true, temp_vector, temp_set);
     i = i + 1;
   }
   if (i != 0) {
@@ -3341,7 +3339,7 @@ void ciTypeFlow::flow_types() {
         blk->df_init();
         blk = next;
       }
-      df_flow_types(start, false /*no flow*/, temp_vector, temp_set, true);
+      df_flow_types(start, false /*no flow*/, temp_vector, temp_set);
     }
   }
 

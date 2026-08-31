@@ -985,8 +985,7 @@ private:
   Block* df_flow_types(Block* start,
                      bool do_flow,
                      StateVector* temp_vector,
-                     JsrSet* temp_set,
-                     bool handleIrr);
+                     JsrSet* temp_set);
 
   // Incrementally build loop tree.
   Block* build_loop_tree(Block* blk);
