@@ -564,7 +564,7 @@ Parse::Parse(JVMState* caller, ciMethod* parse_method, float expected_uses)
   }
 
 #ifndef PRODUCT
-  if (CIIrrDebug) {
+  if (CITraceNodeSplitting) {
     if (_flow->has_irreducible_entry()) {
       tty->print_cr("Method has irreducible entry!!");
     }

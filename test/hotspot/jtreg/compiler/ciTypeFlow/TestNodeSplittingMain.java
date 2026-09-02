@@ -35,18 +35,18 @@ import compiler.lib.ir_framework.*;
 
 public class TestNodeSplittingMain {
     public static void main(String[] args) {
-        TestFramework.runWithFlags("-XX:-CIIrrFix",
+        TestFramework.runWithFlags("-XX:-CINodeSplitting",
                                    "-XX:CompileCommand=inline,compiler.ciTypeFlow.TestNodeSplitting::*");
-        TestFramework.runWithFlags("-XX:+CIIrrFix",
+        TestFramework.runWithFlags("-XX:+CINodeSplitting",
                                    "-XX:CompileCommand=inline,compiler.ciTypeFlow.TestNodeSplitting::*");
     }
 
     @Test
     // This test contains an empty irreducible loop with no side effects. Making
     // it reducible allows C2 to optimize it as an empty method.
-    @IR(applyIf = {"CIIrrFix", "false"},
+    @IR(applyIf = {"CINodeSplitting", "false"},
         counts = {IRNode.REGION, "> 0"})
-    @IR(applyIf = {"CIIrrFix", "true"},
+    @IR(applyIf = {"CINodeSplitting", "true"},
         failOn = {IRNode.REGION})
     static void testBasic(boolean b) {
         TestNodeSplitting.testBasic(b);

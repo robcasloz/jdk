@@ -2691,10 +2691,10 @@ int ciTypeFlow::Loop::profiled_count() {
     // TODO: Fix some better way to do this:
     // I think that the current problem is that a faulty successor is chosen (or a faulty head) such that the original block is correct, however, it is incorrect for the specific clone that this code think it is connected too.
     // I dont really know how to fix this right now...
-    if (!CIIrrFix) {
+    if (!CINodeSplitting) {
       assert((iter.get_dest() == head()->start()) == (succs->at(ciTypeFlow::IF_TAKEN) == head()), "bytecode and CFG not consistent");
     }
-    if (!CIIrrFix) {
+    if (!CINodeSplitting) {
       assert((tail->limit() == head()->start()) == (succs->at(ciTypeFlow::IF_NOT_TAKEN) == head()), "bytecode and CFG not consistent");
     }
     if (succs->at(ciTypeFlow::IF_TAKEN) == head()) {
@@ -2891,9 +2891,9 @@ ciTypeFlow::Block* ciTypeFlow::build_loop_tree(Block* blk) {
     }
 
     // Report irreducibility
-    if (CIIrrFix && irreducible == nullptr) {
+    if (CINodeSplitting && irreducible == nullptr) {
       if (lp->head()->is_post_visited() && lp != loop_tree_root()) {
-        if (CIIrrDebug) {
+        if (CITraceNodeSplitting) {
           tty->print_cr("Found irreducible block %d", succ->pre_order());
           tty->print_cr("Found while traversing %d", blk->pre_order());
           tty->print_cr("Head of loop is %d", succ->loop()->head()->pre_order());
@@ -3018,7 +3018,7 @@ ciTypeFlow::Block* ciTypeFlow::build_loop_tree(Block* blk) {
           visited->clear_and_deallocate();
           clone_queue->clear_and_deallocate();
           return irreducible;
-        } else if (CISplitSecond || (multi_head && !multi_succ)) {
+        } else if (CISplitSecondEntry || (multi_head && !multi_succ)) {
           Block* clone = clone_block(succ);
           clone->predecessors()->push(blk);
           if (blk->successors()->contains(succ)) {
@@ -3076,7 +3076,7 @@ ciTypeFlow::Block* ciTypeFlow::build_loop_tree(Block* blk) {
     // Check for irreducible loop.
     // Successor has already been visited. If the successor's loop head
     // has already been post-visited, then this is another entry into the loop.
-    while (lp->head()->is_post_visited() && lp != loop_tree_root() && !CIIrrFix) {
+    while (lp->head()->is_post_visited() && lp != loop_tree_root() && !CINodeSplitting) {
       _has_irreducible_entry = true;
       lp->set_irreducible(succ);
       if (!succ->is_on_work_list()) {
@@ -3239,7 +3239,7 @@ ciTypeFlow::Block* ciTypeFlow::df_flow_types(Block* start,
         Block* irreducible_block = build_loop_tree(blk);
         if (irreducible_block != nullptr && irreducible == nullptr) {
           irreducible = irreducible_block;
-          if (CIIrrFix) {
+          if (CINodeSplitting) {
             return irreducible;
           }
         }
@@ -3279,7 +3279,7 @@ void ciTypeFlow::flow_types() {
 
   // Depth first visit
   Block* irr_block = df_flow_types(start, true /*do flow*/, temp_vector, temp_set);
-  if (CIPrintLoops) {
+  if (CITraceNodeSplitting) {
     GrowableArray<Loop*>* lp_queue = new (arena()) GrowableArray<Loop*>(arena(), 4, 0, nullptr);
     lp_queue->push(loop_tree_root());
     int num_loops = 0;
@@ -3305,8 +3305,8 @@ void ciTypeFlow::flow_types() {
   }
 
   int i = 0;
-  while (irr_block != nullptr && CIIrrFix) {
-    if (CIIrrDebug) {
+  while (irr_block != nullptr && CINodeSplitting) {
+    if (CITraceNodeSplitting) {
       print_blocks(tty);
     }
     reset_blocks(start);
@@ -3354,7 +3354,7 @@ void ciTypeFlow::flow_types() {
 
   while (!work_list_empty()) {
     Block* blk = work_list_next();
-    if (CIIrrDebug) {
+    if (CITraceNodeSplitting) {
       tty->print_cr("Checking blk %d for post order", blk->dot_id());
     }
     assert (blk->has_post_order(), "post order assigned above");
@@ -3499,7 +3499,7 @@ void ciTypeFlow::do_flow() {
   if (CIPrintTypeFlowCFGs) {
     dump_dot_graph();
   }
-  if (CIIrrDebug) {
+  if (CITraceNodeSplitting) {
     print_blocks(tty);
   }
 #endif // !PRODUCT
@@ -3689,7 +3689,7 @@ void ciTypeFlow::dump_dot_graph() {
         fs->print_cr("%d [label=<<FONT FACE=\"Courier New\"><b>pre#%d</b>", blk->dot_id(), blk->dot_id());
       }
       fs->print("<br align=\"left\"/>");
-      if (CIIrrDebug) {
+      if (CITraceNodeSplitting) {
         stringStream bytecode;
         Thread *thread = Thread::current();
         ResourceMark rm(thread);
