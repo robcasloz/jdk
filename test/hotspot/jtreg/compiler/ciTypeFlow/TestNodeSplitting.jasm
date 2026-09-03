@@ -23,7 +23,7 @@
  */
 
 
-public identity class compiler/ciTypeFlow/TestNodeSplitting version 72:0
+public super class compiler/ciTypeFlow/TestNodeSplitting version 45:3
 {
   public Method "<init>":"()V"
     stack 1  locals 1
@@ -60,4 +60,39 @@ public identity class compiler/ciTypeFlow/TestNodeSplitting version 72:0
   Lreturn: stack_frame_type  same;
            return;
   }
+
+  static Method testUnrollAndVectorize:"([IZ)I"
+    stack 3  locals 4
+  {
+           iconst_0;
+           istore_2;
+           iconst_0;
+           istore_3;
+           iload_1;
+           ifeq              Lmiddle;
+  Lentry:  stack_map_frame;
+           locals_map        class "[I", int, int, int;
+           stack_map;
+           iload_3;
+           aload_0;
+           arraylength;
+           if_icmpge         Lreturn;
+           iload_2;
+           aload_0;
+           iload_3;
+           iaload;
+           iadd;
+           istore_2;
+  Lmiddle: stack_map_frame;
+           locals_map;
+           stack_map;
+           iinc              3, 1;
+           goto              Lentry;
+  Lreturn: stack_map_frame;
+           locals_map;
+           stack_map;
+           iload_2;
+           ireturn;
+  }
+
 }

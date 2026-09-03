@@ -24,6 +24,7 @@
 package compiler.ciTypeFlow;
 
 import compiler.lib.ir_framework.*;
+import jdk.test.lib.Asserts;
 
 /**
  * @test
@@ -48,15 +49,40 @@ public class TestNodeSplittingMain {
         counts = {IRNode.REGION, "> 0"})
     @IR(applyIf = {"CINodeSplitting", "true"},
         failOn = {IRNode.REGION})
-    static void testBasic(boolean b) {
-        TestNodeSplitting.testBasic(b);
+    static void testBasic(boolean c) {
+        TestNodeSplitting.testBasic(c);
     }
 
-    @Run(test = {"testBasic"},
+    @Test
+    // This test performs a reduction over an array of integers, and includes a
+    // secondary branch right into the middle of the reduction loop. Making it
+    // reducible allows C2 to vectorize the reduction.
+    @IR(applyIf = {"CINodeSplitting", "false"},
+        failOn = {IRNode.ADD_REDUCTION_V})
+    @IR(applyIf = {"CINodeSplitting", "true"},
+        applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true", "rvv", "true"},
+        counts = {IRNode.ADD_REDUCTION_V, "> 0"})
+    static int testUnrollAndVectorize(int[] a, boolean c) {
+        return TestNodeSplitting.testUnrollAndVectorize(a, c);
+    }
+
+    @Run(test = {"testBasic",
+                 "testUnrollAndVectorize"},
          mode = RunMode.STANDALONE)
     static void runTests() {
         for (int i = 0; i < 10_000; i++) {
             testBasic(i % 2 == 0);
+        }
+        {
+            int[] a = new int[10];
+            for (int i = 0; i < a.length; i++) {
+                a[i] = 1;
+            }
+            for (int i = 0; i < 10_000; i++) {
+                boolean enterViaOriginalHeader = i % 2 == 0;
+                int sum = testUnrollAndVectorize(a, enterViaOriginalHeader);
+                Asserts.assertTrue(!enterViaOriginalHeader || sum == a.length);
+            }
         }
     }
 
