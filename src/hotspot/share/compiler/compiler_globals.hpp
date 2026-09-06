@@ -118,12 +118,6 @@
   develop(intx, CIBreakAt, -1,                                              \
           "The id of compilation to break at")                              \
                                                                             \
-  product(bool, CINodeSplitting, false, DIAGNOSTIC,                         \
-          "Apply node splitting to handle irreducible control flow")        \
-                                                                            \
-  product(bool, CISplitSecondEntry, false, DIAGNOSTIC,                      \
-          "Split the second entry instead of the header")                   \
-                                                                            \
   develop(bool, CITraceNodeSplitting, false,                                \
           "print detailed information about the CFG node splitting steps")  \
                                                                             \

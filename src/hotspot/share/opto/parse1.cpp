@@ -1760,6 +1760,7 @@ void Parse::do_one_block() {
       merge(bci());
       break;
     }
+    assert(bci() < block()->limit(), "bci still in block");
 
     if (log != nullptr) {
       // Output an optional context marker, to help place actions
