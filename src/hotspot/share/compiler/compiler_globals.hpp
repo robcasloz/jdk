@@ -125,6 +125,8 @@
           "print the control-flow graph of each analyzed method in "        \
           "Graphviz's DOT format")                                          \
                                                                             \
+  product(bool, StressCITypeFlow, false, DIAGNOSTIC,                        \
+          "Randomize choices within CITypeFlow analysis")                   \
   /* recompilation */                                                       \
                                                                             \
   product(double, CompileThresholdScaling, 1.0,                             \

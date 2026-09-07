@@ -918,6 +918,10 @@ private:
   // Get the initial state for start_bci:
   const StateVector* get_start_state();
 
+  // Clean up control-flow analysis results from df_flow_types(): block ordering
+  // labels (post-order, etc.) and loop tree.
+  void clean_df_flow_types_results();
+
   // Merge the current state into all exceptional successors at the
   // current point in the code.
   void flow_exceptions(GrowableArray<Block*>* exceptions,

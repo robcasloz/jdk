@@ -448,6 +448,15 @@ const ciTypeFlow::StateVector* ciTypeFlow::get_start_state() {
   return state;
 }
 
+void ciTypeFlow::clean_df_flow_types_results() {
+  loop_tree_root()->set_child(nullptr);
+  for (Block* blk = _rpo_list; blk != nullptr;) {
+    Block* next = blk->rpo_next();
+    blk->df_init();
+    blk = next;
+  }
+}
+
 // ------------------------------------------------------------------
 // ciTypeFlow::StateVector::copy_into
 //
@@ -3008,35 +3017,20 @@ void ciTypeFlow::flow_types() {
   if (failing())  return;
   start->meet(start_state);
 
-  // Depth first visit
-  df_flow_types(start, true /*do flow*/, temp_vector, temp_set);
-  if (CITraceNodeSplitting) {
-    GrowableArray<Loop*>* lp_queue = new (arena()) GrowableArray<Loop*>(arena(), 4, 0, nullptr);
-    lp_queue->push(loop_tree_root());
-    int num_loops = 0;
-    int totalt_depth = 0;
-    int max_depth = 0;
-    int loop_blk_cnt = 0;
-    int max_cnt = 0;
-    while (lp_queue->length() > 0) {
-      Loop* lp = lp_queue->pop();
-      // Do calculations
-      num_loops++;
-      totalt_depth += lp->depth();
-      max_depth = lp->depth() > max_depth ? lp->depth() : max_depth;
-      // Add sibling
-      if (lp->sibling() != nullptr) lp_queue->push(lp->sibling());
-      // Add child
-      if (lp->child() != nullptr) lp_queue->push(lp->child());
+  // In regular runs, iterate only once. In stress mode, iterate between 1 and
+  // 10 runs, cleaning up block labels and loop trees in between runs.
+  uint iterations =
+      StressCITypeFlow ? (Compile::current()->stress().random() % 10) + 1 : 1;
+  for (uint i = 0; i < iterations; i++) {
+    // Depth first visit
+    df_flow_types(start, /* do_flow = */ i == 0, temp_vector, temp_set);
+    if (failing())  return;
+    assert(_rpo_list == start, "must be start");
+    if (i + 1 < iterations) {
+      assert(StressCITypeFlow, "only possible in stress mode");
+      clean_df_flow_types_results();
     }
-    tty->print_cr("Totalt loops: %d", num_loops);
-    tty->print_cr("Total depth: %d / avg: %d", totalt_depth, num_loops > 0 ? totalt_depth / num_loops : 0);
-    tty->print_cr("Max depth: %d", max_depth);
-    tty->print_cr("Number of blocks: %d", loop_blk_cnt);
   }
-
-  if (failing())  return;
-  assert(_rpo_list == start, "must be start");
 
   // Any loops found?
   if (loop_tree_root()->child() != nullptr &&
@@ -3047,12 +3041,7 @@ void ciTypeFlow::flow_types() {
 
     // If some loop heads were cloned, recompute postorder and loop tree
     if (changed) {
-      loop_tree_root()->set_child(nullptr);
-      for (Block* blk = _rpo_list; blk != nullptr;) {
-        Block* next = blk->rpo_next();
-        blk->df_init();
-        blk = next;
-      }
+      clean_df_flow_types_results();
       df_flow_types(start, false /*no flow*/, temp_vector, temp_set);
     }
   }
