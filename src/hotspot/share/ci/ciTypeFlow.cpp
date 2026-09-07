@@ -3028,6 +3028,26 @@ void ciTypeFlow::flow_types() {
     assert(_rpo_list == start, "must be start");
     if (i + 1 < iterations) {
       assert(StressCITypeFlow, "only possible in stress mode");
+      if (Compile::current()->stress().random() % 2 == 0 &&
+          loop_tree_root()->child() != nullptr) {
+        // Clone randomly an entire loop (when removing irreducibility in the
+        // future, we will only clone the subset of the loop that makes the loop
+        // irreducible).
+
+        // Select a loop L at random.
+        Loop* L = nullptr;
+        uint visited = 0;
+        for (PreorderLoops iter(loop_tree_root()); !iter.done(); iter.next()) {
+          Loop* current = iter.current();
+          if (current == loop_tree_root()) {
+            continue;
+          }
+          visited++;
+          if ((Compile::current()->stress().random() % visited) == 0) {
+            L = current;
+          }
+        }
+      }
       clean_df_flow_types_results();
     }
   }
