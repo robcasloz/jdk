@@ -237,6 +237,8 @@ public:
   void dump(bool print_state=true, outputStream* out=tty, bool newline=true) const;
   void dump_header(bool print_state=true, outputStream* out=tty) const;
   const char* esc_name() const;
+  void dump_dot_node(PhaseIterGVN* igvn, outputStream* out) const;
+  void dump_dot_edges(outputStream* out, bool fade_deferred_edges) const;
 #endif
 
 };
@@ -706,6 +708,7 @@ public:
   void dump(GrowableArray<PointsToNode*>& ptnodes_worklist);
   static void print_statistics();
   void escape_state_statistics(GrowableArray<JavaObjectNode*>& java_objects_worklist);
+  void dump_dot_graph(const char* suffix, bool fade_deferred_edges) const;
 #endif
 };
 

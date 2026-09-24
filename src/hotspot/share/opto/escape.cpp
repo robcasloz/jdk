@@ -259,6 +259,10 @@ bool ConnectionGraph::compute_escape() {
     }
     tty->print_cr("+++++ Calculating escape states and scalar replaceability");
   }
+
+  if (PrintConnectionGraph) {
+    dump_dot_graph("initial", /*fade_deferred_edges*/ false);
+  }
 #endif
 
   if (non_escaped_allocs_worklist.length() == 0) {
@@ -299,6 +303,11 @@ bool ConnectionGraph::compute_escape() {
   }
 
   _compile->print_method(PHASE_EA_AFTER_INITIAL_CONGRAPH, 4);
+#ifndef PRODUCT
+  if (PrintConnectionGraph) {
+    dump_dot_graph("delayed", /*fade_deferred_edges*/ false);
+  }
+#endif
 
   // 2. Finish Graph construction by propagating references to all
   //    java objects through graph.
@@ -307,10 +316,20 @@ bool ConnectionGraph::compute_escape() {
     // All objects escaped or hit time or iterations limits.
     _collecting = false;
     NOT_PRODUCT(escape_state_statistics(java_objects_worklist);)
+#ifndef PRODUCT
+      if (PrintConnectionGraph) {
+        dump_dot_graph("complete", /*fade_deferred_edges*/ false);
+      }
+#endif
     return false;
   }
 
   _compile->print_method(PHASE_EA_AFTER_COMPLETE_CONGRAPH, 4);
+#ifndef PRODUCT
+  if (PrintConnectionGraph) {
+    dump_dot_graph("complete", /*fade_deferred_edges*/ false);
+  }
+#endif
 
   // 3. Adjust scalar_replaceable state of nonescaping objects and push
   //    scalar replaceable allocations on alloc_worklist for processing
@@ -384,6 +403,9 @@ bool ConnectionGraph::compute_escape() {
 #ifndef PRODUCT
   if (PrintEscapeAnalysis) {
     dump(ptnodes_worklist); // Dump ConnectionGraph
+  }
+  if (PrintConnectionGraph) {
+    dump_dot_graph("final",  /*fade_deferred_edges*/ true);
   }
 #endif
 
@@ -5627,6 +5649,83 @@ void PointsToNode::dump(bool print_state, outputStream* out, bool newline) const
   }
 }
 
+void PointsToNode::dump_dot_node(PhaseIterGVN* igvn, outputStream* out) const {
+  stringStream details;
+  Node* n = ideal_node();
+  if (is_JavaObject()) {
+    if (n->is_Allocate()) {
+      // TODO: factor out with code in AllocateNode::dump_spec.
+      const Node* const klass_node = n->in(AllocateNode::KlassNode);
+      if (klass_node != nullptr) {
+        const TypeKlassPtr* const klass_ptr = klass_node->bottom_type()->isa_klassptr();
+        if (klass_ptr != nullptr && klass_ptr->klass_is_exact()) {
+          klass_ptr->exact_klass()->print_name_on(&details);
+        }
+      }
+    } else if (n->is_Con()) {
+      if (n->is_top() ||
+          n == igvn->zerocon(T_OBJECT) ||
+          n == igvn->zerocon(T_NARROWOOP)) {
+        n->bottom_type()->dump_on(&details);
+      }
+    }
+  } else if (is_Field()) {
+    FieldNode* f = (FieldNode*)this;
+    if (f->offset() > 0) {
+      details.print("+%d", f->offset());
+    }
+  }
+  out->print("%d [label=<<FONT FACE=\"Courier New\">%d: <b>%d %s</b>", pidx(), pidx(), n->_idx, n->Name());
+  if (!details.is_empty()) {
+    out->print("<br/> %s", details.as_string());
+  }
+  out->print("</FONT>>");
+  stringStream color;
+  EscapeState es = escape_state();
+  if (es == ArgEscape) {
+    color.print("gray90");
+  } else if (es == GlobalEscape) {
+    color.print("gray60");
+  }
+  if (!color.is_empty()) {
+    out->print(", style=filled, fillcolor=%s", color.as_string());
+  }
+  if (is_JavaObject()) {
+    out->print(", shape=box");
+  } else if (is_Arraycopy()) {
+    out->print(", shape=octagon");
+  }
+  out->print("]");
+}
+
+void PointsToNode::dump_dot_edges(outputStream* out, bool fade_deferred_edges) const {
+  for (EdgeIterator i(this); i.has_next(); i.next()) {
+    PointsToNode* e = i.get();
+    out->print("  %d -> %d [label=<<FONT FACE=\"Courier New\">", pidx(),
+               e->pidx());
+    bool is_deferred = false;
+    if (e->is_JavaObject()) {
+      out->print("P");
+    } else if (this->is_JavaObject() && e->is_Field()) {
+      out->print("F");
+    } else if (e->is_Arraycopy()) {
+      out->print("AC");
+    } else {
+      is_deferred = true;
+      out->print("D");
+    }
+    out->print("</FONT>>");
+    if (is_deferred) {
+      out->print(", style=dashed");
+      if (fade_deferred_edges) {
+        out->print(", weight=0, constraint=false, color=\"gray70\", fontcolor=\"gray70\"");
+      }
+    }
+    out->print("]");
+    out->cr();
+  }
+}
+
 void ConnectionGraph::dump(GrowableArray<PointsToNode*>& ptnodes_worklist) {
   bool first = true;
   int ptnodes_length = ptnodes_worklist.length();
@@ -5689,6 +5788,37 @@ void ConnectionGraph::escape_state_statistics(GrowableArray<JavaObjectNode*>& ja
       }
     }
   }
+}
+
+void ConnectionGraph::dump_dot_graph(const char* suffix, bool fade_deferred_edges) const {
+  stringStream filename;
+  filename.print("%d-%d-%s.dot", _compile->compile_id(), _invocation, suffix);
+  fileStream fs(filename.as_string(), "w");
+  fs.print_cr("digraph G {");
+  fs.print_cr("  fontname=\"Courier\"");
+  fs.print_cr("  rankdir=\"BT\"");
+  fs.print_cr("  labeldistance=2.0");
+  fs.print("  label=\"\n\n%d (invocation %d, %s) - ", _compile->compile_id(), _invocation, suffix);
+  _compile->method()->print_name(&fs);
+  fs.print_cr("\"");
+  // Traverse over the ideal -> connection graph mapping, instead of traversing
+  // over ptnodes_worklist, because the latter might miss delayed nodes. Skip
+  // potential duplicates.
+  VectorSet visited;
+  for (int i = 0; i < _nodes.length(); i++) {
+    PointsToNode* ptn = _nodes.at(i);
+    if (ptn == nullptr || visited.test_set(ptn->pidx())) {
+      continue;
+    }
+    fs.print("  //");
+    ptn->dump(true, &fs);
+    fs.print("  ");
+    ptn->dump_dot_node(_igvn, &fs);
+    fs.cr();
+    ptn->dump_dot_edges(&fs, fade_deferred_edges);
+  }
+  fs.print_cr("}");
+  fs.close();
 }
 
 void ConnectionGraph::trace_es_update_helper(PointsToNode* ptn, PointsToNode::EscapeState es, bool fields, const char* reason) const {

@@ -592,6 +592,10 @@
   develop(bool, PrintEscapeAnalysis, false,                                 \
           "Print the results of escape analysis")                           \
                                                                             \
+  develop(bool, PrintConnectionGraph, false,                                \
+          "Print each connection graph used in escape analysis in "         \
+          "Graphviz's DOT format")                                          \
+                                                                            \
   product(bool, EliminateAllocations, true,                                 \
           "Use escape analysis to eliminate allocations")                   \
                                                                             \
