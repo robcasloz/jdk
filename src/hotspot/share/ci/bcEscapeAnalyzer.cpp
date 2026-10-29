@@ -227,23 +227,6 @@ bool BCEscapeAnalyzer::is_recursive_call(ciMethod* callee) {
   return false;
 }
 
-bool BCEscapeAnalyzer::is_arg_modified(int arg, int offset, int size_in_bytes) {
-  if (offset == OFFSET_ANY)
-    return _arg_modified[arg] != 0;
-  assert(arg >= 0 && arg < _arg_size, "must be an argument.");
-  bool modified = false;
-  int l = offset / HeapWordSize;
-  int h = align_up(offset + size_in_bytes, HeapWordSize) / HeapWordSize;
-  if (l > ARG_OFFSET_MAX)
-    l = ARG_OFFSET_MAX;
-  if (h > ARG_OFFSET_MAX+1)
-    h = ARG_OFFSET_MAX + 1;
-  for (int i = l; i < h; i++) {
-    modified = modified || (_arg_modified[arg] & (1 << i)) != 0;
-  }
-  return modified;
-}
-
 void BCEscapeAnalyzer::set_arg_modified(int arg, int offset, int size_in_bytes) {
   if (offset == OFFSET_ANY) {
     _arg_modified[arg] = (uint)-1;
