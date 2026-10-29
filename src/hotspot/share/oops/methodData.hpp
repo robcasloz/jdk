@@ -123,7 +123,6 @@ public:
     ret_data_tag,
     branch_data_tag,
     multi_branch_data_tag,
-    arg_info_data_tag,
     call_type_data_tag,
     virtual_call_type_data_tag,
     parameters_type_data_tag,
@@ -1831,14 +1830,8 @@ protected:
   enum {
     speculative_trap_method,
 #ifndef _LP64
-    // The size of the area for traps is a multiple of the header
-    // size, 2 cells on 32 bits. Packed at the end of this area are
-    // argument info entries (with tag
-    // DataLayout::arg_info_data_tag). The logic in
-    // MethodData::bci_to_extra_data() that guarantees traps don't
-    // overflow over argument info entries assumes the size of a
-    // SpeculativeTrapData is twice the header size. On 32 bits, a
-    // SpeculativeTrapData must be 4 cells.
+    // The size of the area for traps is a multiple of the header size, 2 cells
+    // on 32 bits. On 32 bits, a SpeculativeTrapData must be 4 cells.
     padding,
 #endif
     speculative_trap_cell_count
@@ -2564,7 +2557,6 @@ public:
   }
   DataLayout* extra_data_limit() const { return (DataLayout*)((address)this + size_in_bytes()); }
   // pointers to sections in extra data
-  DataLayout* args_data_limit() const  { return parameters_data_base(); }
   DataLayout* parameters_data_base() const {
     assert(_parameters_type_data_di != parameters_uninitialized, "called too early");
     return _parameters_type_data_di != no_parameters ? data_layout_at(_parameters_type_data_di) : parameters_data_limit();

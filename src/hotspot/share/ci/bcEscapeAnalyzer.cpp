@@ -30,7 +30,6 @@
 #include "classfile/vmIntrinsics.hpp"
 #include "compiler/compiler_globals.hpp"
 #include "interpreter/bytecode.hpp"
-#include "oops/oop.inline.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "utilities/integerCast.hpp"
 
@@ -194,13 +193,7 @@ void BCEscapeAnalyzer::set_global_escape(ArgumentMap vars, bool merge) {
   }
 }
 
-void BCEscapeAnalyzer::set_modified(ArgumentMap vars, int offs, int size) {
-  if (vars.contains_unknown()) {
-    _unknown_modified = true;
-  }
-}
-
-void BCEscapeAnalyzer::set_modified_any_offset(ArgumentMap vars) {
+void BCEscapeAnalyzer::set_modified(ArgumentMap vars) {
   if (vars.contains_unknown()) {
     _unknown_modified = true;
   }
@@ -324,7 +317,6 @@ void BCEscapeAnalyzer::invoke(StateInfo &state, Bytecodes::Code code, ciMethod* 
       ArgumentMap arg = state.raw_pop();
       if (!is_argument(arg))
         continue;
-      set_modified(arg, OFFSET_ANY, type2size[T_INT]*HeapWordSize);
       set_global_escape(arg);
     }
     _unknown_modified = true;  // assume the worst since we don't know the called method
@@ -505,7 +497,7 @@ void BCEscapeAnalyzer::iterate_one_block(ciBlock *blk, StateInfo &state, Growabl
         state.spop();
         ArgumentMap arr = state.apop();
         set_method_escape(arr);
-        set_modified_any_offset(arr);
+        set_modified(arr);
         break;
       }
       case Bytecodes::_lastore:
@@ -515,7 +507,7 @@ void BCEscapeAnalyzer::iterate_one_block(ciBlock *blk, StateInfo &state, Growabl
         state.spop();
         ArgumentMap arr = state.apop();
         set_method_escape(arr);
-        set_modified_any_offset(arr);
+        set_modified(arr);
         break;
       }
       case Bytecodes::_aastore:
@@ -524,7 +516,7 @@ void BCEscapeAnalyzer::iterate_one_block(ciBlock *blk, StateInfo &state, Growabl
         state.spop();
         ArgumentMap arr = state.apop();
         // If the array is a flat array, a larger part of it is modified than the size of a reference.
-        set_modified_any_offset(arr);
+        set_modified(arr);
         break;
       }
       case Bytecodes::_pop:
@@ -837,8 +829,8 @@ void BCEscapeAnalyzer::iterate_one_block(ciBlock *blk, StateInfo &state, Growabl
         break;
       case Bytecodes::_putstatic:
       case Bytecodes::_putfield:
-        { bool will_link;
-          ciField* field = s.get_field(will_link);
+        { bool ignored_will_link;
+          ciField* field = s.get_field(ignored_will_link);
           BasicType field_type = field->type()->basic_type();
           if (is_reference_type(field_type)) {
             set_global_escape(state.apop());
@@ -850,7 +842,7 @@ void BCEscapeAnalyzer::iterate_one_block(ciBlock *blk, StateInfo &state, Growabl
           if (s.cur_bc() != Bytecodes::_putstatic) {
             ArgumentMap p = state.apop();
             set_method_escape(p);
-            set_modified(p, will_link ? field->offset_in_bytes() : OFFSET_ANY, type2size[field_type]*HeapWordSize);
+            set_modified(p);
           }
         }
         break;
@@ -1258,7 +1250,6 @@ void BCEscapeAnalyzer::clear_escape_info() {
   for (int i = 0; i < arg_count; i++) {
     var.clear();
     var.set(i);
-    set_modified(var, OFFSET_ANY, 4);
     set_global_escape(var);
   }
   _arg_local.clear();

@@ -55,7 +55,7 @@
 
 // Some types of data layouts need a length field.
 bool DataLayout::needs_array_len(u1 tag) {
-  return (tag == multi_branch_data_tag) || (tag == arg_info_data_tag) || (tag == parameters_type_data_tag);
+  return (tag == multi_branch_data_tag) || (tag == parameters_type_data_tag);
 }
 
 // Perform generic initialization of the data.  More specific
@@ -96,10 +96,9 @@ ProfileData::ProfileData() {
 
 char* ProfileData::print_data_on_helper(const MethodData* md) const {
   DataLayout* dp  = md->extra_data_base();
-  DataLayout* end = md->args_data_limit();
+  DataLayout* end = md->parameters_data_base();
   stringStream ss;
-  for (;; dp = MethodData::next_extra(dp)) {
-    assert(dp < end, "moved past end of extra data");
+  for (; dp < end; dp = MethodData::next_extra(dp)) {
     switch(dp->tag()) {
     case DataLayout::speculative_trap_data_tag:
       if (dp->bci() == bci()) {
@@ -114,14 +113,13 @@ char* ProfileData::print_data_on_helper(const MethodData* md) const {
     case DataLayout::bit_data_tag:
       break;
     case DataLayout::no_tag:
-    case DataLayout::arg_info_data_tag:
       return ss.as_string();
       break;
     default:
       fatal("unexpected tag %d", dp->tag());
     }
   }
-  return nullptr;
+  return ss.as_string();
 }
 
 void ProfileData::print_data_on(outputStream* st, const MethodData* md) const {
@@ -935,13 +933,9 @@ int MethodData::compute_allocation_size_in_bytes(const methodHandle& method) {
   }
   int object_size = in_bytes(data_offset()) + data_size;
 
-  // Add some extra DataLayout cells (at least one) to track stray traps.
+  // Add some extra DataLayout cells to track stray traps.
   int extra_data_count = compute_extra_data_count(data_size, empty_bc_count, needs_speculative_traps);
   object_size += extra_data_count * DataLayout::compute_size_in_bytes(0);
-
-  // Add a cell to record information about modified arguments.
-  int arg_size = method->size_of_parameters();
-  object_size += DataLayout::compute_size_in_bytes(arg_size+1);
 
   // Reserve room for an area of the MDO dedicated to profiling of
   // parameters
@@ -1247,7 +1241,6 @@ void MethodData::initialize() {
   // corresponding data cells.
   int data_size = 0;
   int empty_bc_count = 0;  // number of bytecodes lacking data
-  _data[0] = 0;  // apparently not set below.
   BytecodeStream stream(methodHandle(thread, method()));
   Bytecodes::Code c;
   bool needs_speculative_traps = false;
@@ -1262,25 +1255,15 @@ void MethodData::initialize() {
   _data_size = data_size;
   int object_size = in_bytes(data_offset()) + data_size;
 
-  // Add some extra DataLayout cells (at least one) to track stray traps.
+  // Add some extra DataLayout cells to track stray traps.
   int extra_data_count = compute_extra_data_count(data_size, empty_bc_count, needs_speculative_traps);
   int extra_size = extra_data_count * DataLayout::compute_size_in_bytes(0);
 
   // Let's zero the space for the extra data
   if (extra_size > 0) {
     Copy::zero_to_bytes(((address)_data) + data_size, extra_size);
+    object_size += extra_size;
   }
-
-  // Add a cell to record information about modified arguments.
-  // Set up _args_modified array after traps cells so that
-  // the code for traps cells works.
-  DataLayout *dp = data_layout_at(data_size + extra_size);
-
-  int arg_size = method()->size_of_parameters();
-  dp->initialize(DataLayout::arg_info_data_tag, 0, arg_size+1);
-
-  int arg_data_size = DataLayout::compute_size_in_bytes(arg_size+1);
-  object_size += extra_size + arg_data_size;
 
   int parms_cell = ParametersTypeData::compute_cell_count(method());
   // If we are profiling parameters, we reserved an area near the end
@@ -1292,14 +1275,14 @@ void MethodData::initialize() {
   if (parms_cell > 0) {
     parm_data_size = DataLayout::compute_size_in_bytes(parms_cell);
     object_size += parm_data_size;
-    _parameters_type_data_di = data_size + extra_size + arg_data_size;
-    DataLayout *dp = data_layout_at(data_size + extra_size + arg_data_size);
+    _parameters_type_data_di = data_size + extra_size;
+    DataLayout *dp = data_layout_at(data_size + extra_size);
     dp->initialize(DataLayout::parameters_type_data_tag, 0, parms_cell);
   } else {
     _parameters_type_data_di = no_parameters;
   }
 
-  _exception_handler_data_di = data_size + extra_size + arg_data_size + parm_data_size;
+  _exception_handler_data_di = data_size + extra_size + parm_data_size;
   if (ProfileExceptionHandlers && method()->has_exception_handler()) {
     int num_exception_handlers = method()->exception_table_length();
     object_size += num_exception_handlers * single_exception_handler_data_size();
@@ -1422,18 +1405,13 @@ DataLayout* MethodData::next_extra(DataLayout* dp) {
 ProfileData* MethodData::bci_to_extra_data_find(int bci, Method* m, DataLayout*& dp) {
   check_extra_data_locked();
 
-  DataLayout* end = args_data_limit();
-
-  for (;; dp = next_extra(dp)) {
-    assert(dp < end, "moved past end of extra data");
+  DataLayout* end = parameters_data_base();
+  for (; dp < end; dp = next_extra(dp)) {
     // No need for "AtomicAccess::load_acquire" ops,
     // since the data structure is monotonic.
     switch(dp->tag()) {
     case DataLayout::no_tag:
       return nullptr;
-    case DataLayout::arg_info_data_tag:
-      dp = end;
-      return nullptr; // ArgInfoData is at the end of extra data section.
     case DataLayout::bit_data_tag:
       if (m == nullptr && dp->bci() == bci) {
         return new BitData(dp);
@@ -1473,7 +1451,7 @@ ProfileData* MethodData::bci_to_extra_data(int bci, Method* m, bool create_if_mi
   }
 
   DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
+  DataLayout* end = parameters_data_base();
 
   // Find if already exists
   ProfileData* result = bci_to_extra_data_find(bci, m, dp);
@@ -1484,10 +1462,11 @@ ProfileData* MethodData::bci_to_extra_data(int bci, Method* m, bool create_if_mi
   if (create_if_missing) {
     // Not found -> Allocate
     assert(dp->tag() == DataLayout::no_tag || (dp->tag() == DataLayout::speculative_trap_data_tag && m != nullptr), "should be free");
-    assert(next_extra(dp)->tag() == DataLayout::no_tag || next_extra(dp)->tag() == DataLayout::arg_info_data_tag, "should be free or arg info");
+    DataLayout* next = next_extra(dp);
+    assert(next == end || next->tag() == DataLayout::no_tag, "should be free");
     u1 tag = m == nullptr ? DataLayout::bit_data_tag : DataLayout::speculative_trap_data_tag;
     // SpeculativeTrapData is 2 slots. Make sure we have room.
-    if (m != nullptr && next_extra(dp)->tag() != DataLayout::no_tag) {
+    if (m != nullptr && (next >= end || next->tag() != DataLayout::no_tag)) {
       return nullptr;
     }
     DataLayout temp;
@@ -1540,14 +1519,13 @@ void MethodData::print_data_on(outputStream* st) const {
 
   st->print_cr("--- Extra data:");
   DataLayout* dp    = extra_data_base();
-  DataLayout* end   = args_data_limit();
-  for (;; dp = next_extra(dp)) {
-    assert(dp < end, "moved past end of extra data");
+  DataLayout* end   = parameters_data_base();
+  for (; dp < end; dp = next_extra(dp)) {
     // No need for "AtomicAccess::load_acquire" ops,
     // since the data structure is monotonic.
     switch(dp->tag()) {
     case DataLayout::no_tag:
-      continue;
+      return;
     case DataLayout::bit_data_tag:
       data = new BitData(dp);
       break;
@@ -1560,7 +1538,6 @@ void MethodData::print_data_on(outputStream* st) const {
     st->print("%d", dp_to_di(data->dp()));
     st->fill_to(6);
     data->print_data_on(st);
-    if (dp >= end) return;
   }
 }
 
@@ -1711,14 +1688,13 @@ void MethodData::metaspace_pointers_do(MetaspaceClosure* it) {
     data->metaspace_pointers_do(it);
   }
   for (DataLayout* dp = extra_data_base();
-                   dp < extra_data_limit();
+                   dp < parameters_data_base();
                    dp = MethodData::next_extra(dp)) {
     if (dp->tag() == DataLayout::speculative_trap_data_tag) {
       ResourceMark rm;
       SpeculativeTrapData* data = new SpeculativeTrapData(dp);
       data->metaspace_pointers_do(it);
-    } else if (dp->tag() == DataLayout::no_tag ||
-               dp->tag() == DataLayout::arg_info_data_tag) {
+    } else if (dp->tag() == DataLayout::no_tag) {
       break;
     }
   }
@@ -1788,7 +1764,7 @@ void MethodData::clean_extra_data(CleanExtraDataClosure* cl) {
   check_extra_data_locked();
 
   DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
+  DataLayout* end = parameters_data_base();
 
   int shift = 0;
   for (; dp < end; dp = next_extra(dp)) {
@@ -1816,7 +1792,6 @@ void MethodData::clean_extra_data(CleanExtraDataClosure* cl) {
       clean_extra_data_helper(dp, shift);
       continue;
     case DataLayout::no_tag:
-    case DataLayout::arg_info_data_tag:
       // We are at end of the live trap entries. The previous "shift"
       // cells contain entries that are either dead or were shifted
       // left. They need to be reset to no_tag
@@ -1826,6 +1801,7 @@ void MethodData::clean_extra_data(CleanExtraDataClosure* cl) {
       fatal("unexpected tag %d", dp->tag());
     }
   }
+  clean_extra_data_helper(end, shift, true);
 }
 
 // Verify there's no unloaded or redefined method referenced by a
@@ -1835,7 +1811,7 @@ void MethodData::verify_extra_data_clean(CleanExtraDataClosure* cl) {
 
 #ifdef ASSERT
   DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
+  DataLayout* end = parameters_data_base();
 
   for (; dp < end; dp = next_extra(dp)) {
     switch(dp->tag()) {
@@ -1848,7 +1824,6 @@ void MethodData::verify_extra_data_clean(CleanExtraDataClosure* cl) {
     case DataLayout::bit_data_tag:
       continue;
     case DataLayout::no_tag:
-    case DataLayout::arg_info_data_tag:
       return;
     default:
       fatal("unexpected tag %d", dp->tag());

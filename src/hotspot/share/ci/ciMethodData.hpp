@@ -565,7 +565,6 @@ public:
   DataLayout* extra_data_base() const  { return data_layout_at(data_size()); }
   DataLayout* extra_data_limit() const { return data_layout_at(data_size() + extra_data_size()); }
   // pointers to sections in extra data
-  DataLayout* args_data_limit() const  { return parameters_data_base(); }
   DataLayout* parameters_data_base() const { return data_layout_at(_parameters_data_offset); }
   DataLayout* parameters_data_limit() const { return exception_handler_data_base(); }
   DataLayout* exception_handler_data_base() const { return data_layout_at(_exception_handlers_data_offset); }

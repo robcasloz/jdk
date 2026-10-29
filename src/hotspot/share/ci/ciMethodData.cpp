@@ -169,10 +169,9 @@ void ciMethodData::load_remaining_extra_data() {
 
   // speculative trap entries also hold a pointer to a Method so need to be translated
   DataLayout* dp_src  = mdo->extra_data_base();
-  DataLayout* end_src = mdo->args_data_limit();
+  DataLayout* end_src = mdo->parameters_data_base();
   DataLayout* dp_dst  = extra_data_base();
-  for (;; dp_src = MethodData::next_extra(dp_src), dp_dst = MethodData::next_extra(dp_dst)) {
-    assert(dp_src < end_src, "moved past end of extra data");
+  for (; dp_src < end_src; dp_src = MethodData::next_extra(dp_src), dp_dst = MethodData::next_extra(dp_dst)) {
     assert(((intptr_t)dp_dst) - ((intptr_t)extra_data_base()) == ((intptr_t)dp_src) - ((intptr_t)mdo->extra_data_base()), "source and destination don't match");
 
     int tag = dp_src->tag();
@@ -205,7 +204,7 @@ bool ciMethodData::load_data() {
   // To do: don't copy the data if it is not "ripe" -- require a minimum #
   // of invocations.
 
-  // Snapshot the data and extra parameter data first without the extra trap and arg info data.
+  // Snapshot the data and extra parameter data first without the extra trap data.
   // Those are copied in a second step. Actually, an approximate snapshot of the data is taken.
   // Any concurrently executing threads may be changing the data as we copy it.
   //
@@ -218,10 +217,7 @@ bool ciMethodData::load_data() {
   //  extra_data_base:  ---------------------------
   //                    |    trap data entries    |
   //                    |           ...           |
-  //                    | one arg info data entry |
-  //                    |    data for each arg    |
-  //                    |           ...           |
-  //  args_data_limit:  ---------------------------
+  //  param_data_base:  ---------------------------
   //                    |  parameter data entries |
   //                    |           ...           |
   //  param_data_limit: ---------------------------
@@ -232,9 +228,9 @@ bool ciMethodData::load_data() {
   // _data_size = extra_data_base - data_base
   // _extra_data_size = extra_data_limit - extra_data_base
   // total_size = _data_size + _extra_data_size
-  // args_data_limit = param_data_base
+  // param_data_base = data_base + _parameters_data_offset
   // param_data_limit = exception_handler_data_base
-  // extra_data_limit = extra_data_limit
+  // extra_data_limit = exception_handler_data_limit
 
 #ifndef ZERO
   // Some Zero platforms do not have expected alignment, and do not use
@@ -279,8 +275,7 @@ bool ciMethodData::load_data() {
     parameters->translate_from(mdo->parameters_type_data());
   }
 
-  assert((DataLayout*) ((address)_data + total_size - parameters_data_size - exception_handler_data_size()) == args_data_limit(),
-      "sanity - parameter data starts after the argument data of the single ArgInfoData entry");
+  assert((DataLayout*) ((address)_data + total_size - parameters_data_size - exception_handler_data_size()) == parameters_data_base(), "sanity");
   load_remaining_extra_data();
 
   // Note:  Extra data are all BitData, and do not need translation.
@@ -428,16 +423,16 @@ DataLayout* ciMethodData::next_extra_data_layout(DataLayout* current) {
 
 ciProfileData* ciMethodData::bci_to_extra_data(int bci, ciMethod* m, bool& two_free_slots) {
   DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
+  DataLayout* end = parameters_data_base();
+  DataLayout* next;
   two_free_slots = false;
   for (;dp < end; dp = MethodData::next_extra(dp)) {
     switch(dp->tag()) {
     case DataLayout::no_tag:
       _saw_free_extra_data = true;  // observed an empty slot (common case)
-      two_free_slots = (MethodData::next_extra(dp)->tag() == DataLayout::no_tag);
+      next = MethodData::next_extra(dp);
+      two_free_slots = next < end && next->tag() == DataLayout::no_tag;
       return nullptr;
-    case DataLayout::arg_info_data_tag:
-      return nullptr; // ArgInfoData is after the trap data right before the parameter data.
     case DataLayout::bit_data_tag:
       if (m == nullptr && dp->bci() == bci) {
         return new ciBitData(dp);
@@ -714,12 +709,11 @@ template<class T> void ciMethodData::dump_replay_data_call_type_helper(outputStr
 
 void ciMethodData::dump_replay_data_extra_data_helper(outputStream* out, int round, int& count) {
   DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
+  DataLayout* end = parameters_data_base();
 
   for (;dp < end; dp = MethodData::next_extra(dp)) {
     switch(dp->tag()) {
     case DataLayout::no_tag:
-    case DataLayout::arg_info_data_tag:
       return;
     case DataLayout::bit_data_tag:
       break;
@@ -841,12 +835,11 @@ void ciMethodData::print_data_on(outputStream* st) {
   }
   st->print_cr("--- Extra data:");
   DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
-  for (;; dp = MethodData::next_extra(dp)) {
-    assert(dp < end, "moved past end of extra data");
+  DataLayout* end = parameters_data_base();
+  for (; dp < end; dp = MethodData::next_extra(dp)) {
     switch (dp->tag()) {
     case DataLayout::no_tag:
-      continue;
+      return;
     case DataLayout::bit_data_tag:
       data = new BitData(dp);
       break;
@@ -859,7 +852,6 @@ void ciMethodData::print_data_on(outputStream* st) {
     st->print("%d", dp_to_di(data->dp()));
     st->fill_to(6);
     data->print_data_on(st);
-    if (dp >= end) return;
   }
 }
 

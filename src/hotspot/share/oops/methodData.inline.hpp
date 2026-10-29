@@ -28,7 +28,6 @@
 #include "oops/methodData.hpp"
 
 #include "runtime/atomicAccess.hpp"
-#include "runtime/mutexLocker.hpp"
 
 inline void DataLayout::release_set_cell_at(int index, intptr_t value) {
   AtomicAccess::release_store(&_cells[index], value);
