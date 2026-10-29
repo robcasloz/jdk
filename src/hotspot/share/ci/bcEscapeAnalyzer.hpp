@@ -58,7 +58,6 @@ class BCEscapeAnalyzer : public ArenaObj {
   bool              _return_local;
   bool              _return_allocated;
   bool              _allocated_escapes;
-  bool              _unknown_modified;
 
   GrowableArray<ciMetadata*> _dependencies;
 
@@ -81,7 +80,6 @@ class BCEscapeAnalyzer : public ArenaObj {
   void clear_bits(ArgumentMap vars, VectorSet &bs);
   void set_method_escape(ArgumentMap vars);
   void set_global_escape(ArgumentMap vars, bool merge = false);
-  void set_modified(ArgumentMap vars);
 
   bool is_recursive_call(ciMethod* callee);
   void invoke(StateInfo &state, Bytecodes::Code code, ciMethod* target, ciKlass* holder);
@@ -139,9 +137,6 @@ class BCEscapeAnalyzer : public ArenaObj {
   bool is_return_allocated() const {
     return !_conservative && _return_allocated && !_allocated_escapes;
   }
-
-  // TODO: this is unused as well, just remove.
-  bool has_non_arg_side_affects()    { return _unknown_modified; }
 
   // Copy dependencies from this analysis into "deps"
   void copy_dependencies(Dependencies *deps);
