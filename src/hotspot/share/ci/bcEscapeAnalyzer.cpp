@@ -197,22 +197,12 @@ void BCEscapeAnalyzer::set_global_escape(ArgumentMap vars, bool merge) {
 }
 
 void BCEscapeAnalyzer::set_modified(ArgumentMap vars, int offs, int size) {
-  for (int i = 0; i < _arg_size; i++) {
-    if (vars.contains(i)) {
-      set_arg_modified(i, offs, size);
-    }
-  }
   if (vars.contains_unknown()) {
     _unknown_modified = true;
   }
 }
 
 void BCEscapeAnalyzer::set_modified_any_offset(ArgumentMap vars) {
-  for (int i = 0; i < _arg_size; i++) {
-    if (vars.contains(i)) {
-      _arg_modified[i] = (uint)-1;
-    }
-  }
   if (vars.contains_unknown()) {
     _unknown_modified = true;
   }
@@ -225,23 +215,6 @@ bool BCEscapeAnalyzer::is_recursive_call(ciMethod* callee) {
     }
   }
   return false;
-}
-
-void BCEscapeAnalyzer::set_arg_modified(int arg, int offset, int size_in_bytes) {
-  if (offset == OFFSET_ANY) {
-    _arg_modified[arg] = (uint)-1;
-    return;
-  }
-  assert(arg >= 0 && arg < _arg_size, "must be an argument.");
-  int l = offset / HeapWordSize;
-  int h = align_up(offset + size_in_bytes, HeapWordSize) / HeapWordSize;
-  if (l > ARG_OFFSET_MAX)
-    l = ARG_OFFSET_MAX;
-  if (h > ARG_OFFSET_MAX+1)
-    h = ARG_OFFSET_MAX + 1;
-  for (int i = l; i < h; i++) {
-    _arg_modified[arg] |= (1 << i);
-  }
 }
 
 void BCEscapeAnalyzer::invoke(StateInfo &state, Bytecodes::Code code, ciMethod* target, ciKlass* holder) {
@@ -322,11 +295,6 @@ void BCEscapeAnalyzer::invoke(StateInfo &state, Bytecodes::Code code, ciMethod* 
       bool allocated = arg.contains_allocated();
       if (!(is_argument(arg) || allocated))
         continue;
-      for (int j = 0; j < _arg_size; j++) {
-        if (arg.contains(j)) {
-          _arg_modified[j] |= analyzer._arg_modified[i];
-        }
-      }
       if (!(is_arg_stack(arg) || allocated)) {
         // arguments have already been recognized as escaping
       } else if (analyzer.is_arg_stack(i) && !analyzer.is_arg_returned(i)) {
@@ -1290,7 +1258,6 @@ void BCEscapeAnalyzer::clear_escape_info() {
     arg_count++;  // allow for "this"
   }
   for (int i = 0; i < arg_count; i++) {
-    set_arg_modified(i, OFFSET_ANY, 4);
     var.clear();
     var.set(i);
     set_modified(var, OFFSET_ANY, 4);
@@ -1383,7 +1350,6 @@ void BCEscapeAnalyzer::compute_escape_info() {
       if (_arg_returned.test(i)) {
         methodData()->set_arg_returned(i);
       }
-      methodData()->set_arg_modified(i, _arg_modified[i]);
     }
     if (_return_local) {
       methodData()->set_eflag(MethodData::return_local);
@@ -1412,7 +1378,6 @@ void BCEscapeAnalyzer::read_escape_info() {
       _arg_stack.set(i);
     if (methodData()->is_arg_returned(i))
       _arg_returned.set(i);
-    _arg_modified[i] = methodData()->arg_modified(i);
   }
   _return_local = methodData()->eflag_set(MethodData::return_local);
   _return_allocated = methodData()->eflag_set(MethodData::return_allocated);
@@ -1462,22 +1427,8 @@ void BCEscapeAnalyzer::dump() {
     tty->print_cr("- return non-local value");
   }
   print_header(level());
-  tty->print("- modified args:          ");
-  tty->print("[");
-  const char* sep = "";
-  for (int i = 0; i < _arg_size; i++) {
-    tty->print("%s", sep);
-    if (_arg_modified[i] == 0) {
-      tty->print("0");
-    } else {
-      tty->print("0x%x", _arg_modified[i]);
-    }
-    sep = COMMA_SEPARATOR;
-  }
-  tty->print_cr("]");
-  print_header(level());
   tty->print("- flags:                  {");
-  sep = "";
+  const char* sep = "";
   if (_return_allocated) {
     tty->print("%sreturn_allocated", sep);
     sep = COMMA_SEPARATOR;
@@ -1514,9 +1465,6 @@ BCEscapeAnalyzer::BCEscapeAnalyzer(ciMethod* method, BCEscapeAnalyzer* parent)
     _arg_local.clear();
     _arg_stack.clear();
     _arg_returned.clear();
-    Arena* arena = CURRENT_ENV->arena();
-    _arg_modified = (uint *) arena->Amalloc(_arg_size * sizeof(uint));
-    Copy::zero_to_bytes(_arg_modified, _arg_size * sizeof(uint));
 
     if (methodData() == nullptr)
       return;

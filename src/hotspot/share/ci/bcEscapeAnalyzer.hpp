@@ -54,8 +54,6 @@ class BCEscapeAnalyzer : public ArenaObj {
   VectorSet         _arg_local;
   VectorSet         _arg_stack;
   VectorSet         _arg_returned;
-  enum{ ARG_OFFSET_MAX = 31};
-  uint              *_arg_modified;
 
   bool              _return_local;
   bool              _return_allocated;
@@ -146,7 +144,6 @@ class BCEscapeAnalyzer : public ArenaObj {
   // Tracking of argument modification
 
   enum {OFFSET_ANY = -1};
-  void set_arg_modified(int arg, int offset, int size_in_bytes);
   bool has_non_arg_side_affects()    { return _unknown_modified; }
 
   // Copy dependencies from this analysis into "deps"
