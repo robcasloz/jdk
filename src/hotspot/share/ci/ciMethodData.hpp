@@ -41,7 +41,6 @@ class ciRetData;
 class ciBranchData;
 class ciArrayData;
 class ciMultiBranchData;
-class ciArgInfoData;
 class ciCallTypeData;
 class ciVirtualCallTypeData;
 class ciParametersTypeData;
@@ -315,11 +314,6 @@ public:
   ciMultiBranchData(DataLayout* layout) : MultiBranchData(layout) {};
 };
 
-class ciArgInfoData : public ArgInfoData {
-public:
-  ciArgInfoData(DataLayout* layout) : ArgInfoData(layout) {};
-};
-
 class ciParametersTypeData : public ParametersTypeData {
 public:
   ciParametersTypeData(DataLayout* layout) : ParametersTypeData(layout) {}
@@ -516,8 +510,6 @@ private:
   // What is the index of the first data entry?
   int first_di() { return 0; }
 
-  ciArgInfoData *arg_info() const;
-
   void prepare_metadata();
   void load_remaining_extra_data();
   ciProfileData* bci_to_extra_data(int bci, ciMethod* m, bool& two_free_slots);
@@ -621,12 +613,10 @@ public:
   void set_arg_local(int i);
   void set_arg_stack(int i);
   void set_arg_returned(int i);
-  void set_arg_modified(int arg, uint val);
 
   bool is_arg_local(int i) const;
   bool is_arg_stack(int i) const;
   bool is_arg_returned(int i) const;
-  uint arg_modified(int arg) const;
 
   ciParametersTypeData* parameters_type_data() const;
 

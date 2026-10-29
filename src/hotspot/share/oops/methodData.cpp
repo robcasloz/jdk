@@ -664,15 +664,6 @@ void MultiBranchData::print_data_on(outputStream* st, const char* extra) const {
   }
 }
 
-void ArgInfoData::print_data_on(outputStream* st, const char* extra) const {
-  print_shared(st, "ArgInfoData", extra);
-  int args_size = size_of_args();
-  for (int i = 0; i < args_size; i++) {
-    st->print("  0x%x", arg_modified(i));
-  }
-  st->cr();
-}
-
 int ParametersTypeData::compute_cell_count(Method* m) {
   if (!MethodData::profile_parameters_for_method(methodHandle(Thread::current(), m))) {
     return 0;
@@ -1140,8 +1131,6 @@ int DataLayout::cell_count() {
     return BranchData::static_cell_count();
   case DataLayout::multi_branch_data_tag:
     return ((new MultiBranchData(this))->cell_count());
-  case DataLayout::arg_info_data_tag:
-    return ((new ArgInfoData(this))->cell_count());
   case DataLayout::call_type_data_tag:
     return ((new CallTypeData(this))->cell_count());
   case DataLayout::virtual_call_type_data_tag:
@@ -1180,8 +1169,6 @@ ProfileData* DataLayout::data_in() {
     return new BranchData(this);
   case DataLayout::multi_branch_data_tag:
     return new MultiBranchData(this);
-  case DataLayout::arg_info_data_tag:
-    return new ArgInfoData(this);
   case DataLayout::call_type_data_tag:
     return new CallTypeData(this);
   case DataLayout::virtual_call_type_data_tag:
@@ -1520,16 +1507,6 @@ ProfileData* MethodData::bci_to_extra_data(int bci, Method* m, bool create_if_mi
   return nullptr;
 }
 
-ArgInfoData *MethodData::arg_info() {
-  DataLayout* dp    = extra_data_base();
-  DataLayout* end   = args_data_limit();
-  for (; dp < end; dp = next_extra(dp)) {
-    if (dp->tag() == DataLayout::arg_info_data_tag)
-      return new ArgInfoData(dp);
-  }
-  return nullptr;
-}
-
 // Printing
 
 void MethodData::print_on(outputStream* st) const {
@@ -1576,10 +1553,6 @@ void MethodData::print_data_on(outputStream* st) const {
       break;
     case DataLayout::speculative_trap_data_tag:
       data = new SpeculativeTrapData(dp);
-      break;
-    case DataLayout::arg_info_data_tag:
-      data = new ArgInfoData(dp);
-      dp = end; // ArgInfoData is at the end of extra data section.
       break;
     default:
       fatal("unexpected tag %d", dp->tag());

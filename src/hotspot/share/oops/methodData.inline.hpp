@@ -54,22 +54,4 @@ inline void RetData::release_set_bci(uint row, int bci) {
   release_set_int_at(bci0_offset + row * ret_row_cell_count, bci);
 }
 
-inline uint MethodData::arg_modified(int a) {
-  // Lock and avoid breaking lock with Safepoint
-  MutexLocker ml(extra_data_lock(), Mutex::_no_safepoint_check_flag);
-  ArgInfoData* aid = arg_info();
-  assert(aid != nullptr, "arg_info must be not null");
-  assert(a >= 0 && a < aid->size_of_args(), "valid argument number");
-  return aid->arg_modified(a);
-}
-
-inline void MethodData::set_arg_modified(int a, uint v) {
-  // Lock and avoid breaking lock with Safepoint
-  MutexLocker ml(extra_data_lock(), Mutex::_no_safepoint_check_flag);
-  ArgInfoData* aid = arg_info();
-  assert(aid != nullptr, "arg_info must be not null");
-  assert(a >= 0 && a < aid->size_of_args(), "valid argument number");
-  aid->set_arg_modified(a, v);
-}
-
 #endif // SHARE_OOPS_METHODDATA_INLINE_HPP

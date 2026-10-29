@@ -186,8 +186,7 @@ void ciMethodData::load_remaining_extra_data() {
     case DataLayout::bit_data_tag:
       break;
     case DataLayout::no_tag:
-    case DataLayout::arg_info_data_tag:
-      // An empty slot or ArgInfoData entry marks the end of the trap data
+      // An empty slot marks the end of the trap data
       {
         return; // Need a block to avoid SS compiler bug
       }
@@ -386,8 +385,6 @@ ciProfileData* ciMethodData::data_from(DataLayout* data_layout) {
     return new ciBranchData(data_layout);
   case DataLayout::multi_branch_data_tag:
     return new ciMultiBranchData(data_layout);
-  case DataLayout::arg_info_data_tag:
-    return new ciArgInfoData(data_layout);
   case DataLayout::call_type_data_tag:
     return new ciCallTypeData(data_layout);
   case DataLayout::virtual_call_type_data_tag:
@@ -543,11 +540,6 @@ void ciMethodData::clear_escape_info() {
   MethodData* mdo = get_MethodData();
   if (mdo != nullptr) {
     mdo->clear_escape_info();
-    ArgInfoData *aid = arg_info();
-    int arg_size = (aid == nullptr) ? 0 : aid->size_of_args();
-    for (int i = 0; i < arg_size; i++) {
-      set_arg_modified(i, 0);
-    }
   }
   _eflags = _arg_local = _arg_stack = _arg_returned = 0;
 }
@@ -561,10 +553,6 @@ void ciMethodData::update_escape_info() {
     mdo->set_arg_local(_arg_local);
     mdo->set_arg_stack(_arg_stack);
     mdo->set_arg_returned(_arg_returned);
-    int arg_size = mdo->method()->size_of_parameters();
-    for (int i = 0; i < arg_size; i++) {
-      mdo->set_arg_modified(i, arg_modified(i));
-    }
   }
 }
 
@@ -655,14 +643,6 @@ void ciMethodData::set_arg_returned(int i) {
   set_nth_bit(_arg_returned, i);
 }
 
-void ciMethodData::set_arg_modified(int arg, uint val) {
-  ArgInfoData *aid = arg_info();
-  if (aid == nullptr)
-    return;
-  assert(arg >= 0 && arg < aid->size_of_args(), "valid argument number");
-  aid->set_arg_modified(arg, val);
-}
-
 bool ciMethodData::is_arg_local(int i) const {
   return is_set_nth_bit(_arg_local, i);
 }
@@ -673,14 +653,6 @@ bool ciMethodData::is_arg_stack(int i) const {
 
 bool ciMethodData::is_arg_returned(int i) const {
   return is_set_nth_bit(_arg_returned, i);
-}
-
-uint ciMethodData::arg_modified(int arg) const {
-  ArgInfoData *aid = arg_info();
-  if (aid == nullptr)
-    return 0;
-  assert(arg >= 0 && arg < aid->size_of_args(), "valid argument number");
-  return aid->arg_modified(arg);
 }
 
 ciParametersTypeData* ciMethodData::parameters_type_data() const {
@@ -699,18 +671,6 @@ ByteSize ciMethodData::offset_of_slot(ciProfileData* data, ByteSize slot_offset_
 
   return in_ByteSize(offset);
 }
-
-ciArgInfoData *ciMethodData::arg_info() const {
-  // Should be last, have to skip all traps.
-  DataLayout* dp  = extra_data_base();
-  DataLayout* end = args_data_limit();
-  for (; dp < end; dp = MethodData::next_extra(dp)) {
-    if (dp->tag() == DataLayout::arg_info_data_tag)
-      return new ciArgInfoData(dp);
-  }
-  return nullptr;
-}
-
 
 // Implementation of the print method.
 void ciMethodData::print_impl(outputStream* st) {
@@ -889,10 +849,6 @@ void ciMethodData::print_data_on(outputStream* st) {
       continue;
     case DataLayout::bit_data_tag:
       data = new BitData(dp);
-      break;
-    case DataLayout::arg_info_data_tag:
-      data = new ciArgInfoData(dp);
-      dp = end; // ArgInfoData is after the trap data right before the parameter data.
       break;
     case DataLayout::speculative_trap_data_tag:
       data = new ciSpeculativeTrapData(dp);

@@ -298,7 +298,6 @@ class     BranchData;
 class       ACmpData;
 class   ArrayData;
 class     MultiBranchData;
-class     ArgInfoData;
 class     ParametersTypeData;
 class   SpeculativeTrapData;
 class   ArrayLoadData;
@@ -423,7 +422,6 @@ public:
   virtual bool is_BranchData()      const { return false; }
   virtual bool is_ArrayData()       const { return false; }
   virtual bool is_MultiBranchData() const { return false; }
-  virtual bool is_ArgInfoData()     const { return false; }
   virtual bool is_CallTypeData()    const { return false; }
   virtual bool is_VirtualCallTypeData()const { return false; }
   virtual bool is_ParametersTypeData() const { return false; }
@@ -468,10 +466,6 @@ public:
   MultiBranchData* as_MultiBranchData() const {
     assert(is_MultiBranchData(), "wrong type");
     return is_MultiBranchData() ? (MultiBranchData*)this : nullptr;
-  }
-  ArgInfoData* as_ArgInfoData() const {
-    assert(is_ArgInfoData(), "wrong type");
-    return is_ArgInfoData() ? (ArgInfoData*)this : nullptr;
   }
   CallTypeData* as_CallTypeData() const {
     assert(is_CallTypeData(), "wrong type");
@@ -1747,31 +1741,6 @@ public:
   void print_data_on(outputStream* st, const char* extra = nullptr) const;
 };
 
-class ArgInfoData : public ArrayData {
-
-public:
-  ArgInfoData(DataLayout* layout) : ArrayData(layout) {
-    assert(layout->tag() == DataLayout::arg_info_data_tag, "wrong type");
-  }
-
-  virtual bool is_ArgInfoData() const { return true; }
-
-
-  int size_of_args() const {
-    return array_len();
-  }
-
-  uint arg_modified(int arg) const {
-    return array_uint_at(arg);
-  }
-
-  void set_arg_modified(int arg, uint val) {
-    array_set_int_at(arg, val);
-  }
-
-  void print_data_on(outputStream* st, const char* extra = nullptr) const;
-};
-
 // ParametersTypeData
 //
 // A ParametersTypeData is used to access profiling information about
@@ -2396,9 +2365,6 @@ private:
   // Find or create an extra ProfileData:
   ProfileData* bci_to_extra_data(int bci, Method* m, bool create_if_missing);
 
-  // return the argument info cell
-  ArgInfoData *arg_info();
-
   enum {
     no_type_profile = 0,
     type_profile_jsr292 = 1,
@@ -2513,12 +2479,10 @@ public:
   intx arg_local()                               { return _arg_local; }
   intx arg_stack()                               { return _arg_stack; }
   intx arg_returned()                            { return _arg_returned; }
-  uint arg_modified(int a);
   void set_eflags(intx v)                        { _eflags = v; }
   void set_arg_local(intx v)                     { _arg_local = v; }
   void set_arg_stack(intx v)                     { _arg_stack = v; }
   void set_arg_returned(intx v)                  { _arg_returned = v; }
-  void set_arg_modified(int a, uint v);
   void clear_escape_info()                       { _eflags = _arg_local = _arg_stack = _arg_returned = 0; }
 
   // Location and size of data area
