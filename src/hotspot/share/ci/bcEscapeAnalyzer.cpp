@@ -31,9 +31,7 @@
 #include "compiler/compiler_globals.hpp"
 #include "interpreter/bytecode.hpp"
 #include "oops/oop.inline.hpp"
-#include "utilities/align.hpp"
 #include "utilities/bitMap.inline.hpp"
-#include "utilities/copy.hpp"
 #include "utilities/integerCast.hpp"
 
 #ifndef PRODUCT
