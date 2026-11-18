@@ -3047,6 +3047,23 @@ void ciTypeFlow::flow_types() {
             L = current;
           }
         }
+        // Clone L:
+        // - duplicate all blocks and their internal edges,
+        // - remove incoming edges from the original entry (entries in the case
+        // of irreducible loops),
+        // - add incoming edges to the cloned entry (entries),
+        // - add outgoing edges to the cloned exits.
+        if (UseNewCode) {
+          tty->print_cr("Cloning loop:");
+          L->print();
+          tty->print_cr("Blocks:");
+        }
+        for (Block* blk = _rpo_list; blk != nullptr; blk = blk->rpo_next()) {
+          if (L->contains(blk)) {
+            tty->print("%d ", blk->start());
+          }
+        }
+        tty->cr();
       }
       clean_df_flow_types_results();
     }
